@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LIMITE_DIARIO_INTERACCIONES_IP } from "@/lib/constantes";
 import { obtenerIdentidad } from "@/lib/identidad";
 import { error, ok } from "@/lib/respuestas";
 import { supabaseServidor } from "@/lib/supabase/servidor";
@@ -22,7 +23,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return error("Datos inválidos.");
   }
 
-  const { ip, dispositivoHash } = await obtenerIdentidad();
+  const { ip, dispositivoHash, ipHash } = await obtenerIdentidad();
   if (!(await verificarTurnstile(cuerpo.token, ip))) {
     return error("No pudimos verificar que eres una persona. Intenta de nuevo.", 403);
   }
@@ -40,11 +41,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return error("No puedes confirmar tu propio reporte.", 409);
   }
 
+  const { data: hayCupo, error: errCupo } = await db.rpc("consumir_cupo_ip", {
+    p_ip_hash: `${ipHash}:interacciones`,
+    p_max: LIMITE_DIARIO_INTERACCIONES_IP,
+  });
+  if (errCupo) return error("Error al guardar. Intenta más tarde.", 500);
+  if (!hayCupo) return error("Llegaste al límite de votos de hoy. Vuelve mañana.", 429);
+
   const { error: errVoto } = await db
     .from("votos_pin")
-    .insert({ pin_id: pinId, tipo: cuerpo.tipo, dispositivo_hash: dispositivoHash });
+    .insert({ pin_id: pinId, tipo: cuerpo.tipo, dispositivo_hash: dispositivoHash, ip_hash: ipHash });
   if (errVoto) {
     if (errVoto.code === "23505") {
+      if (errVoto.message.includes("una_ip")) {
+        return error("Ya se marcó este reporte como arreglado desde esta conexión. Hace falta que lo confirmen otros vecinos.", 409);
+      }
       return error(cuerpo.tipo === "confirmo" ? "Ya confirmaste este reporte." : "Ya marcaste este reporte como arreglado.", 409);
     }
     console.error(errVoto);

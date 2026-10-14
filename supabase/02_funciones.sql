@@ -127,7 +127,7 @@ as $$
     'subtipo', p.subtipo,
     'lat', round(st_y(p.ubicacion)::numeric, 6),
     'lng', round(st_x(p.ubicacion)::numeric, 6),
-    'foto', p.foto_ruta,
+    'foto', case when p.foto_oculta then null else p.foto_ruta end,
     'comentario', case when p.comentario_oculto then null else p.comentario end,
     'confirmaciones', p.confirmaciones,
     'votos_arreglado', p.votos_arreglado,
@@ -335,7 +335,7 @@ create trigger tras_voto_pin
   for each row execute function public._tras_voto_pin();
 
 -- ---------------------------------------------------------------------
--- TRIGGER: 3 denuncias → el comentario se oculta automáticamente
+-- TRIGGER: 3 denuncias → el comentario (o la foto) se oculta automáticamente
 -- ---------------------------------------------------------------------
 create or replace function public._tras_denuncia()
 returns trigger
@@ -347,6 +347,11 @@ begin
     update reportes_agua
        set denuncias = denuncias + 1,
            comentario_oculto = comentario_oculto or denuncias + 1 >= 3
+     where id = new.objetivo_id;
+  elsif new.objetivo_tipo = 'foto' then
+    update reportes_pin
+       set denuncias_foto = denuncias_foto + 1,
+           foto_oculta = foto_oculta or denuncias_foto + 1 >= 3
      where id = new.objetivo_id;
   else
     update reportes_pin

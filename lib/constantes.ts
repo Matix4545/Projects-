@@ -59,6 +59,8 @@ export function dentroDeCajeme(lat: number, lng: number) {
 
 // Reglas antispam
 export const LIMITE_DIARIO_IP = 10;
+// Votos (+1 / arreglado) y denuncias por IP al día
+export const LIMITE_DIARIO_INTERACCIONES_IP = 40;
 export const HORAS_ENTRE_REPORTES_AGUA = 6;
 export const MAX_COMENTARIO = 280;
 export const MAX_FOTO_BYTES = 1024 * 1024;

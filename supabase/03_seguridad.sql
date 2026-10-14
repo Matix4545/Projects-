@@ -58,3 +58,6 @@ begin
       set public = true, file_size_limit = 1048576, allowed_mime_types = array['image/jpeg'];
   end if;
 end $$;
+
+-- 7) Que la API de Supabase vea de inmediato las tablas/columnas nuevas.
+notify pgrst, 'reload schema';

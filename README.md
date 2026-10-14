@@ -25,8 +25,10 @@ servicios públicos: **agua**, **baches** y **drenaje**. Es anónimo, está en e
   aleatorio del dispositivo, guardado en una cookie.
 - **Cloudflare Turnstile** en cada envío: reportes, votos y denuncias.
 - **Límites:** 1 reporte de agua por colonia por dispositivo cada 6 horas, y máximo 10 reportes por IP al día.
-- **Comentarios:** se rechazan groserías, teléfonos, correos y enlaces. Hay un botón "Denunciar" y con 3 denuncias el
-  comentario se oculta solo.
+- **Comentarios y fotos:** en los comentarios se rechazan groserías, teléfonos, correos y enlaces. Comentarios y
+  fotos tienen botón "Denunciar": con 3 denuncias se ocultan solos.
+- **Votos y denuncias:** 1 por dispositivo **y** 1 por conexión (IP), y máximo 40 al día por IP. Así nadie puede
+  marcar un bache como arreglado ni ocultar un comentario solo con borrar sus cookies.
 - **Fotos:** se comprimen en el celular a ≤ 1 MB. El servidor las vuelve a codificar, lo que **borra todos los
   metadatos EXIF, incluida la ubicación GPS**.
 - **Base de datos:** Row Level Security está activado. El público no puede leer ni escribir tablas, solo llamar
@@ -182,6 +184,10 @@ Con GitHub Actions se pueden descargar las colonias de OpenStreetMap y subirlas 
 4. En 2 o 3 minutos termina. Las colonias con nombre en OpenStreetMap reemplazan a los "Sector N" que cubrían;
    el resto de la ciudad sigue con hexágonos. Los reportes existentes se pasan a la colonia nueva.
 
+### Actualizar la base de datos después de una actualización del código
+Cuando se agregan funciones nuevas, vuelve a correr en Supabase → SQL Editor, en este orden:
+`01_esquema.sql`, `02_funciones.sql` y `03_seguridad.sql`. Son seguros de repetir: no borran datos.
+
 ### Editar las zonas
 - Para volver a descargar de OpenStreetMap: `npm run importar-zonas`. Actualiza las zonas existentes y agrega las nuevas.
 - Para corregir a mano: abre `data/zonas.geojson` en <https://geojson.io>, edita, guarda y ejecuta
@@ -193,11 +199,16 @@ Con GitHub Actions se pueden descargar las colonias de OpenStreetMap y subirlas 
 ### Moderar desde Supabase (SQL Editor)
 
 ```sql
--- Ver los comentarios con más denuncias
-select 'agua' as tipo, id, comentario, denuncias, comentario_oculto from reportes_agua where denuncias > 0
+-- Ver los comentarios y fotos con más denuncias
+select 'agua' as tipo, id, comentario, denuncias, comentario_oculto as oculto from reportes_agua where denuncias > 0
 union all
 select 'pin', id, comentario, denuncias, comentario_oculto from reportes_pin where denuncias > 0
+union all
+select 'foto', id, foto_ruta, denuncias_foto, foto_oculta from reportes_pin where denuncias_foto > 0
 order by denuncias desc;
+
+-- Volver a mostrar una foto que se ocultó injustamente
+update reportes_pin set foto_oculta = false where id = 123;
 
 -- Ocultar un comentario a mano
 update reportes_pin set comentario_oculto = true where id = 123;

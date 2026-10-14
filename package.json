@@ -23,7 +23,7 @@
     "react-dom": "^19.2.0",
     "react-leaflet": "^5.0.0",
     "server-only": "^0.0.1",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.5",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -40,5 +40,8 @@
     "osmtogeojson": "^3.0.0-beta.5",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "@xmldom/xmldom": "^0.8.15"
   }
 }

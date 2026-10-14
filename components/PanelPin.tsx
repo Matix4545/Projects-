@@ -71,6 +71,11 @@ export function PanelPin({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={urlFoto(pin.foto)} alt={`Foto del reporte: ${titulo}`} loading="lazy" className="max-h-72 w-full rounded-lg bg-gray-100 object-cover" />
         )}
+        {pin.foto && (
+          <div className="-mt-2 text-right">
+            <BotonDenunciar tipo="foto" id={pin.id} onAviso={onAviso} />
+          </div>
+        )}
 
         {pin.comentario && (
           <div className="rounded-lg bg-gray-50 p-2 text-sm">

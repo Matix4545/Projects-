@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { EstadoAgua } from "@/lib/constantes";
+import { dentroDeCajeme, type EstadoAgua } from "@/lib/constantes";
 import {
   cargarEstados,
   cargarPins,
@@ -102,9 +102,20 @@ export function App() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const punto: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-        setMiUbicacion(punto);
         // Si la persona ya tocó el mapa mientras esperábamos, respetamos su elección
         if (eligioEnMapa.current) return;
+        // Fuera de Cajeme: no movemos el mapa hasta allá; que toque el lugar del problema
+        if (!dentroDeCajeme(punto[0], punto[1])) {
+          setOrigen("fuera");
+          return;
+        }
+        setMiUbicacion(punto);
+        // GPS muy impreciso (p. ej. solo por antenas): podría caer en otra colonia
+        if (pos.coords.accuracy > 500) {
+          setOrigen("impreciso");
+          centrar(punto, 15);
+          return;
+        }
         setUbicacion(punto);
         setOrigen("gps");
         centrar(punto, 17);

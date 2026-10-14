@@ -110,7 +110,7 @@ export default function Acerca() {
       <h3 className="mt-4 font-bold">Comentarios</h3>
       <p>
         No escribas datos personales tuyos ni de otras personas. Los comentarios con groserías, teléfonos, correos o
-        enlaces se rechazan, y cualquier vecino puede denunciar un comentario: con 3 denuncias se oculta
+        enlaces se rechazan. Cualquier vecino puede denunciar un comentario o una foto: con 3 denuncias se oculta
         automáticamente.
       </p>
 

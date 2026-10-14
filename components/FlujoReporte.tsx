@@ -17,7 +17,7 @@ import { enviar, zonaDePunto } from "@/lib/datos";
 import { HojaInferior } from "./HojaInferior";
 import { ERROR_TURNSTILE_NAVEGADOR, useTurnstile } from "./Turnstile";
 
-export type OrigenUbicacion = "buscando" | "gps" | "mapa" | "sin_gps";
+export type OrigenUbicacion = "buscando" | "gps" | "mapa" | "sin_gps" | "fuera" | "impreciso";
 type Paso = "tipo" | "agua" | TipoPin;
 
 type Props = {
@@ -135,6 +135,8 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
 
   const textoUbicacion = (() => {
     if (origen === "buscando" && !ubicacion) return "Buscando tu ubicación…";
+    if (!ubicacion && origen === "fuera") return "Parece que no estás en Cajeme. Toca el mapa donde está el problema.";
+    if (!ubicacion && origen === "impreciso") return "Tu ubicación es poco precisa. Toca el mapa justo donde está el problema.";
     if (!ubicacion) return "Toca el mapa donde está el problema.";
     const base = origen === "gps" ? "Usando tu ubicación actual" : "Ubicación elegida en el mapa";
     if (paso !== "agua") return `${base}. Toca o arrastra el marcador para ajustar.`;

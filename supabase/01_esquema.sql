@@ -106,3 +106,24 @@ create table if not exists public.limite_ip (
   total   int  not null default 0,
   primary key (ip_hash, dia)
 );
+
+-- =====================================================================
+-- CAMBIOS POSTERIORES (se pueden correr varias veces sin problema)
+-- =====================================================================
+
+-- Fotos denunciables: con 3 denuncias la foto deja de mostrarse
+alter table public.reportes_pin add column if not exists foto_oculta    boolean not null default false;
+alter table public.reportes_pin add column if not exists denuncias_foto int     not null default 0;
+
+alter table public.denuncias drop constraint if exists denuncias_objetivo_tipo_check;
+alter table public.denuncias add  constraint denuncias_objetivo_tipo_check
+  check (objetivo_tipo in ('agua', 'pin', 'foto'));
+
+-- Votos "ya lo arreglaron" y denuncias: además de 1 por dispositivo, 1 por conexión (IP).
+-- Así nadie puede ocultar un pin o un comentario solo con borrar sus cookies.
+alter table public.votos_pin add column if not exists ip_hash text;
+alter table public.denuncias add column if not exists ip_hash text;
+create unique index if not exists votos_pin_arreglado_una_ip
+  on public.votos_pin (pin_id, ip_hash) where tipo = 'arreglado' and ip_hash is not null;
+create unique index if not exists denuncias_una_ip
+  on public.denuncias (objetivo_tipo, objetivo_id, ip_hash) where ip_hash is not null;
