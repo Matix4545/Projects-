@@ -170,6 +170,18 @@ Abre <http://localhost:3000>. Deberías ver el mapa con colonias de colores y pu
 
 ## Mantenimiento
 
+### Nombres reales de colonias (sin instalar nada)
+Con GitHub Actions se pueden descargar las colonias de OpenStreetMap y subirlas a Supabase desde el navegador:
+
+1. En Supabase → SQL Editor vuelve a correr `supabase/02_funciones.sql` y luego `supabase/03_seguridad.sql`
+   (agregan la función que acomoda los reportes existentes; se pueden correr las veces que quieras).
+2. En GitHub → tu repositorio → **Settings → Secrets and variables → Actions → New repository secret**, crea:
+   - `NEXT_PUBLIC_SUPABASE_URL` → la URL de tu proyecto de Supabase
+   - `SUPABASE_SERVICE_ROLE_KEY` → tu clave secreta de Supabase
+3. Ve a la pestaña **Actions → Importar colonias → Run workflow**.
+4. En 2 o 3 minutos termina. Las colonias con nombre en OpenStreetMap reemplazan a los "Sector N" que cubrían;
+   el resto de la ciudad sigue con hexágonos. Los reportes existentes se pasan a la colonia nueva.
+
 ### Editar las zonas
 - Para volver a descargar de OpenStreetMap: `npm run importar-zonas`. Actualiza las zonas existentes y agrega las nuevas.
 - Para corregir a mano: abre `data/zonas.geojson` en <https://geojson.io>, edita, guarda y ejecuta

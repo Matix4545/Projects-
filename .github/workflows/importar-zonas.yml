@@ -1,0 +1,39 @@
+# Descarga las colonias de OpenStreetMap y las sube a Supabase.
+# Se corre a mano: GitHub → pestaña "Actions" → "Importar colonias" → "Run workflow".
+# Necesita dos secretos en GitHub (Settings → Secrets and variables → Actions):
+#   NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY
+name: Importar colonias
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Descargar colonias de OpenStreetMap y subirlas a Supabase
+        run: npm run importar-zonas -- --estricto
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Guardar el archivo de zonas (para revisarlo en geojson.io)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zonas
+          path: data/zonas.geojson
+          if-no-files-found: ignore

@@ -8,12 +8,16 @@
 //   npm run importar-zonas -- --desde-archivo    → sube data/zonas.geojson (p. ej. editado a mano)
 //   npm run importar-zonas -- --solo-h3          → ignora colonias de OSM; todo en hexágonos
 //   npm run importar-zonas -- --aproximado       → sin OSM: hexágonos sobre un contorno aproximado
+//   npm run importar-zonas -- --estricto         → si OSM no responde, falla en vez de usar el contorno aproximado
+//   npm run importar-zonas -- --conservar        → no retira las zonas viejas que ya no aparecen
 //
 // Cómo funciona:
 //   1. Descarga de OpenStreetMap (Overpass) los polígonos de colonias de Ciudad Obregón.
 //   2. Calcula la mancha urbana: hexágonos H3 (resolución 8, ~0.74 km²) donde hay calles residenciales.
 //   3. Usa las colonias de OSM donde existen y rellena con hexágonos donde no hay colonia.
 //   4. Guarda data/zonas.geojson y lo sube a Supabase con la función importar_zonas().
+//   5. Retira las zonas viejas (p. ej. "Sector N" que ahora cubre una colonia real),
+//      pasando antes sus reportes a la zona nueva con retirar_zonas_viejas().
 // =====================================================================
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -228,6 +232,18 @@ async function subir(features) {
   }
   console.log();
   log(`Listo: ${total} zonas guardadas en Supabase.`);
+
+  if (args.has("--conservar")) return;
+  const osm = features.filter((f) => f.properties.fuente === "osm").map((f) => f.properties.osm_id);
+  const h3 = features.filter((f) => f.properties.fuente === "h3").map((f) => f.properties.h3_index);
+  const { data: retiradas, error } = await db.rpc("retirar_zonas_viejas", { p_osm: osm, p_h3: h3 });
+  if (error) {
+    throw new Error(
+      `No se pudieron retirar las zonas viejas: ${error.message}. ` +
+        "¿Ya volviste a correr supabase/02_funciones.sql y 03_seguridad.sql en Supabase?",
+    );
+  }
+  log(`Zonas viejas retiradas: ${retiradas} (sus reportes se pasaron a la zona nueva).`);
 }
 
 async function main() {
@@ -254,6 +270,7 @@ async function main() {
           hexes = hexagonosAproximados();
         }
       } catch (e) {
+        if (args.has("--estricto")) throw e;
         log(e.message);
         log("Usando el contorno aproximado de la ciudad (solo hexágonos).");
         colonias = [];

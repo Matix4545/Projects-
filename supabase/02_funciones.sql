@@ -252,6 +252,54 @@ begin
 end;
 $$;
 
+-- Retira las zonas que ya no están en la importación más reciente
+-- (p. ej. hexágonos "Sector N" que ahora cubre una colonia real).
+-- Antes de borrarlas, pasa sus reportes de agua a la zona nueva que cubre
+-- su centro y recalcula la zona de todos los pins. Así no se pierde nada.
+create or replace function public.retirar_zonas_viejas(p_osm text[], p_h3 text[])
+returns int
+language plpgsql volatile security definer
+set search_path = public, extensions
+as $$
+declare
+  v_n int;
+begin
+  if coalesce(cardinality(p_osm), 0) + coalesce(cardinality(p_h3), 0) < 20 then
+    raise exception 'La importación nueva tiene muy pocas zonas; no se retira nada por seguridad.';
+  end if;
+
+  create temp table _viejas on commit drop as
+    select z.id, st_pointonsurface(z.geom) as punto
+    from zonas z
+    where not ((z.fuente = 'osm' and z.osm_id   = any (coalesce(p_osm, '{}')))
+            or (z.fuente = 'h3'  and z.h3_index = any (coalesce(p_h3,  '{}'))));
+
+  -- Reportes de agua: a la zona nueva que contiene el centro de la vieja (o la más cercana)
+  update reportes_agua r
+     set zona_id = (
+       select z.id from zonas z
+       where z.id not in (select id from _viejas)
+       order by st_intersects(z.geom, v.punto) desc, (z.fuente = 'osm') desc, z.geom <-> v.punto
+       limit 1)
+    from _viejas v
+   where r.zona_id = v.id;
+
+  delete from zonas where id in (select id from _viejas);
+  get diagnostics v_n = row_count;
+
+  -- Pins: recalcular su colonia con las zonas nuevas
+  update reportes_pin p
+     set zona_id = (
+       select z.id from zonas z
+       where st_dwithin(z.geom, p.ubicacion, 0.003)
+       order by st_intersects(z.geom, p.ubicacion) desc, (z.fuente = 'osm') desc,
+                st_area(z.geom) asc, z.geom <-> p.ubicacion
+       limit 1);
+
+  return v_n;
+end;
+$$;
+
 -- ---------------------------------------------------------------------
 -- TRIGGER: al votar en un pin se actualizan los contadores.
 -- Con 3 votos de "ya lo arreglaron" el pin pasa a 'arreglado'.
