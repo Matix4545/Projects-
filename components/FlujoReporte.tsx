@@ -15,7 +15,7 @@ import {
 } from "@/lib/constantes";
 import { enviar, zonaDePunto } from "@/lib/datos";
 import { HojaInferior } from "./HojaInferior";
-import { useTurnstile } from "./Turnstile";
+import { ERROR_TURNSTILE_NAVEGADOR, useTurnstile } from "./Turnstile";
 
 export type OrigenUbicacion = "buscando" | "gps" | "mapa" | "sin_gps";
 type Paso = "tipo" | "agua" | TipoPin;
@@ -108,7 +108,7 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
       try {
         token = await obtenerToken();
       } catch {
-        setError("No pudimos verificar que eres una persona. Intenta de nuevo.");
+        setError(ERROR_TURNSTILE_NAVEGADOR);
         return;
       }
       const [lat, lng] = ubicacion;

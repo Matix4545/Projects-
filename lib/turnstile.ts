@@ -18,7 +18,11 @@ export async function verificarTurnstile(token: unknown, ip: string | null): Pro
       body: cuerpo,
       cache: "no-store",
     });
-    const datos = (await res.json()) as { success?: boolean };
+    const datos = (await res.json()) as { success?: boolean; "error-codes"?: string[]; hostname?: string };
+    if (datos.success !== true) {
+      // Aparece en Vercel → Logs. "invalid-input-secret" = TURNSTILE_SECRET_KEY incorrecta
+      console.error("Turnstile rechazó el token:", datos["error-codes"], datos.hostname);
+    }
     return datos.success === true;
   } catch (e) {
     console.error("Error verificando Turnstile", e);

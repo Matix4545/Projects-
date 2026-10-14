@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { enviar } from "@/lib/datos";
-import { useTurnstile } from "./Turnstile";
+import { ERROR_TURNSTILE_NAVEGADOR, useTurnstile } from "./Turnstile";
 
 export function BotonDenunciar({ tipo, id, onAviso }: { tipo: "agua" | "pin"; id: number; onAviso: (m: string) => void }) {
   const obtenerToken = useTurnstile();
@@ -16,7 +16,7 @@ export function BotonDenunciar({ tipo, id, onAviso }: { tipo: "agua" | "pin"; id
       token = await obtenerToken();
     } catch {
       setEstado("listo");
-      return onAviso("No pudimos verificar que eres una persona. Intenta de nuevo.");
+      return onAviso(ERROR_TURNSTILE_NAVEGADOR);
     }
     const r = await enviar("/api/denuncias", { tipo, id, token });
     setEstado(r.ok ? "hecho" : "listo");

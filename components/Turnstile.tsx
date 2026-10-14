@@ -14,6 +14,10 @@ declare global {
 }
 
 const SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+/** Mensaje para cuando Cloudflare falla en el navegador (antes de llegar al servidor). */
+export const ERROR_TURNSTILE_NAVEGADOR =
+  "La verificación antispam (Cloudflare) no cargó en este sitio. Si eres quien administra la app, revisa que este dominio esté en Hostnames de Turnstile.";
+
 const ContextoTurnstile = createContext<() => Promise<string>>(() => Promise.reject(new Error("Sin Turnstile")));
 
 /** Pide un token nuevo de Turnstile antes de cada envío. */
@@ -49,9 +53,13 @@ export function ProveedorTurnstile({ children }: { children: ReactNode }) {
             pendiente.current?.resolver(token);
             pendiente.current = null;
           },
-          "error-callback": () => {
-            pendiente.current?.rechazar(new Error("Turnstile falló"));
+          "error-callback": (codigo: string) => {
+            // Códigos: https://developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/
+            // 110200 = el dominio no está en "Hostnames" del widget
+            console.error(`Turnstile error ${codigo} en ${window.location.hostname}`);
+            pendiente.current?.rechazar(new Error(`Turnstile ${codigo}`));
             pendiente.current = null;
+            return true;
           },
         });
         resolver();

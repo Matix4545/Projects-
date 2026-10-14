@@ -7,7 +7,7 @@ import { urlFoto } from "@/lib/supabase/navegador";
 import { haceCuanto, horaLocal } from "@/lib/tiempo";
 import { BotonDenunciar } from "./BotonDenunciar";
 import { HojaInferior } from "./HojaInferior";
-import { useTurnstile } from "./Turnstile";
+import { ERROR_TURNSTILE_NAVEGADOR, useTurnstile } from "./Turnstile";
 
 type Conteos = Pick<Pin, "confirmaciones" | "votos_arreglado" | "estado">;
 
@@ -46,7 +46,7 @@ export function PanelPin({
         onAviso(r.error);
       }
     } catch {
-      onAviso("No pudimos verificar que eres una persona. Intenta de nuevo.");
+      onAviso(ERROR_TURNSTILE_NAVEGADOR);
     } finally {
       setEnviando(null);
     }
