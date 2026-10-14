@@ -43,7 +43,11 @@ const SERVIDORES = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
+// Los servidores gratuitos de Overpass se saturan seguido: se reintenta varias rondas
+const RONDAS = 4;
+const ESPERA_ENTRE_RONDAS_S = [0, 30, 90, 180];
 
 // Contorno aproximado de la mancha urbana (solo para --aproximado o si falla OSM)
 const CONTORNO_APROXIMADO = [
@@ -57,23 +61,52 @@ function log(...m) {
 
 async function overpass(consulta) {
   let ultimoError;
-  for (const url of SERVIDORES) {
-    try {
-      log(`Consultando ${new URL(url).host}…`);
-      const res = await fetch(url, {
-        method: "POST",
-        body: new URLSearchParams({ data: consulta }),
-        headers: { "User-Agent": "reporta-cajeme/1.0 (importador de colonias)" },
-        signal: AbortSignal.timeout(180_000),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (e) {
-      ultimoError = e;
-      log(`  falló (${e.message}); probando otro servidor…`);
+  for (let ronda = 0; ronda < RONDAS; ronda++) {
+    if (ronda > 0) {
+      log(`Todos los servidores están ocupados. Reintento ${ronda + 1}/${RONDAS} en ${ESPERA_ENTRE_RONDAS_S[ronda]} s…`);
+      await new Promise((r) => setTimeout(r, ESPERA_ENTRE_RONDAS_S[ronda] * 1000));
+    }
+    for (const url of SERVIDORES) {
+      try {
+        log(`Consultando ${new URL(url).host}…`);
+        const res = await fetch(url, {
+          method: "POST",
+          body: new URLSearchParams({ data: consulta }),
+          headers: { "User-Agent": "reporta-cajeme/1.0 (importador de colonias)" },
+          signal: AbortSignal.timeout(100_000),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const datos = await res.json();
+        if (datos.remark && /runtime error|timed out/i.test(datos.remark)) throw new Error(datos.remark);
+        return datos;
+      } catch (e) {
+        ultimoError = e;
+        log(`  falló (${e.message})`);
+      }
     }
   }
-  throw new Error(`No se pudo consultar OpenStreetMap: ${ultimoError?.message}`);
+  throw new Error(
+    `No se pudo consultar OpenStreetMap (${ultimoError?.message}). ` +
+      "Sus servidores gratuitos están saturados; vuelve a intentarlo en un rato.",
+  );
+}
+
+/** Revisa las variables ANTES de descargar, para no esperar minutos y fallar al final. */
+function revisarVariables() {
+  const faltan = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].filter((v) => !process.env[v]?.trim());
+  if (faltan.length) {
+    throw new Error(
+      `Falta: ${faltan.join(" y ")}. ` +
+        "En tu computadora van en .env.local; en GitHub Actions, en Settings → Secrets and variables → Actions " +
+        "(el nombre debe ser exactamente igual). O usa --sin-subir para solo generar el archivo.",
+    );
+  }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL.trim();
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(url) && !/^http:\/\/localhost/.test(url)) {
+    throw new Error(
+      `NEXT_PUBLIC_SUPABASE_URL debe verse como https://xxxx.supabase.co (sin /rest/v1). Recibí: "${url}"`,
+    );
+  }
 }
 
 const bboxTexto = BBOX.join(",");
@@ -212,8 +245,8 @@ function redondear(geom) {
 }
 
 async function subir(features) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const clave = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const clave = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !clave) {
     throw new Error(
       "Faltan NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en .env.local. " +
@@ -248,6 +281,7 @@ async function subir(features) {
 
 async function main() {
   let features;
+  if (!args.has("--sin-subir")) revisarVariables();
 
   if (args.has("--desde-archivo")) {
     features = JSON.parse(readFileSync(ARCHIVO, "utf8")).features;
