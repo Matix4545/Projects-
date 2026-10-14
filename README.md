@@ -53,6 +53,7 @@ supabase/
   03_seguridad.sql          RLS, permisos y bucket de fotos
   04_datos_prueba.sql       Llena el mapa con reportes falsos
   05_borrar_datos_prueba.sql
+  06_zonas_aproximadas.sql  Zonas listas para pegar (si no puedes correr el script)
 scripts/importar-zonas.mjs  Descarga colonias de OpenStreetMap y rellena con hexágonos H3
 tests/                      Pruebas del filtro de groserías
 ```
@@ -126,6 +127,10 @@ npm run importar-zonas
 
 El script te dirá cuántas colonias encontró en OpenStreetMap y cuántos hexágonos usó para cubrir las zonas sin
 colonia. También guarda `data/zonas.geojson`; puedes arrastrar ese archivo a <https://geojson.io> para verlo.
+
+> **¿No puedes correr `npm run importar-zonas`?** En Supabase → SQL Editor pega y ejecuta
+> `supabase/06_zonas_aproximadas.sql`. Cubre la ciudad con 103 hexágonos ("Sector 1", "Sector 2"…). Más adelante
+> puedes cambiarlos por colonias reales con el script.
 
 **Llena el mapa con datos de prueba:** en Supabase → SQL Editor, pega y ejecuta `supabase/04_datos_prueba.sql`.
 
