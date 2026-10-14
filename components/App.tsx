@@ -146,9 +146,12 @@ export function App() {
       {/* Encabezado y filtros de capa */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="pointer-events-auto mx-auto flex max-w-lg items-center justify-between rounded-2xl bg-white/95 px-4 py-2 shadow-lg">
-          <h1 className="text-lg font-extrabold text-gray-900">
-            Reporta <span className="text-blue-700">Cajeme</span>
-          </h1>
+          <div>
+            <h1 className="text-lg font-extrabold leading-tight text-gray-900">
+              Reporta <span className="text-blue-700">Cajeme</span>
+            </h1>
+            <p className="text-xs leading-tight text-gray-500">Proyecto ciudadano · No es del gobierno</p>
+          </div>
           <Link href="/acerca" className="text-sm font-semibold text-blue-700 underline">
             Acerca de
           </Link>
@@ -185,7 +188,7 @@ export function App() {
           <Leyenda />
           <button
             onClick={abrirReporte}
-            className="fixed bottom-12 left-1/2 z-[1000] -translate-x-1/2 rounded-full bg-red-600 px-10 py-4 text-xl font-extrabold text-white shadow-xl active:scale-95"
+            className="fixed bottom-12 left-1/2 z-[1000] -translate-x-1/2 whitespace-nowrap rounded-full bg-red-600 px-10 py-4 text-xl font-extrabold text-white shadow-xl active:scale-95"
           >
             + Reportar
           </button>
