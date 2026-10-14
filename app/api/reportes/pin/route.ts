@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { after } from "next/server";
 import { z } from "zod";
 import { LIMITE_DIARIO_IP, MAX_COMENTARIO, MAX_FOTO_BYTES, TAMANOS_BACHE, TIPOS_DRENAJE, dentroDeCajeme } from "@/lib/constantes";
 import { limpiarFoto } from "@/lib/fotos";
+import { avisarSiHayHito } from "@/lib/notificaciones";
 import { limpiarComentario, revisarComentario } from "@/lib/groserias";
 import { obtenerIdentidad } from "@/lib/identidad";
 import { error, ok } from "@/lib/respuestas";
@@ -105,5 +107,7 @@ export async function POST(req: Request) {
     return error("Error al guardar. Intenta más tarde.", 500);
   }
 
+  // El aviso se manda después de responder, para no hacer esperar a quien reporta
+  after(() => avisarSiHayHito(db));
   return ok({ id: pin.id });
 }

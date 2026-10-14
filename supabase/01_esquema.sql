@@ -127,3 +127,13 @@ create unique index if not exists votos_pin_arreglado_una_ip
   on public.votos_pin (pin_id, ip_hash) where tipo = 'arreglado' and ip_hash is not null;
 create unique index if not exists denuncias_una_ip
   on public.denuncias (objetivo_tipo, objetivo_id, ip_hash) where ip_hash is not null;
+
+-- Avisos al administrador cada N reportes: guarda el último hito avisado
+-- (p. ej. ultimo = 3 con avisos cada 100 → ya se avisó de los 300 reportes)
+create table if not exists public.hitos (
+  id     int primary key default 1 check (id = 1),
+  ultimo int not null default 0
+);
+insert into public.hitos (id, ultimo)
+values (1, ((select count(*) from public.reportes_agua) + (select count(*) from public.reportes_pin))::int / 100)
+on conflict (id) do nothing;

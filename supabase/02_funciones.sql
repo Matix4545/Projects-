@@ -220,6 +220,26 @@ begin
 end;
 $$;
 
+-- Si el total de reportes acaba de cruzar un múltiplo de p_cada (100, 200, 300…),
+-- lo marca como avisado y devuelve ese número. Si no, devuelve null.
+-- El UPDATE con "ultimo < nuevo" garantiza que solo una petición gane el aviso.
+create or replace function public.reclamar_hito(p_cada int)
+returns int
+language plpgsql volatile security definer
+set search_path = public
+as $$
+declare
+  v_total bigint := (select count(*) from reportes_agua) + (select count(*) from reportes_pin);
+  v_nuevo int    := (v_total / greatest(p_cada, 1))::int;
+  v_hito  int;
+begin
+  update hitos set ultimo = v_nuevo
+   where id = 1 and ultimo < v_nuevo
+  returning ultimo * p_cada into v_hito;
+  return v_hito;
+end;
+$$;
+
 -- Importa zonas (la usa scripts/importar-zonas.mjs).
 -- Recibe un arreglo JSON: [{nombre, fuente, osm_id, h3_index, geometria}]
 create or replace function public.importar_zonas(p_zonas jsonb)

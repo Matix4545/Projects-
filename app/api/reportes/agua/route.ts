@@ -1,5 +1,7 @@
+import { after } from "next/server";
 import { z } from "zod";
 import { DETALLES_SUCIA, ESTADOS_AGUA, HORAS_ENTRE_REPORTES_AGUA, LIMITE_DIARIO_IP, MAX_COMENTARIO, dentroDeCajeme } from "@/lib/constantes";
+import { avisarSiHayHito } from "@/lib/notificaciones";
 import { limpiarComentario, revisarComentario } from "@/lib/groserias";
 import { obtenerIdentidad } from "@/lib/identidad";
 import { error, ok } from "@/lib/respuestas";
@@ -77,5 +79,7 @@ export async function POST(req: Request) {
     return error("Error al guardar. Intenta más tarde.", 500);
   }
 
+  // El aviso se manda después de responder, para no hacer esperar a quien reporta
+  after(() => avisarSiHayHito(db));
   return ok({ zona });
 }

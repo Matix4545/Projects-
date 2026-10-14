@@ -18,6 +18,7 @@ alter table public.reportes_pin  enable row level security;
 alter table public.votos_pin     enable row level security;
 alter table public.denuncias     enable row level security;
 alter table public.limite_ip     enable row level security;
+alter table public.hitos         enable row level security;
 
 -- 2) Quitar cualquier permiso directo sobre tablas al público.
 revoke all on all tables    in schema public from anon, authenticated;

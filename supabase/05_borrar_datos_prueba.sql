@@ -15,3 +15,8 @@ delete from public.denuncias d
 delete from public.reportes_agua where dispositivo_hash like 'prueba-%';
 delete from public.reportes_pin  where dispositivo_hash like 'prueba-%';  -- sus votos se borran en cascada
 delete from public.limite_ip     where ip_hash = 'prueba';
+
+-- Reajusta el contador de avisos al total real (para no saltarse el aviso de los 100)
+update public.hitos
+   set ultimo = ((select count(*) from public.reportes_agua) + (select count(*) from public.reportes_pin))::int / 100
+ where id = 1;
