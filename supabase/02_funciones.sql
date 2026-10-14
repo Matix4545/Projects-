@@ -294,7 +294,8 @@ begin
        where st_dwithin(z.geom, p.ubicacion, 0.003)
        order by st_intersects(z.geom, p.ubicacion) desc, (z.fuente = 'osm') desc,
                 st_area(z.geom) asc, z.geom <-> p.ubicacion
-       limit 1);
+       limit 1)
+   where p.id is not null;  -- Supabase exige WHERE en todo UPDATE (extensión safeupdate)
 
   return v_n;
 end;
