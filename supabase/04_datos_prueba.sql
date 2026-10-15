@@ -103,9 +103,12 @@ begin
        estado, arreglado_en, ultima_actividad, dispositivo_hash, ip_hash, creado_en)
     select
       t.tipo,
-      case when t.tipo = 'bache'
-           then (array['chico', 'mediano', 'grande', 'peligroso'])[1 + floor(random() * 4)::int]
-           else (array['tapado', 'aguas_negras', 'sin_tapa', 'mal_olor'])[1 + floor(random() * 4)::int] end,
+      case t.tipo
+        when 'bache'     then (array['chico', 'mediano', 'grande', 'peligroso'])[1 + floor(random() * 4)::int]
+        when 'drenaje'   then (array['tapado', 'aguas_negras', 'sin_tapa', 'mal_olor'])[1 + floor(random() * 4)::int]
+        when 'alumbrado' then (array['apagada', 'parpadea', 'poste_danado', 'cables_expuestos'])[1 + floor(random() * 4)::int]
+        when 'banqueta'  then (array['quebrada', 'incompleta', 'obstruida'])[1 + floor(random() * 3)::int]
+        else                  (array['basura', 'maleza', 'quema', 'escombro'])[1 + floor(random() * 4)::int] end,
       z.punto,
       z.id,
       case when random() < 0.35 then
@@ -120,7 +123,8 @@ begin
       v_fecha + random() * (now() - v_fecha),
       'prueba-' || md5(random()::text), 'prueba',
       v_fecha
-    from (select case when random() < 0.65 then 'bache' else 'drenaje' end as tipo,
+    from (select (array['bache', 'bache', 'bache', 'drenaje', 'drenaje', 'alumbrado', 'alumbrado', 'banqueta', 'baldio'])
+                   [1 + floor(random() * 9)::int] as tipo,
                  case when random() < 0.08 then 3
                       when random() < 0.15 then 1 + floor(random() * 2)::int
                       else 0 end as votos) t;

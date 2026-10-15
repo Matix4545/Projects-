@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { dentroDeCajeme, type EstadoAgua } from "@/lib/constantes";
+import { INFO_PIN, TIPOS_PIN, dentroDeCajeme, type EstadoAgua } from "@/lib/constantes";
 import {
   cargarEstados,
   cargarPins,
@@ -39,7 +39,7 @@ export function App() {
   const [errorCarga, setErrorCarga] = useState(false);
   const [version, setVersion] = useState(0);
 
-  const [capas, setCapas] = useState<Capas>({ agua: true, bache: true, drenaje: true });
+  const [capas, setCapas] = useState<Capas>({ agua: true, bache: true, drenaje: true, alumbrado: true, banqueta: true, baldio: true });
   const [vista, setVista] = useState<Vista>({ tipo: "nada" });
   const [aviso, setAviso] = useState<string | null>(null);
 
@@ -167,19 +167,20 @@ export function App() {
             Acerca de
           </Link>
         </div>
-        <div className="pointer-events-auto mx-auto mt-2 flex max-w-lg gap-2" role="group" aria-label="Capas del mapa">
-          {(
-            [
-              ["agua", "💧 Agua"],
-              ["bache", "🕳️ Baches"],
-              ["drenaje", "🚧 Drenaje"],
-            ] as const
-          ).map(([capa, texto]) => (
+        <div
+          className="sin-barra pointer-events-auto -mx-3 mt-2 flex max-w-lg gap-2 overflow-x-auto px-3 pb-1 sm:mx-auto sm:px-0"
+          role="group"
+          aria-label="Capas del mapa"
+        >
+          {[
+            ["agua", "💧 Agua"] as const,
+            ...TIPOS_PIN.map((t) => [t, `${INFO_PIN[t].emoji} ${INFO_PIN[t].plural}`] as const),
+          ].map(([capa, texto]) => (
             <button
               key={capa}
               aria-pressed={capas[capa]}
               onClick={() => setCapas((c) => ({ ...c, [capa]: !c[capa] }))}
-              className={`flex-1 rounded-full px-3 py-2 text-sm font-semibold shadow ${
+              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold shadow ${
                 capas[capa] ? "bg-blue-700 text-white" : "bg-white/95 text-gray-600"
               }`}
             >

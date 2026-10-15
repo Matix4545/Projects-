@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 // Imagen que aparece al compartir el enlace en WhatsApp, Facebook, X, etc.
-export const alt = "Reporta Cajeme: mapa ciudadano de agua, baches y drenaje en Ciudad Obregón";
+export const alt = "Reporta Cajeme: mapa ciudadano de agua, baches, drenaje, alumbrado, banquetas y baldíos en Ciudad Obregón";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -15,7 +15,7 @@ export default function Imagen() {
           <div style={{ fontSize: 34, opacity: 0.85 }}>Ciudad Obregón, Sonora</div>
           <div style={{ fontSize: 96, fontWeight: 800, lineHeight: 1.05, marginTop: 10 }}>Reporta Cajeme</div>
           <div style={{ fontSize: 40, marginTop: 24, lineHeight: 1.3, maxWidth: 640 }}>
-            ¿Sin agua? ¿Bache? ¿Drenaje tapado? Repórtalo en el mapa, sin registrarte.
+            ¿Sin agua? ¿Bache? ¿Lámpara fundida? Repórtalo en el mapa, sin registrarte.
           </div>
           <div style={{ fontSize: 26, marginTop: 30, opacity: 0.8 }}>Proyecto ciudadano · No es del gobierno</div>
         </div>

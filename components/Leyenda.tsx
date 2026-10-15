@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { COLOR_ESTADO, COLOR_PIN } from "@/lib/constantes";
+import { COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, TIPOS_PIN } from "@/lib/constantes";
 
 const FILAS: [string, string, "zona" | "pin"][] = [
   [COLOR_ESTADO.sin_agua, "Mayoría sin agua", "zona"],
@@ -9,9 +9,8 @@ const FILAS: [string, string, "zona" | "pin"][] = [
   [COLOR_ESTADO.sucia, "Mayoría agua sucia", "zona"],
   [COLOR_ESTADO.con_agua, "Mayoría con agua", "zona"],
   [COLOR_ESTADO.ninguno, "Sin reportes en 24 h", "zona"],
-  [COLOR_PIN.bache, "Bache", "pin"],
-  [COLOR_PIN.drenaje, "Drenaje", "pin"],
-  [COLOR_PIN.arreglado, "Ya lo arreglaron", "pin"],
+  ...TIPOS_PIN.map((t): [string, string, "pin"] => [INFO_PIN[t].color, `${INFO_PIN[t].emoji} ${INFO_PIN[t].nombre}`, "pin"]),
+  [COLOR_ARREGLADO, "Ya lo arreglaron", "pin"],
 ];
 
 export function Leyenda() {
@@ -36,7 +35,7 @@ export function Leyenda() {
                 {texto}
               </li>
             ))}
-            <li className="pt-1 text-xs text-gray-500">Borde rojo: bache peligroso o alcantarilla sin tapa.</li>
+            <li className="pt-1 text-xs text-gray-500">Borde rojo: peligro (bache peligroso, alcantarilla sin tapa, cables expuestos o quema).</li>
           </ul>
         </div>
       ) : (

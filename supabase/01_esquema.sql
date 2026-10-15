@@ -46,7 +46,8 @@ create index if not exists reportes_agua_fecha_idx      on public.reportes_agua 
 create index if not exists reportes_agua_disp_idx       on public.reportes_agua (dispositivo_hash, zona_id, creado_en desc);
 
 -- ---------------------------------------------------------------------
--- REPORTES CON PIN: baches y drenaje (ubicación exacta)
+-- REPORTES CON PIN: baches, drenaje, alumbrado, banquetas y baldíos (ubicación exacta)
+-- (los tipos permitidos se amplían más abajo, en CAMBIOS POSTERIORES)
 -- ---------------------------------------------------------------------
 create table if not exists public.reportes_pin (
   id                bigint generated always as identity primary key,
@@ -137,3 +138,14 @@ create table if not exists public.hitos (
 insert into public.hitos (id, ultimo)
 values (1, ((select count(*) from public.reportes_agua) + (select count(*) from public.reportes_pin))::int / 100)
 on conflict (id) do nothing;
+
+-- Nuevos tipos de pin: alumbrado, banquetas y baldíos
+alter table public.reportes_pin drop constraint if exists reportes_pin_tipo_check;
+alter table public.reportes_pin drop constraint if exists subtipo_valido;
+alter table public.reportes_pin add constraint subtipo_valido check (
+  (tipo = 'bache'     and subtipo in ('chico', 'mediano', 'grande', 'peligroso')) or
+  (tipo = 'drenaje'   and subtipo in ('tapado', 'aguas_negras', 'sin_tapa', 'mal_olor')) or
+  (tipo = 'alumbrado' and subtipo in ('apagada', 'parpadea', 'poste_danado', 'cables_expuestos')) or
+  (tipo = 'banqueta'  and subtipo in ('quebrada', 'incompleta', 'obstruida')) or
+  (tipo = 'baldio'    and subtipo in ('basura', 'maleza', 'quema', 'escombro'))
+);

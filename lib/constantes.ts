@@ -6,9 +6,29 @@ export type EstadoAgua = (typeof ESTADOS_AGUA)[number];
 export const DETALLES_SUCIA = ["mal_olor", "turbia", "sedimentos", "color_extrano"] as const;
 export type DetalleSucia = (typeof DETALLES_SUCIA)[number];
 
-export const TAMANOS_BACHE = ["chico", "mediano", "grande", "peligroso"] as const;
-export const TIPOS_DRENAJE = ["tapado", "aguas_negras", "sin_tapa", "mal_olor"] as const;
-export type TipoPin = "bache" | "drenaje";
+// Reportes con pin (ubicación exacta). Para agregar un tipo nuevo hay que
+// tocarlo aquí y en el "check" de reportes_pin (supabase/01_esquema.sql).
+export const TIPOS_PIN = ["bache", "drenaje", "alumbrado", "banqueta", "baldio"] as const;
+export type TipoPin = (typeof TIPOS_PIN)[number];
+
+export const SUBTIPOS: Record<TipoPin, readonly string[]> = {
+  bache: ["chico", "mediano", "grande", "peligroso"],
+  drenaje: ["tapado", "aguas_negras", "sin_tapa", "mal_olor"],
+  alumbrado: ["apagada", "parpadea", "poste_danado", "cables_expuestos"],
+  banqueta: ["quebrada", "incompleta", "obstruida"],
+  baldio: ["basura", "maleza", "quema", "escombro"],
+};
+
+/** Subtipos que se marcan con borde rojo en el mapa */
+export const SUBTIPOS_PELIGROSOS = new Set(["peligroso", "sin_tapa", "cables_expuestos", "quema"]);
+
+export const INFO_PIN: Record<TipoPin, { nombre: string; plural: string; emoji: string; color: string; pregunta: string }> = {
+  bache: { nombre: "Bache", plural: "Baches", emoji: "🕳️", color: "#facc15", pregunta: "¿De qué tamaño es el bache?" },
+  drenaje: { nombre: "Drenaje", plural: "Drenaje", emoji: "🚧", color: "#92400e", pregunta: "¿Qué problema de drenaje?" },
+  alumbrado: { nombre: "Alumbrado", plural: "Alumbrado", emoji: "💡", color: "#0ea5e9", pregunta: "¿Qué pasa con la luz?" },
+  banqueta: { nombre: "Banqueta", plural: "Banquetas", emoji: "🚶", color: "#ec4899", pregunta: "¿Cómo está la banqueta?" },
+  baldio: { nombre: "Baldío", plural: "Baldíos", emoji: "🗑️", color: "#84cc16", pregunta: "¿Qué hay en el baldío?" },
+};
 
 export const ETIQUETAS: Record<string, string> = {
   sin_agua: "Sin agua",
@@ -26,8 +46,22 @@ export const ETIQUETAS: Record<string, string> = {
   tapado: "Drenaje tapado",
   aguas_negras: "Aguas negras en la calle",
   sin_tapa: "Alcantarilla sin tapa",
+  apagada: "Lámpara apagada o fundida",
+  parpadea: "Lámpara que parpadea",
+  poste_danado: "Poste dañado o caído",
+  cables_expuestos: "Cables expuestos",
+  quebrada: "Banqueta quebrada",
+  incompleta: "Incompleta o falta un tramo",
+  obstruida: "Obstruida (no se puede pasar)",
+  basura: "Baldío con basura",
+  maleza: "Maleza alta",
+  quema: "Quema de basura",
+  escombro: "Escombro tirado",
   bache: "Bache",
   drenaje: "Drenaje",
+  alumbrado: "Alumbrado",
+  banqueta: "Banqueta",
+  baldio: "Baldío",
 };
 
 export const COLOR_ESTADO: Record<EstadoAgua | "ninguno", string> = {
@@ -38,11 +72,7 @@ export const COLOR_ESTADO: Record<EstadoAgua | "ninguno", string> = {
   ninguno: "#9ca3af", // gris
 };
 
-export const COLOR_PIN = {
-  bache: "#facc15",
-  drenaje: "#92400e",
-  arreglado: "#9ca3af",
-};
+export const COLOR_ARREGLADO = "#9ca3af";
 
 // Centro aproximado de Ciudad Obregón y límites del área permitida para reportar
 export const CENTRO_OBREGON: [number, number] = [27.4863, -109.9405];

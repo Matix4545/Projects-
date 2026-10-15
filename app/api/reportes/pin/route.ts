@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { after } from "next/server";
 import { z } from "zod";
-import { LIMITE_DIARIO_IP, MAX_COMENTARIO, MAX_FOTO_BYTES, TAMANOS_BACHE, TIPOS_DRENAJE, dentroDeCajeme } from "@/lib/constantes";
+import { LIMITE_DIARIO_IP, MAX_COMENTARIO, MAX_FOTO_BYTES, SUBTIPOS, TIPOS_PIN, dentroDeCajeme } from "@/lib/constantes";
 import { limpiarFoto } from "@/lib/fotos";
 import { avisarSiHayHito } from "@/lib/notificaciones";
 import { limpiarComentario, revisarComentario } from "@/lib/groserias";
@@ -12,17 +12,16 @@ import { verificarTurnstile } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
 
-const Esquema = z.discriminatedUnion("tipo", [
-  z.object({ tipo: z.literal("bache"), subtipo: z.enum(TAMANOS_BACHE) }),
-  z.object({ tipo: z.literal("drenaje"), subtipo: z.enum(TIPOS_DRENAJE) }),
-]).and(
-  z.object({
+const Esquema = z
+  .object({
+    tipo: z.enum(TIPOS_PIN),
+    subtipo: z.string(),
     lat: z.coerce.number().finite(),
     lng: z.coerce.number().finite(),
     comentario: z.string().max(MAX_COMENTARIO * 2).optional(),
     token: z.string(),
-  }),
-);
+  })
+  .refine((d) => SUBTIPOS[d.tipo].includes(d.subtipo));
 
 export async function POST(req: Request) {
   let form: FormData;

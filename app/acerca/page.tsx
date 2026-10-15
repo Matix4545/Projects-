@@ -19,8 +19,8 @@ export default function Acerca() {
 
       <p className="mt-3">
         Reporta Cajeme es un mapa ciudadano donde los vecinos de Ciudad Obregón y el municipio de Cajeme, Sonora,
-        comparten lo que viven con los servicios públicos: falta de agua, baja presión, agua sucia, baches y
-        problemas de drenaje.
+        comparten lo que viven con los servicios públicos: falta de agua, baja presión, agua sucia, baches,
+        problemas de drenaje, alumbrado público, banquetas en mal estado y baldíos con basura.
       </p>
 
       <div className="mt-4 rounded-xl border-l-4 border-amber-500 bg-amber-50 p-4">
@@ -48,7 +48,7 @@ export default function Acerca() {
           últimas 24 horas (en empate gana el más grave). Gris significa que no hay reportes recientes.
         </li>
         <li>
-          <strong>Baches y drenaje:</strong> se marcan con un punto en el lugar exacto. Otros vecinos pueden confirmar
+          <strong>Baches, drenaje, alumbrado, banquetas y baldíos:</strong> se marcan con un punto en el lugar exacto. Otros vecinos pueden confirmar
           con “+1”. Cuando 3 vecinos indican que ya lo arreglaron, el punto se muestra en gris durante 7 días y luego
           desaparece. Los reportes sin actividad en 60 días se archivan.
         </li>
@@ -75,8 +75,8 @@ export default function Acerca() {
           <strong>El reporte:</strong> tipo de problema, fecha y hora, y comentario si lo escribiste.
         </li>
         <li>
-          <strong>Ubicación:</strong> en reportes de agua solo guardamos la colonia, no tu punto exacto. En baches y
-          drenaje guardamos el punto del problema que marcaste, que es público en el mapa.
+          <strong>Ubicación:</strong> en reportes de agua solo guardamos la colonia, no tu punto exacto. En los demás
+          reportes guardamos el punto del problema que marcaste, que es público en el mapa.
         </li>
         <li>
           <strong>Fotos:</strong> antes de guardarlas eliminamos todos sus metadatos (EXIF), incluida la ubicación GPS y

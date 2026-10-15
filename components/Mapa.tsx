@@ -4,10 +4,10 @@ import "leaflet/dist/leaflet.css";
 import L, { type LeafletMouseEvent, type PathOptions } from "leaflet";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { CircleMarker, GeoJSON, MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
-import { CENTRO_OBREGON, COLOR_ESTADO, COLOR_PIN, type EstadoAgua } from "@/lib/constantes";
+import { CENTRO_OBREGON, COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, SUBTIPOS_PELIGROSOS, type EstadoAgua, type TipoPin } from "@/lib/constantes";
 import type { Pin, ZonasGeoJSON } from "@/lib/datos";
 
-export type Capas = { agua: boolean; bache: boolean; drenaje: boolean };
+export type Capas = Record<"agua" | TipoPin, boolean>;
 
 type Props = {
   zonas: ZonasGeoJSON | null;
@@ -85,7 +85,7 @@ export default function Mapa(props: Props) {
     });
   }, []);
 
-  const pinsVisibles = useMemo(() => pins.filter((p) => capas[p.tipo]), [pins, capas]);
+  const pinsVisibles = useMemo(() => pins.filter((p) => capas[p.tipo] ?? true), [pins, capas]);
 
   return (
     <MapContainer
@@ -122,9 +122,9 @@ export default function Mapa(props: Props) {
             center={[pin.lat, pin.lng]}
             radius={pin.tipo === "bache" ? (RADIO_BACHE[pin.subtipo] ?? 8) : 8}
             pathOptions={{
-              color: seleccionado ? "#111827" : pin.subtipo === "peligroso" || pin.subtipo === "sin_tapa" ? "#dc2626" : "#1f2937",
+              color: seleccionado ? "#111827" : SUBTIPOS_PELIGROSOS.has(pin.subtipo) ? "#dc2626" : "#1f2937",
               weight: seleccionado ? 4 : 2,
-              fillColor: arreglado ? COLOR_PIN.arreglado : COLOR_PIN[pin.tipo],
+              fillColor: arreglado ? COLOR_ARREGLADO : (INFO_PIN[pin.tipo]?.color ?? "#6b7280"),
               fillOpacity: arreglado ? 0.6 : 0.95,
             }}
             eventHandlers={{

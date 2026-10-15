@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ETIQUETAS } from "@/lib/constantes";
+import { ETIQUETAS, INFO_PIN } from "@/lib/constantes";
 import { enviar, type Pin } from "@/lib/datos";
 import { urlFoto } from "@/lib/supabase/navegador";
 import { haceCuanto, horaLocal } from "@/lib/tiempo";
@@ -52,7 +52,12 @@ export function PanelPin({
     }
   }
 
-  const titulo = pin.tipo === "bache" ? `Bache ${ETIQUETAS[pin.subtipo]?.toLowerCase()}` : ETIQUETAS[pin.subtipo];
+  const titulo =
+    pin.tipo === "bache"
+      ? `Bache ${ETIQUETAS[pin.subtipo]?.toLowerCase()}`
+      : pin.tipo === "drenaje" || pin.tipo === "baldio"
+        ? (ETIQUETAS[pin.subtipo] ?? pin.subtipo)
+        : `${INFO_PIN[pin.tipo]?.nombre ?? pin.tipo}: ${(ETIQUETAS[pin.subtipo] ?? pin.subtipo).toLowerCase()}`;
 
   return (
     <HojaInferior titulo={titulo} onCerrar={onCerrar}>

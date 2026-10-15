@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import {
   COLOR_ESTADO,
-  COLOR_PIN,
   DETALLES_SUCIA,
   ETIQUETAS,
+  INFO_PIN,
   MAX_COMENTARIO,
-  TAMANOS_BACHE,
-  TIPOS_DRENAJE,
+  SUBTIPOS,
+  SUBTIPOS_PELIGROSOS,
+  TIPOS_PIN,
   type DetalleSucia,
   type EstadoAgua,
   type TipoPin,
@@ -30,8 +31,7 @@ type Props = {
 const TITULOS: Record<Paso, string> = {
   tipo: "¿Qué quieres reportar?",
   agua: "¿Cómo está el agua?",
-  bache: "¿De qué tamaño es el bache?",
-  drenaje: "¿Qué problema de drenaje?",
+  ...(Object.fromEntries(TIPOS_PIN.map((t) => [t, INFO_PIN[t].pregunta])) as Record<TipoPin, string>),
 };
 
 export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) {
@@ -171,8 +171,9 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
       {paso === "tipo" ? (
         <div className="grid grid-cols-3 gap-2">
           <BotonTipo emoji="💧" texto="Agua" color="#2563eb" onClick={() => setPaso("agua")} />
-          <BotonTipo emoji="🕳️" texto="Bache" color={COLOR_PIN.bache} onClick={() => setPaso("bache")} />
-          <BotonTipo emoji="🚧" texto="Drenaje" color={COLOR_PIN.drenaje} onClick={() => setPaso("drenaje")} />
+          {TIPOS_PIN.map((t) => (
+            <BotonTipo key={t} emoji={INFO_PIN[t].emoji} texto={INFO_PIN[t].nombre} color={INFO_PIN[t].color} onClick={() => setPaso(t)} />
+          ))}
         </div>
       ) : (
         <div className="space-y-3">
@@ -274,29 +275,18 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
             </>
           )}
 
-          {paso === "bache" && (
+          {paso !== "agua" && (
             <>
-              <p className="text-xs text-gray-500">Toca el tamaño para enviar:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {TAMANOS_BACHE.map((t) => (
+              <p className="text-xs text-gray-500">Toca una opción para enviar:</p>
+              <div className={`grid gap-2 ${paso === "bache" ? "grid-cols-2" : "grid-cols-1"}`}>
+                {SUBTIPOS[paso].map((t) => (
                   <BotonOpcion
                     key={t}
-                    texto={t === "peligroso" ? "⚠️ Peligroso" : ETIQUETAS[t]}
-                    color={t === "peligroso" ? "#dc2626" : "#374151"}
+                    texto={SUBTIPOS_PELIGROSOS.has(t) ? `⚠️ ${ETIQUETAS[t]}` : ETIQUETAS[t]}
+                    color={SUBTIPOS_PELIGROSOS.has(t) ? "#dc2626" : "#374151"}
                     disabled={bloqueado}
                     onClick={() => enviarReporte(t)}
                   />
-                ))}
-              </div>
-            </>
-          )}
-
-          {paso === "drenaje" && (
-            <>
-              <p className="text-xs text-gray-500">Toca el problema para enviar:</p>
-              <div className="grid grid-cols-1 gap-2">
-                {TIPOS_DRENAJE.map((t) => (
-                  <BotonOpcion key={t} texto={ETIQUETAS[t]} color={COLOR_PIN.drenaje} disabled={bloqueado} onClick={() => enviarReporte(t)} />
                 ))}
               </div>
             </>

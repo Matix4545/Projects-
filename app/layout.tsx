@@ -7,11 +7,11 @@ const dominio =
   (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
 
 const descripcion =
-  "Mapa ciudadano donde vecinos de Ciudad Obregón reportan falta de agua, baches y problemas de drenaje. Anónimo y sin afiliación al gobierno.";
+  "Mapa ciudadano donde vecinos de Ciudad Obregón reportan falta de agua, baches, drenaje, alumbrado, banquetas y baldíos. Anónimo y sin afiliación al gobierno.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(dominio),
-  title: "Reporta Cajeme · Agua, baches y drenaje en Ciudad Obregón",
+  title: "Reporta Cajeme · Agua, baches, alumbrado y más en Ciudad Obregón",
   description: descripcion,
   openGraph: {
     title: "Reporta Cajeme",

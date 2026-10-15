@@ -12,8 +12,11 @@ servicios públicos: **agua**, **baches** y **drenaje**. Es anónimo, está en e
 | 💧 **Agua** | Por colonia: sin agua · baja presión · agua sucia (mal olor, turbia, sedimentos, color extraño) · con agua | Cada colonia se pinta con el estado que más se reportó en 24 h: 🟥 sin agua · 🟧 baja presión · 🟪 sucia · 🟩 con agua · ⬜ sin reportes. En empate gana el más grave. |
 | 🕳️ **Bache** | Punto exacto (GPS o tocando el mapa) + tamaño, foto y comentario opcionales | Círculo amarillo (más grande si es más grande; borde rojo si es peligroso) |
 | 🚧 **Drenaje** | Punto exacto + tipo (tapado, aguas negras, sin tapa, mal olor) | Círculo café |
+| 💡 **Alumbrado** | Punto exacto + tipo (apagada o fundida, parpadea, poste dañado, cables expuestos) | Círculo celeste |
+| 🚶 **Banqueta** | Punto exacto + tipo (quebrada, incompleta, obstruida) | Círculo rosa |
+| 🗑️ **Baldío** | Punto exacto + tipo (basura, maleza alta, quema de basura, escombro) | Círculo verde limón |
 
-- Los vecinos pueden dar **"+1 Yo también lo vi"** a un bache o drenaje.
+- Los vecinos pueden dar **"+1 Yo también lo vi"** a cualquier reporte con punto (bache, drenaje, alumbrado, banqueta, baldío).
 - Con **3 votos de "Ya lo arreglaron"** el punto se pone gris 7 días y luego desaparece. Los puntos sin actividad en
   60 días se archivan solos.
 - Al tocar una colonia se ven los conteos de 24 h y 7 días, la hora del último reporte y los comentarios recientes.
