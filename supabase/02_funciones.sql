@@ -240,6 +240,105 @@ begin
 end;
 $$;
 
+-- REPORTE EJECUTIVO (solo servidor): resumen de los últimos p_dias días
+create or replace function public.reporte_ejecutivo(p_dias int)
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  with
+  rango as (
+    select now() - make_interval(days => p_dias)     as desde,
+           now() - make_interval(days => p_dias * 2) as desde_anterior,
+           (now() at time zone 'America/Hermosillo')::date as hoy
+  ),
+  a as (select r.*, z.nombre from reportes_agua r join zonas z on z.id = r.zona_id, rango
+        where r.creado_en > rango.desde),
+  p as (select r.*, z.nombre from reportes_pin r left join zonas z on z.id = r.zona_id, rango
+        where r.creado_en > rango.desde),
+  todos as (select creado_en, nombre, 'agua'::text as tipo, estado::text as detalle from a
+            union all
+            select creado_en, coalesce(nombre, 'Sin colonia'), tipo, subtipo from p)
+  select json_build_object(
+    'dias', p_dias,
+    'generado', now(),
+    'total', (select count(*) from todos),
+    'total_anterior', (select (select count(*) from reportes_agua, rango where creado_en > desde_anterior and creado_en <= desde)
+                            + (select count(*) from reportes_pin,  rango where creado_en > desde_anterior and creado_en <= desde)),
+    'total_historico', (select count(*) from reportes_agua) + (select count(*) from reportes_pin),
+    'colonias_afectadas_ahora', (select count(*) from _estado_mayoria_24h() m where m.estado <> 'con_agua'),
+    'activos', (select count(*) from reportes_pin where estado = 'activo' and ultima_actividad > now() - interval '60 days'),
+    'arreglados', (select count(*) from reportes_pin, rango where arreglado_en > rango.desde),
+    'dias_promedio_arreglo', (select round(avg(extract(epoch from arreglado_en - creado_en) / 86400)::numeric, 1)
+                              from reportes_pin, rango where arreglado_en > rango.desde),
+    'por_dia', (
+      select json_agg(json_build_object('dia', d::date, 'n', coalesce(c.n, 0)) order by d)
+      from rango, generate_series(rango.hoy - (p_dias - 1), rango.hoy, interval '1 day') d
+      left join (select (creado_en at time zone 'America/Hermosillo')::date as dia, count(*) as n
+                 from todos group by 1) c on c.dia = d::date),
+    'por_tipo', (
+      select coalesce(json_agg(json_build_object('tipo', tipo, 'n', n, 'arreglados', arreglados) order by n desc), '[]'::json)
+      from (select 'agua' as tipo, count(*) as n, 0::bigint as arreglados from a
+            union all
+            select tipo, count(*), count(*) filter (where estado = 'arreglado') from p group by tipo) t
+      where n > 0),
+    'agua_por_estado', (select coalesce(json_object_agg(estado, n), '{}'::json)
+                        from (select estado, count(*) as n from a group by estado) x),
+    'por_detalle', (
+      select coalesce(json_agg(json_build_object('tipo', tipo, 'detalle', subtipo, 'n', n) order by n desc), '[]'::json)
+      from (select tipo, subtipo, count(*) as n from p group by tipo, subtipo order by n desc limit 12) x),
+    'top_colonias', (
+      select coalesce(json_agg(t order by t.total desc), '[]'::json)
+      from (select nombre as colonia, count(*) as total,
+                   count(*) filter (where tipo = 'agua') as agua,
+                   count(*) filter (where tipo = 'agua' and detalle = 'sin_agua') as sin_agua,
+                   count(*) filter (where tipo <> 'agua') as otros
+            from todos group by nombre order by total desc limit 10) t),
+    'urgentes', (
+      select coalesce(json_agg(u), '[]'::json)
+      from (select pn.id, pn.tipo, pn.subtipo, coalesce(z.nombre, 'Sin colonia') as colonia,
+                   round(st_y(pn.ubicacion)::numeric, 6) as lat, round(st_x(pn.ubicacion)::numeric, 6) as lng,
+                   pn.confirmaciones, pn.creado_en,
+                   pn.subtipo in ('peligroso', 'sin_tapa', 'cables_expuestos', 'quema') as peligroso
+            from reportes_pin pn left join zonas z on z.id = pn.zona_id
+            where pn.estado = 'activo' and pn.ultima_actividad > now() - interval '60 days'
+            order by (pn.subtipo in ('peligroso', 'sin_tapa', 'cables_expuestos', 'quema')) desc,
+                     pn.confirmaciones desc, pn.creado_en
+            limit 15) u),
+    'moderacion', json_build_object(
+      'comentarios_ocultos', (select count(*) from reportes_agua where comentario_oculto)
+                           + (select count(*) from reportes_pin where comentario_oculto),
+      'fotos_ocultas', (select count(*) from reportes_pin where foto_oculta),
+      'en_revision', (select count(*) from reportes_agua where denuncias between 1 and 2 and not comentario_oculto)
+                   + (select count(*) from reportes_pin where denuncias between 1 and 2 and not comentario_oculto)
+                   + (select count(*) from reportes_pin where denuncias_foto between 1 and 2 and not foto_oculta))
+  )
+$$;
+
+-- EXPORTAR (solo servidor): reportes del periodo para Excel, sin datos de dispositivo ni IP
+create or replace function public.exportar_reportes(p_dias int)
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  select coalesce(json_agg(x order by x.fecha desc), '[]'::json)
+  from (
+    select r.creado_en as fecha, 'agua' as tipo, r.estado::text as detalle, z.nombre as colonia,
+           null::numeric as lat, null::numeric as lng,
+           case when r.comentario_oculto then null else r.comentario end as comentario,
+           null::int as confirmaciones, null::text as estado
+    from reportes_agua r join zonas z on z.id = r.zona_id
+    where r.creado_en > now() - make_interval(days => p_dias)
+    union all
+    select p.creado_en, p.tipo, p.subtipo, z.nombre,
+           round(st_y(p.ubicacion)::numeric, 6), round(st_x(p.ubicacion)::numeric, 6),
+           case when p.comentario_oculto then null else p.comentario end,
+           p.confirmaciones, p.estado
+    from reportes_pin p left join zonas z on z.id = p.zona_id
+    where p.creado_en > now() - make_interval(days => p_dias)
+  ) x
+$$;
+
 -- Importa zonas (la usa scripts/importar-zonas.mjs).
 -- Recibe un arreglo JSON: [{nombre, fuente, osm_id, h3_index, geometria}]
 create or replace function public.importar_zonas(p_zonas jsonb)

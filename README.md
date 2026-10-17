@@ -199,6 +199,14 @@ Cuando se agregan funciones nuevas, vuelve a correr en Supabase → SQL Editor, 
 - Para mejorar el mapa para todos, puedes dibujar las colonias que faltan directamente en
   <https://www.openstreetmap.org> (etiqueta `place=neighbourhood` + `name=...`) y volver a importar.
 
+### Reporte ejecutivo (panel privado)
+En `https://<tu-dominio>/panel` hay un resumen con números clave, reportes por día y por tipo, colonias con más
+reportes, pendientes más urgentes (con enlace a Google Maps) y moderación. Puedes elegir 7, 30 o 90 días,
+**guardarlo como PDF** o **descargar un Excel (CSV)** con todos los reportes del periodo (sin datos de dispositivo ni IP).
+
+Para activarlo agrega en Vercel la variable `PANEL_CLAVE` con una contraseña de al menos 10 caracteres y haz Redeploy.
+Se permiten 10 intentos de contraseña por día por conexión. Si cambias la contraseña, se cierran todas las sesiones.
+
 ### Moderar desde Supabase (SQL Editor)
 
 ```sql
