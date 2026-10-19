@@ -3,7 +3,7 @@ import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
 import type { EstadoAgua, TipoPin } from "./constantes";
 import { supabaseNavegador } from "./supabase/navegador";
 
-export type ZonasGeoJSON = FeatureCollection<Polygon | MultiPolygon, { id: number; nombre: string; fuente: "osm" | "h3" }>;
+export type ZonasGeoJSON = FeatureCollection<Polygon | MultiPolygon, { id: number; nombre: string; fuente: "osm" | "h3" | "oficial" }>;
 
 export type EstadoZona = { id: number; estado: EstadoAgua; total: number };
 
@@ -26,7 +26,7 @@ export type Pin = {
 export type DetalleZona = {
   id: number;
   nombre: string;
-  fuente: "osm" | "h3";
+  fuente: "osm" | "h3" | "oficial";
   estado: EstadoAgua | null;
   conteo_24h: Partial<Record<EstadoAgua, number>>;
   conteo_7d: Partial<Record<EstadoAgua, number>>;

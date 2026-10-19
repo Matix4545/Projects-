@@ -175,6 +175,18 @@ Abre <http://localhost:3000>. Deberías ver el mapa con colonias de colores y pu
 
 ## Mantenimiento
 
+### Nombres reales de colonias desde un archivo (IMIP, catastro o dibujado a mano)
+Si consigues un archivo con los límites de las colonias (por ejemplo del IMIP Cajeme, o dibujado en geojson.io):
+
+1. Formatos aceptados: **KMZ, KML, GeoJSON** o **Shapefile en .zip** (con su `.prj`; si viene en UTM se convierte solo,
+   y los acentos en Latin-1 se corrigen solos).
+2. En GitHub abre la carpeta `data` del repositorio → **Add file → Upload files**, sube el archivo
+   (p. ej. `colonias.kmz`) y toca **Commit changes**.
+3. Ve a **Actions → Importar colonias → Run workflow** y en **archivo** escribe la ruta, p. ej. `data/colonias.kmz`.
+   Si el nombre de la colonia no se detecta solo, escribe en **campo_nombre** la columna que lo trae (p. ej. `NOM_COL`).
+4. Las colonias del archivo reemplazan a las de OpenStreetMap y a los hexágonos que cubren; donde el archivo no tenga
+   colonias se rellena con hexágonos. Los reportes existentes se pasan a la colonia nueva.
+
 ### Nombres reales de colonias (sin instalar nada)
 Con GitHub Actions se pueden descargar las colonias de OpenStreetMap y subirlas a Supabase desde el navegador:
 

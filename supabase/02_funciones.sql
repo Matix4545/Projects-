@@ -174,7 +174,7 @@ begin
   select json_build_object('id', z.id, 'nombre', z.nombre) into v_res
   from zonas z
   where st_intersects(z.geom, v_punto)
-  order by (z.fuente = 'osm') desc, st_area(z.geom) asc
+  order by (z.fuente <> 'h3') desc, st_area(z.geom) asc
   limit 1;
 
   if v_res is null then
@@ -341,6 +341,7 @@ $$;
 
 -- Importa zonas (la usa scripts/importar-zonas.mjs).
 -- Recibe un arreglo JSON: [{nombre, fuente, osm_id, h3_index, geometria}]
+-- fuente 'osm' u 'oficial' usan osm_id como identificador; 'h3' usa h3_index.
 create or replace function public.importar_zonas(p_zonas jsonb)
 returns int
 language plpgsql volatile security definer
@@ -356,10 +357,10 @@ begin
                 st_setsrid(st_geomfromgeojson(v_z->>'geometria'), 4326)), 3));
     continue when v_geom is null or st_isempty(v_geom);
 
-    if v_z->>'fuente' = 'osm' then
+    if v_z->>'fuente' in ('osm', 'oficial') then
       insert into zonas (nombre, fuente, osm_id, geom)
-      values (v_z->>'nombre', 'osm', v_z->>'osm_id', v_geom)
-      on conflict (osm_id) do update set nombre = excluded.nombre, geom = excluded.geom;
+      values (v_z->>'nombre', v_z->>'fuente', v_z->>'osm_id', v_geom)
+      on conflict (osm_id) do update set nombre = excluded.nombre, fuente = excluded.fuente, geom = excluded.geom;
     else
       insert into zonas (nombre, fuente, h3_index, geom)
       values (v_z->>'nombre', 'h3', v_z->>'h3_index', v_geom)
@@ -390,7 +391,7 @@ begin
   create temp table _viejas on commit drop as
     select z.id, st_pointonsurface(z.geom) as punto
     from zonas z
-    where not ((z.fuente = 'osm' and z.osm_id   = any (coalesce(p_osm, '{}')))
+    where not ((z.fuente <> 'h3' and z.osm_id   = any (coalesce(p_osm, '{}')))
             or (z.fuente = 'h3'  and z.h3_index = any (coalesce(p_h3,  '{}'))));
 
   -- Reportes de agua: a la zona nueva que contiene el centro de la vieja (o la más cercana)
@@ -398,7 +399,7 @@ begin
      set zona_id = (
        select z.id from zonas z
        where z.id not in (select id from _viejas)
-       order by st_intersects(z.geom, v.punto) desc, (z.fuente = 'osm') desc, z.geom <-> v.punto
+       order by st_intersects(z.geom, v.punto) desc, (z.fuente <> 'h3') desc, z.geom <-> v.punto
        limit 1)
     from _viejas v
    where r.zona_id = v.id;
@@ -411,7 +412,7 @@ begin
      set zona_id = (
        select z.id from zonas z
        where st_dwithin(z.geom, p.ubicacion, 0.003)
-       order by st_intersects(z.geom, p.ubicacion) desc, (z.fuente = 'osm') desc,
+       order by st_intersects(z.geom, p.ubicacion) desc, (z.fuente <> 'h3') desc,
                 st_area(z.geom) asc, z.geom <-> p.ubicacion
        limit 1)
    where p.id is not null;  -- Supabase exige WHERE en todo UPDATE (extensión safeupdate)

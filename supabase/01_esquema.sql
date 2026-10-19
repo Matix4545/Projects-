@@ -149,3 +149,8 @@ alter table public.reportes_pin add constraint subtipo_valido check (
   (tipo = 'banqueta'  and subtipo in ('quebrada', 'incompleta', 'obstruida')) or
   (tipo = 'baldio'    and subtipo in ('basura', 'maleza', 'quema', 'escombro'))
 );
+
+-- Zonas "oficiales": colonias importadas de un archivo (IMIP, catastro, dibujadas a mano…).
+-- Usan la columna osm_id como identificador externo (p. ej. "archivo/las-misiones").
+alter table public.zonas drop constraint if exists zonas_fuente_check;
+alter table public.zonas add constraint zonas_fuente_check check (fuente in ('osm', 'h3', 'oficial'));

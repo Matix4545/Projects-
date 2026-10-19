@@ -10,6 +10,8 @@
 //   npm run importar-zonas -- --aproximado       → sin OSM: hexágonos sobre un contorno aproximado
 //   npm run importar-zonas -- --estricto         → si OSM no responde, falla en vez de usar el contorno aproximado
 //   npm run importar-zonas -- --conservar        → no retira las zonas viejas que ya no aparecen
+//   npm run importar-zonas -- --archivo data/colonias.kmz [--campo-nombre NOMBRE]
+//        → usa las colonias de un archivo (KMZ, KML, GeoJSON o Shapefile en .zip) en lugar de OSM
 //
 // Cómo funciona:
 //   1. Descarga de OpenStreetMap (Overpass) los polígonos de colonias de Ciudad Obregón.
@@ -29,12 +31,22 @@ import osmtogeojson from "osmtogeojson";
 import area from "@turf/area";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { createClient } from "@supabase/supabase-js";
+import { leerColonias } from "./leer-colonias.mjs";
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 cargarEnv({ path: join(RAIZ, ".env.local") });
 cargarEnv({ path: join(RAIZ, ".env") });
 
-const args = new Set(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const args = new Set(argv);
+/** Valor de una opción: "--archivo ruta" o "--archivo=ruta" */
+function opcion(nombre) {
+  const i = argv.indexOf(nombre);
+  if (i >= 0 && argv[i + 1] && !argv[i + 1].startsWith("--")) return argv[i + 1].trim();
+  const conIgual = argv.find((a) => a.startsWith(`${nombre}=`));
+  return conIgual ? conIgual.slice(nombre.length + 1).trim() : "";
+}
+const ARCHIVO_COLONIAS = opcion("--archivo");
 const RES_H3 = 8;
 // Caja que contiene Ciudad Obregón (sur, oeste, norte, este)
 const BBOX = [27.40, -110.03, 27.56, -109.85];
@@ -267,7 +279,7 @@ async function subir(features) {
   log(`Listo: ${total} zonas guardadas en Supabase.`);
 
   if (args.has("--conservar")) return;
-  const osm = features.filter((f) => f.properties.fuente === "osm").map((f) => f.properties.osm_id);
+  const osm = features.filter((f) => f.properties.fuente !== "h3").map((f) => f.properties.osm_id);
   const h3 = features.filter((f) => f.properties.fuente === "h3").map((f) => f.properties.h3_index);
   const { data: retiradas, error } = await db.rpc("retirar_zonas_viejas", { p_osm: osm, p_h3: h3 });
   if (error) {
@@ -291,11 +303,14 @@ async function main() {
     let hexes;
     let lugares = [];
 
+    // Colonias de un archivo (oficial o dibujado a mano). Si el archivo falla, se detiene todo.
+    if (ARCHIVO_COLONIAS) colonias = await leerColonias(ARCHIVO_COLONIAS, RAIZ, { campoNombre: opcion("--campo-nombre") });
+
     if (args.has("--aproximado")) {
       hexes = hexagonosAproximados();
     } else {
       try {
-        if (!args.has("--solo-h3")) colonias = await descargarColonias();
+        if (!args.has("--solo-h3") && !ARCHIVO_COLONIAS) colonias = await descargarColonias();
         const calles = await descargarCallesYNombres();
         lugares = calles.lugares;
         hexes = hexagonosUrbanos(calles.puntosCalle);
@@ -306,15 +321,15 @@ async function main() {
       } catch (e) {
         if (args.has("--estricto")) throw e;
         log(e.message);
-        log("Usando el contorno aproximado de la ciudad (solo hexágonos).");
-        colonias = [];
+        log("Usando el contorno aproximado de la ciudad para el relleno de hexágonos.");
+        if (!ARCHIVO_COLONIAS) colonias = [];
         hexes = hexagonosAproximados();
       }
     }
 
     const relleno = zonasHex(hexes, colonias, lugares);
     features = [...colonias, ...relleno];
-    log(`Total: ${colonias.length} colonias de OSM + ${relleno.length} hexágonos de respaldo = ${features.length} zonas`);
+    log(`Total: ${colonias.length} colonias ${ARCHIVO_COLONIAS ? "del archivo" : "de OSM"} + ${relleno.length} hexágonos de respaldo = ${features.length} zonas`);
 
     mkdirSync(dirname(ARCHIVO), { recursive: true });
     writeFileSync(ARCHIVO, JSON.stringify({ type: "FeatureCollection", features }));

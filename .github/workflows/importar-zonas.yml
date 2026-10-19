@@ -1,11 +1,24 @@
-# Descarga las colonias de OpenStreetMap y las sube a Supabase.
+# Actualiza las colonias del mapa en Supabase.
 # Se corre a mano: GitHub → pestaña "Actions" → "Importar colonias" → "Run workflow".
+#   · Sin llenar nada: descarga las colonias de OpenStreetMap.
+#   · Con "archivo": usa las colonias de un archivo que subiste al repositorio
+#     (KMZ, KML, GeoJSON o Shapefile en .zip), p. ej. data/colonias.kmz
+# En ambos casos los reportes existentes se pasan a la colonia nueva; no se pierde nada.
 # Necesita dos secretos en GitHub (Settings → Secrets and variables → Actions):
 #   NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY
 name: Importar colonias
 
 on:
   workflow_dispatch:
+    inputs:
+      archivo:
+        description: "Opcional: archivo de colonias en el repositorio (p. ej. data/colonias.kmz). Vacío = OpenStreetMap"
+        required: false
+        default: ""
+      campo_nombre:
+        description: "Opcional: columna con el nombre de la colonia (solo si no se detecta sola)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -24,11 +37,19 @@ jobs:
 
       - run: npm ci
 
-      - name: Descargar colonias de OpenStreetMap y subirlas a Supabase
-        run: npm run importar-zonas -- --estricto
+      - name: Importar colonias y subirlas a Supabase
+        # Las entradas van por variables de entorno (nunca dentro del comando) para evitar inyección
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ARCHIVO: ${{ inputs.archivo }}
+          CAMPO_NOMBRE: ${{ inputs.campo_nombre }}
+        run: |
+          if [ -n "$ARCHIVO" ]; then
+            npm run importar-zonas -- --archivo "$ARCHIVO" --campo-nombre "$CAMPO_NOMBRE"
+          else
+            npm run importar-zonas -- --estricto
+          fi
 
       - name: Guardar el archivo de zonas (para revisarlo en geojson.io)
         if: always()
