@@ -29,8 +29,14 @@ export function Leyenda() {
             {FILAS.map(([color, texto, forma]) => (
               <li key={texto} className="flex items-center gap-2">
                 <span
-                  className={`inline-block h-4 w-4 shrink-0 border border-gray-700/40 ${forma === "pin" ? "rounded-full" : "rounded-sm"}`}
-                  style={{ background: color }}
+                  className={`inline-block h-4 w-4 shrink-0 ${forma === "pin" ? "rounded-full border border-gray-700/40" : "rounded-sm"}`}
+                  style={
+                    forma === "pin"
+                      ? { background: color }
+                      : color === COLOR_ESTADO.ninguno
+                        ? { background: `${color}38`, border: "1px solid #4b5563" } // igual que en el mapa: gris transparente
+                        : { background: `${color}73`, border: `1.5px solid ${color}` }
+                  }
                 />
                 {texto}
               </li>

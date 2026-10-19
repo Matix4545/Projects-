@@ -65,3 +65,10 @@ body {
 .sin-barra::-webkit-scrollbar {
   display: none;
 }
+
+/* Nombre de la colonia al pasar el mouse (computadora) */
+.leaflet-tooltip.etiqueta-colonia {
+  font-weight: 600;
+  font-size: 13px;
+  padding: 2px 8px;
+}

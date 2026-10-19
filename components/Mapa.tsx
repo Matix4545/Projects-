@@ -66,17 +66,30 @@ export default function Mapa(props: Props) {
       const id = Number(feature?.properties?.id);
       const estado = estados.get(id);
       const seleccionada = id === props.zonaSeleccionada;
-      return {
-        color: seleccionada ? "#111827" : "#ffffff",
-        weight: seleccionada ? 3 : 1,
-        fillColor: estado ? COLOR_ESTADO[estado] : COLOR_ESTADO.ninguno,
-        fillOpacity: estado ? 0.5 : 0.15,
-      };
+      if (seleccionada) {
+        return {
+          color: "#111827",
+          weight: 3,
+          opacity: 1,
+          fillColor: estado ? COLOR_ESTADO[estado] : COLOR_ESTADO.ninguno,
+          fillOpacity: estado ? 0.6 : 0.35,
+        };
+      }
+      // Sin reportes: gris transparente con borde gris oscuro, para que se vea cada colonia
+      // sin tapar las calles. Con reportes: el color del estado, con borde del mismo tono.
+      return estado
+        ? { color: COLOR_ESTADO[estado], weight: 1.5, opacity: 0.9, fillColor: COLOR_ESTADO[estado], fillOpacity: 0.45 }
+        : { color: "#4b5563", weight: 1, opacity: 0.55, fillColor: COLOR_ESTADO.ninguno, fillOpacity: 0.22 };
     },
     [estados, props.zonaSeleccionada],
   );
 
   const alClickZona = useCallback((feature: GeoJSON.Feature, capa: L.Layer) => {
+    // En computadora, el nombre de la colonia aparece al pasar el mouse
+    const nombre = feature.properties?.nombre;
+    if (nombre && window.matchMedia("(hover: hover)").matches) {
+      (capa as L.Path).bindTooltip(String(nombre), { sticky: true, direction: "top", className: "etiqueta-colonia" });
+    }
     capa.on("click", (e: LeafletMouseEvent) => {
       L.DomEvent.stopPropagation(e);
       const p = refProps.current;
