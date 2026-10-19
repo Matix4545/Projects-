@@ -188,6 +188,8 @@ Si consigues un archivo con los límites de las colonias (por ejemplo del IMIP C
    `…/mapviewer/index.html?webmap=…`, de un ítem `…/item.html?id=…` o de un `FeatureServer`). El botón busca la capa
    de colonias y la descarga. Si el mapa tiene varias capas de polígonos, el registro las lista: vuelve a correrlo
    escribiendo en **capa** su número o parte de su nombre.
+   Por defecto se importan **solo las colonias**, sin hexágonos "Sector N". Si quieres rellenar con hexágonos las
+   zonas con calles que no tienen colonia, marca la casilla **hexagonos**.
 4. Las colonias del archivo reemplazan a las de OpenStreetMap y a los hexágonos que cubren; donde el archivo no tenga
    colonias se rellena con hexágonos. Los reportes existentes se pasan a la colonia nueva.
 

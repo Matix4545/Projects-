@@ -21,6 +21,11 @@ on:
         type: boolean
         required: false
         default: false
+      hexagonos:
+        description: "Rellenar con hexágonos (Sector N) las zonas con calles que no tienen colonia"
+        type: boolean
+        required: false
+        default: false
       capa:
         description: "Opcional (ArcGIS): número o nombre de la capa, si el mapa tiene varias"
         required: false
@@ -56,17 +61,20 @@ jobs:
           CAMPO_NOMBRE: ${{ inputs.campo_nombre }}
           CAPA: ${{ inputs.capa }}
           SOLO_REVISAR: ${{ inputs.solo_revisar }}
+          HEXAGONOS: ${{ inputs.hexagonos }}
         run: |
+          RELLENO="--sin-relleno"
+          if [ "$HEXAGONOS" = "true" ]; then RELLENO=""; fi
           if [ "$SOLO_REVISAR" = "true" ]; then
             # Modo revisión: sin acceso a la base de datos
             unset NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY
             if [ -n "$ARCHIVO" ]; then
-              npm run importar-zonas -- --sin-subir --aproximado --archivo "$ARCHIVO" --campo-nombre "$CAMPO_NOMBRE" --capa "$CAPA"
+              npm run importar-zonas -- --sin-subir --aproximado $RELLENO --archivo "$ARCHIVO" --campo-nombre "$CAMPO_NOMBRE" --capa "$CAPA"
             else
               npm run importar-zonas -- --sin-subir --estricto
             fi
           elif [ -n "$ARCHIVO" ]; then
-            npm run importar-zonas -- --archivo "$ARCHIVO" --campo-nombre "$CAMPO_NOMBRE" --capa "$CAPA"
+            npm run importar-zonas -- $RELLENO --archivo "$ARCHIVO" --campo-nombre "$CAMPO_NOMBRE" --capa "$CAPA"
           else
             npm run importar-zonas -- --estricto
           fi

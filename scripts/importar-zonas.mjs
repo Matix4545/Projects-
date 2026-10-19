@@ -10,6 +10,7 @@
 //   npm run importar-zonas -- --aproximado       → sin OSM: hexágonos sobre un contorno aproximado
 //   npm run importar-zonas -- --estricto         → si OSM no responde, falla en vez de usar el contorno aproximado
 //   npm run importar-zonas -- --conservar        → no retira las zonas viejas que ya no aparecen
+//   npm run importar-zonas -- --sin-relleno      → solo colonias, sin hexágonos donde no hay colonia
 //   npm run importar-zonas -- --archivo data/colonias.kmz [--campo-nombre NOMBRE]
 //        → usa las colonias de un archivo (KMZ, KML, GeoJSON o Shapefile en .zip) en lugar de OSM
 //   npm run importar-zonas -- --archivo "https://www.arcgis.com/…?webmap=<id>" [--capa 2]
@@ -322,7 +323,13 @@ async function main() {
       }
     }
 
-    if (args.has("--aproximado")) {
+    const sinRelleno = args.has("--sin-relleno");
+    if (sinRelleno && colonias.length === 0 && !args.has("--solo-h3")) {
+      colonias = await descargarColonias();
+    }
+    if (sinRelleno) {
+      hexes = [];
+    } else if (args.has("--aproximado")) {
       hexes = hexagonosAproximados();
     } else {
       try {
@@ -343,6 +350,9 @@ async function main() {
       }
     }
 
+    if (sinRelleno && colonias.length < 20) {
+      throw new Error(`Solo hay ${colonias.length} colonias; sin hexágonos el mapa quedaría casi vacío. Quita la opción "sin relleno".`);
+    }
     const relleno = zonasHex(hexes, colonias, lugares);
     features = [...colonias, ...relleno];
     log(`Total: ${colonias.length} colonias ${ARCHIVO_COLONIAS ? "del archivo" : "de OSM"} + ${relleno.length} hexágonos de respaldo = ${features.length} zonas`);
