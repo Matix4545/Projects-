@@ -132,6 +132,10 @@ export default function Acerca() {
         <a className="underline" href="https://www.openstreetmap.org/copyright">
           OpenStreetMap
         </a>
+        . Límites de colonias: mapa público de colonias del municipio de Cajeme publicado por el{" "}
+        <a className="underline" href="https://imipcajeme.org">
+          IMIP Cajeme
+        </a>
         . Proyecto ciudadano sin fines de lucro.
       </p>
     </main>

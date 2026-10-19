@@ -93,15 +93,31 @@ function centro(coords) {
 }
 
 const PALABRAS_MENORES = new Set(["de", "del", "la", "las", "los", "el", "y", "e", "en"]);
+const SIGLAS = new Set(["IMSS", "ISSSTE", "ISSSTESON", "FOVISSSTE", "INFONAVIT", "ITSON", "CERESO", "CDAO", "CFE", "UNISON", "CBTIS", "CONALEP", "DIF", "PRI", "PAN", "SNTE", "CTM", "CNOP"]);
+const ROMANOS = /^(i{1,3}|iv|v|vi{1,3}|ix|x{1,3})$/i;
 
-/** "LAS MISIONES" → "Las Misiones"; respeta nombres que ya vienen bien escritos. */
+/**
+ * Corrige nombres escritos en MAYÚSCULAS (aunque sea en parte):
+ * "VALLE DE HEROES 1ra AMP" → "Valle de Heroes 1ra Amp"; respeta números romanos y siglas.
+ * Los nombres que ya vienen bien escritos se dejan igual. Un nombre sin letras ("?") se considera vacío.
+ */
 export function arreglarNombre(nombre) {
   const limpio = String(nombre ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
-  if (!limpio || limpio !== limpio.toUpperCase()) return limpio;
+  const letras = limpio.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g, "");
+  if (!letras) return "";
+  const mayusculas = letras.replace(/[^A-ZÁÉÍÓÚÜÑ]/g, "").length;
+  const conviene = mayusculas / letras.length >= 0.6;
   return limpio
-    .toLowerCase()
     .split(" ")
-    .map((p, i) => (i > 0 && PALABRAS_MENORES.has(p) ? p : p.charAt(0).toUpperCase() + p.slice(1)))
+    .map((p, i) => {
+      const base = p.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g, "");
+      if (SIGLAS.has(base.toUpperCase())) return p.toUpperCase();
+      if (ROMANOS.test(base) && i > 0) return p.toUpperCase();
+      if (!conviene) return p;
+      const minus = p.toLowerCase();
+      if (i > 0 && PALABRAS_MENORES.has(minus)) return minus;
+      return minus.replace(/^([^a-záéíóúüñ0-9]*)([a-záéíóúüñ])/, (_, pre, l) => pre + l.toUpperCase());
+    })
     .join(" ");
 }
 
@@ -166,12 +182,14 @@ export async function leerColonias(ruta, raiz, { campoNombre } = {}) {
 
   const usados = new Map();
   const zonas = [];
+  const nombresFuera = [];
   let fuera = 0;
   let descartadas = 0;
   conPoligono.forEach((f, i) => {
     const [lng, lat] = centro(f.coords);
     if (lat < LIMITES.sur || lat > LIMITES.norte || lng < LIMITES.oeste || lng > LIMITES.este) {
       fuera++;
+      nombresFuera.push(arreglarNombre(campo ? f.props[campo] : "") || "(sin nombre)");
       return;
     }
     const geometry = { type: "MultiPolygon", coordinates: redondear(f.coords) };
@@ -191,7 +209,7 @@ export async function leerColonias(ruta, raiz, { campoNombre } = {}) {
     });
   });
 
-  if (fuera) console.log(`• Omitidas ${fuera} zonas fuera de Cajeme`);
+  if (fuera) console.log(`• Omitidas ${fuera} zonas fuera del área de la app: ${nombresFuera.join(", ")}`);
   if (descartadas) console.log(`• Omitidas ${descartadas} zonas demasiado pequeñas o enormes (p. ej. el límite del municipio)`);
   if (zonas.length === 0) throw new Error("No quedó ninguna colonia dentro de Cajeme. ¿Es el archivo correcto?");
   console.log(`• Colonias leídas del archivo: ${zonas.length}`);

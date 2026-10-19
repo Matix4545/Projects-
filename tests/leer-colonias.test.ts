@@ -10,6 +10,10 @@ test("arreglarNombre pone mayúsculas solo cuando el nombre viene todo en mayús
   assert.equal(arreglarNombre("VILLA DE LOS ÁLAMOS"), "Villa de los Álamos");
   assert.equal(arreglarNombre("  LAS   MISIONES "), "Las Misiones");
   assert.equal(arreglarNombre("Col. Centro"), "Col. Centro");
+  assert.equal(arreglarNombre("VALLE DE HEROES 1ra AMP"), "Valle de Heroes 1ra Amp");
+  assert.equal(arreglarNombre("LOS ALAMOS II"), "Los Alamos II");
+  assert.equal(arreglarNombre("MULTIFAMILIARES IMSS"), "Multifamiliares IMSS");
+  assert.equal(arreglarNombre("?"), "");
 });
 
 test("leerColonias lee GeoJSON, descarta lo que está fuera de Cajeme y numera repetidas", async () => {
