@@ -2,7 +2,8 @@
 # Se corre a mano: GitHub → pestaña "Actions" → "Importar colonias" → "Run workflow".
 #   · Sin llenar nada: descarga las colonias de OpenStreetMap.
 #   · Con "archivo": usa las colonias de un archivo que subiste al repositorio
-#     (KMZ, KML, GeoJSON o Shapefile en .zip), p. ej. data/colonias.kmz
+#     (KMZ, KML, GeoJSON o Shapefile en .zip), p. ej. data/colonias.kmz,
+#     o de un enlace PÚBLICO de ArcGIS (mapa, ítem o FeatureServer)
 # En ambos casos los reportes existentes se pasan a la colonia nueva; no se pierde nada.
 # Necesita dos secretos en GitHub (Settings → Secrets and variables → Actions):
 #   NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY
@@ -12,7 +13,11 @@ on:
   workflow_dispatch:
     inputs:
       archivo:
-        description: "Opcional: archivo de colonias en el repositorio (p. ej. data/colonias.kmz). Vacío = OpenStreetMap"
+        description: "Opcional: archivo en el repositorio (p. ej. data/colonias.kmz) o enlace de ArcGIS. Vacío = OpenStreetMap"
+        required: false
+        default: ""
+      capa:
+        description: "Opcional (ArcGIS): número o nombre de la capa, si el mapa tiene varias"
         required: false
         default: ""
       campo_nombre:
@@ -44,9 +49,10 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ARCHIVO: ${{ inputs.archivo }}
           CAMPO_NOMBRE: ${{ inputs.campo_nombre }}
+          CAPA: ${{ inputs.capa }}
         run: |
           if [ -n "$ARCHIVO" ]; then
-            npm run importar-zonas -- --archivo "$ARCHIVO" --campo-nombre "$CAMPO_NOMBRE"
+            npm run importar-zonas -- --archivo "$ARCHIVO" --campo-nombre "$CAMPO_NOMBRE" --capa "$CAPA"
           else
             npm run importar-zonas -- --estricto
           fi
@@ -56,5 +62,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zonas
-          path: data/zonas.geojson
+          path: |
+            data/zonas.geojson
+            data/colonias-arcgis.geojson
           if-no-files-found: ignore

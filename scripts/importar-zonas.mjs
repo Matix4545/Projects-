@@ -12,6 +12,8 @@
 //   npm run importar-zonas -- --conservar        → no retira las zonas viejas que ya no aparecen
 //   npm run importar-zonas -- --archivo data/colonias.kmz [--campo-nombre NOMBRE]
 //        → usa las colonias de un archivo (KMZ, KML, GeoJSON o Shapefile en .zip) en lugar de OSM
+//   npm run importar-zonas -- --archivo "https://www.arcgis.com/…?webmap=<id>" [--capa 2]
+//        → descarga las colonias de un mapa o servicio PÚBLICO de ArcGIS
 //
 // Cómo funciona:
 //   1. Descarga de OpenStreetMap (Overpass) los polígonos de colonias de Ciudad Obregón.
@@ -32,6 +34,7 @@ import area from "@turf/area";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { createClient } from "@supabase/supabase-js";
 import { leerColonias } from "./leer-colonias.mjs";
+import { descargarDeArcgis, esEntradaArcgis } from "./descargar-arcgis.mjs";
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 cargarEnv({ path: join(RAIZ, ".env.local") });
@@ -304,7 +307,16 @@ async function main() {
     let lugares = [];
 
     // Colonias de un archivo (oficial o dibujado a mano). Si el archivo falla, se detiene todo.
-    if (ARCHIVO_COLONIAS) colonias = await leerColonias(ARCHIVO_COLONIAS, RAIZ, { campoNombre: opcion("--campo-nombre") });
+    if (ARCHIVO_COLONIAS) {
+      let ruta = ARCHIVO_COLONIAS;
+      if (esEntradaArcgis(ARCHIVO_COLONIAS)) {
+        const gj = await descargarDeArcgis(ARCHIVO_COLONIAS, { capa: opcion("--capa") });
+        ruta = "data/colonias-arcgis.geojson";
+        mkdirSync(join(RAIZ, "data"), { recursive: true });
+        writeFileSync(join(RAIZ, ruta), JSON.stringify(gj));
+      }
+      colonias = await leerColonias(ruta, RAIZ, { campoNombre: opcion("--campo-nombre") });
+    }
 
     if (args.has("--aproximado")) {
       hexes = hexagonosAproximados();

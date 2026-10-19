@@ -184,6 +184,10 @@ Si consigues un archivo con los límites de las colonias (por ejemplo del IMIP C
    (p. ej. `colonias.kmz`) y toca **Commit changes**.
 3. Ve a **Actions → Importar colonias → Run workflow** y en **archivo** escribe la ruta, p. ej. `data/colonias.kmz`.
    Si el nombre de la colonia no se detecta solo, escribe en **campo_nombre** la columna que lo trae (p. ej. `NOM_COL`).
+   **También puedes poner un enlace PÚBLICO de ArcGIS** en **archivo** (el enlace de un mapa
+   `…/mapviewer/index.html?webmap=…`, de un ítem `…/item.html?id=…` o de un `FeatureServer`). El botón busca la capa
+   de colonias y la descarga. Si el mapa tiene varias capas de polígonos, el registro las lista: vuelve a correrlo
+   escribiendo en **capa** su número o parte de su nombre.
 4. Las colonias del archivo reemplazan a las de OpenStreetMap y a los hexágonos que cubren; donde el archivo no tenga
    colonias se rellena con hexágonos. Los reportes existentes se pasan a la colonia nueva.
 

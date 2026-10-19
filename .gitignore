@@ -11,3 +11,4 @@ next-env.d.ts
 npm-debug.log*
 # zonas descargadas por scripts/importar-zonas.mjs
 data/zonas.geojson
+data/colonias-arcgis.geojson
