@@ -159,6 +159,8 @@ export async function leerColonias(ruta, raiz, { campoNombre } = {}) {
     );
   }
 
+  const columnas = [...new Set(conPoligono.flatMap((f) => Object.keys(f.props)))];
+  console.log(`• Columnas del archivo: ${columnas.join(", ") || "(ninguna)"}`);
   const campo = campoDeNombre(conPoligono.map((f) => ({ properties: f.props })), campoNombre);
   console.log(`• Columna usada para el nombre: ${campo ?? "(no se encontró; se numerarán)"}`);
 

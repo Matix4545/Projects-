@@ -316,6 +316,10 @@ async function main() {
         writeFileSync(join(RAIZ, ruta), JSON.stringify(gj));
       }
       colonias = await leerColonias(ruta, RAIZ, { campoNombre: opcion("--campo-nombre") });
+      if (args.has("--sin-subir")) {
+        const nombres = colonias.map((c) => c.properties.nombre).sort((a, b) => a.localeCompare(b, "es"));
+        log(`Colonias encontradas (${nombres.length}):\n    ${nombres.slice(0, 600).join(" · ")}`);
+      }
     }
 
     if (args.has("--aproximado")) {
