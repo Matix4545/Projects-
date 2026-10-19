@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { INFO_PIN, TIPOS_PIN, dentroDeCajeme, type EstadoAgua } from "@/lib/constantes";
+import { INFO_PIN, PERIODOS, PERIODO_PREDETERMINADO, TIPOS_PIN, dentroDeCajeme, type EstadoAgua, type HorasPeriodo } from "@/lib/constantes";
 import {
   cargarEstados,
   cargarPins,
@@ -38,6 +38,9 @@ export function App() {
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [errorCarga, setErrorCarga] = useState(false);
   const [version, setVersion] = useState(0);
+  // Periodo para pintar las colonias (24 h, 72 h o 7 días); se recuerda en este navegador
+  const [horas, setHoras] = useState<HorasPeriodo>(PERIODO_PREDETERMINADO);
+  const horasRef = useRef<HorasPeriodo>(PERIODO_PREDETERMINADO);
 
   const [capas, setCapas] = useState<Capas>({ agua: true, bache: true, drenaje: true, alumbrado: true, banqueta: true, baldio: true });
   const [vista, setVista] = useState<Vista>({ tipo: "nada" });
@@ -51,7 +54,8 @@ export function App() {
 
   const recargar = useCallback(async () => {
     try {
-      const [e, p, r] = await Promise.all([cargarEstados(), cargarPins(), cargarResumen()]);
+      const h = horasRef.current;
+      const [e, p, r] = await Promise.all([cargarEstados(h), cargarPins(), cargarResumen(h)]);
       setEstados(e);
       setPins(p);
       setResumen(r);
@@ -64,6 +68,15 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    try {
+      const guardado = Number(localStorage.getItem("rc_periodo"));
+      if (PERIODOS.some((p) => p.horas === guardado)) {
+        horasRef.current = guardado as HorasPeriodo;
+        setHoras(guardado as HorasPeriodo);
+      }
+    } catch {
+      /* sin almacenamiento: se usa el predeterminado */
+    }
     cargarZonas()
       .then(setZonas)
       .catch((err) => {
@@ -197,7 +210,7 @@ export function App() {
 
       {vista.tipo === "nada" && (
         <>
-          <Leyenda />
+          <Leyenda horas={horas} />
           <button
             onClick={abrirReporte}
             className="fixed bottom-12 left-1/2 z-[1000] -translate-x-1/2 whitespace-nowrap rounded-full bg-red-600 px-10 py-4 text-xl font-extrabold text-white shadow-xl active:scale-95"
@@ -207,10 +220,23 @@ export function App() {
         </>
       )}
 
-      <BarraResumen resumen={resumen} />
+      <BarraResumen
+        resumen={resumen}
+        horas={horas}
+        onHoras={(h) => {
+          horasRef.current = h;
+          setHoras(h);
+          try {
+            localStorage.setItem("rc_periodo", String(h));
+          } catch {
+            /* no pasa nada si no se puede guardar */
+          }
+          recargar();
+        }}
+      />
 
       {vista.tipo === "zona" && (
-        <PanelZona zonaId={vista.id} version={version} onCerrar={() => setVista({ tipo: "nada" })} onAviso={setAviso} />
+        <PanelZona zonaId={vista.id} horas={horas} version={version} onCerrar={() => setVista({ tipo: "nada" })} onAviso={setAviso} />
       )}
       {vista.tipo === "pin" && (
         <PanelPin

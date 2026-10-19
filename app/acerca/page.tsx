@@ -44,8 +44,10 @@ export default function Acerca() {
       <h2 className="mt-8 text-xl font-bold text-gray-900">¿Cómo funciona?</h2>
       <ul className="mt-2 list-disc space-y-1 pl-5">
         <li>
-          <strong>Agua:</strong> se reporta por colonia. El color de cada colonia es el estado que más se reportó en las
-          últimas 24 horas (en empate gana el más grave). Gris significa que no hay reportes recientes.
+          <strong>Agua:</strong> se reporta por colonia. El color de cada colonia es el estado que más se reportó en el
+          periodo que elijas abajo en el mapa: 24 horas, 72 horas (el predeterminado) o 7 días. En empate gana el más
+          grave. Gris significa que no hay reportes en ese periodo. Los reportes no se borran: solo cambia el periodo
+          que se muestra.
         </li>
         <li>
           <strong>Baches, drenaje, alumbrado, banquetas y baldíos:</strong> se marcan con un punto en el lugar exacto. Otros vecinos pueden confirmar

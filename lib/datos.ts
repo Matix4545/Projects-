@@ -28,6 +28,9 @@ export type DetalleZona = {
   nombre: string;
   fuente: "osm" | "h3" | "oficial";
   estado: EstadoAgua | null;
+  horas?: number;
+  conteo_periodo?: Partial<Record<EstadoAgua, number>>;
+  detalles_sucia?: Record<string, number>;
   conteo_24h: Partial<Record<EstadoAgua, number>>;
   conteo_7d: Partial<Record<EstadoAgua, number>>;
   detalles_sucia_24h: Record<string, number>;
@@ -35,7 +38,7 @@ export type DetalleZona = {
   comentarios: { id: number; estado: EstadoAgua; texto: string; creado_en: string }[];
 };
 
-export type Resumen = { reportes: number; colonias_afectadas: number };
+export type Resumen = { reportes: number; colonias_afectadas: number; horas?: number };
 
 async function rpc<T>(nombre: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabaseNavegador().rpc(nombre, args);
@@ -44,10 +47,28 @@ async function rpc<T>(nombre: string, args?: Record<string, unknown>): Promise<T
 }
 
 export const cargarZonas = () => rpc<ZonasGeoJSON>("zonas_geojson");
-export const cargarEstados = () => rpc<EstadoZona[]>("estado_zonas");
+/**
+ * Llama a la versión con periodo; si la base de datos aún no tiene el SQL nuevo,
+ * usa la versión anterior de 24 h para que la app no se rompa.
+ */
+async function conPeriodo<T>(nueva: () => Promise<T>, anterior: () => Promise<T>): Promise<T> {
+  try {
+    return await nueva();
+  } catch {
+    return anterior();
+  }
+}
+
+export const cargarEstados = (horas: number) =>
+  conPeriodo(() => rpc<EstadoZona[]>("estado_zonas", { p_horas: horas }), () => rpc<EstadoZona[]>("estado_zonas"));
 export const cargarPins = () => rpc<Pin[]>("pins_publicos");
-export const cargarResumen = () => rpc<Resumen>("resumen_24h");
-export const cargarDetalleZona = (id: number) => rpc<DetalleZona | null>("detalle_zona", { p_id: id });
+export const cargarResumen = (horas: number) =>
+  conPeriodo(() => rpc<Resumen>("resumen", { p_horas: horas }), () => rpc<Resumen>("resumen_24h"));
+export const cargarDetalleZona = (id: number, horas: number) =>
+  conPeriodo(
+    () => rpc<DetalleZona | null>("detalle_zona", { p_id: id, p_horas: horas }),
+    () => rpc<DetalleZona | null>("detalle_zona", { p_id: id }),
+  );
 export const zonaDePunto = (lat: number, lng: number) =>
   rpc<{ id: number; nombre: string } | null>("zona_de_punto", { p_lat: lat, p_lng: lng });
 

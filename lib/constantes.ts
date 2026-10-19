@@ -87,6 +87,16 @@ export function dentroDeCajeme(lat: number, lng: number) {
   );
 }
 
+// Periodos para ver los reportes de agua en el mapa (los reportes nunca se borran)
+export const PERIODOS = [
+  { horas: 24, corto: "24 h", largo: "las últimas 24 h" },
+  { horas: 72, corto: "72 h", largo: "las últimas 72 h" },
+  { horas: 168, corto: "7 días", largo: "los últimos 7 días" },
+] as const;
+export type HorasPeriodo = (typeof PERIODOS)[number]["horas"];
+export const PERIODO_PREDETERMINADO: HorasPeriodo = 72;
+export const textoPeriodo = (horas: number) => PERIODOS.find((p) => p.horas === horas)?.largo ?? `las últimas ${horas} h`;
+
 // Reglas antispam
 export const LIMITE_DIARIO_IP = 10;
 // Votos (+1 / arreglado) y denuncias por IP al día

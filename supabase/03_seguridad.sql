@@ -29,10 +29,11 @@ revoke execute on all functions in schema public from public, anon, authenticate
 
 -- ...excepto las de lectura agregada, que son públicas.
 grant execute on function public.zonas_geojson()                               to anon, authenticated;
-grant execute on function public.estado_zonas()                                to anon, authenticated;
-grant execute on function public.detalle_zona(bigint)                          to anon, authenticated;
+grant execute on function public.estado_zonas(integer)                         to anon, authenticated;
+grant execute on function public.detalle_zona(bigint, integer)                 to anon, authenticated;
 grant execute on function public.pins_publicos()                               to anon, authenticated;
 grant execute on function public.resumen_24h()                                 to anon, authenticated;
+grant execute on function public.resumen(integer)                              to anon, authenticated;
 grant execute on function public.zona_de_punto(double precision, double precision) to anon, authenticated;
 
 -- 4) El servidor (service_role) puede todo.

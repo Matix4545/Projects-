@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PERIODOS, textoPeriodo } from "@/lib/constantes";
 import { COLOR_ESTADO, ESTADOS_AGUA, ETIQUETAS } from "@/lib/constantes";
 import { cargarDetalleZona, type DetalleZona } from "@/lib/datos";
 import { haceCuanto, horaLocal } from "@/lib/tiempo";
@@ -9,11 +10,13 @@ import { HojaInferior } from "./HojaInferior";
 
 export function PanelZona({
   zonaId,
+  horas,
   version,
   onCerrar,
   onAviso,
 }: {
   zonaId: number;
+  horas: number;
   version: number;
   onCerrar: () => void;
   onAviso: (m: string) => void;
@@ -24,15 +27,21 @@ export function PanelZona({
   useEffect(() => {
     let vigente = true;
     setError(false);
-    cargarDetalleZona(zonaId)
+    cargarDetalleZona(zonaId, horas)
       .then((d) => vigente && setDetalle(d))
       .catch(() => vigente && setError(true));
     return () => {
       vigente = false;
     };
-  }, [zonaId, version]);
+  }, [zonaId, horas, version]);
 
   const actual = detalle?.id === zonaId ? detalle : null;
+  // Si la base de datos aún no tiene el SQL nuevo, los datos vienen solo de 24 h
+  const horasDatos = actual?.conteo_periodo ? (actual.horas ?? horas) : 24;
+  const conteoPeriodo = actual?.conteo_periodo ?? actual?.conteo_24h ?? {};
+  const detallesSucia = actual?.detalles_sucia ?? actual?.detalles_sucia_24h ?? {};
+  const etiquetaPeriodo = PERIODOS.find((p) => p.horas === horasDatos)?.corto ?? `${horasDatos} h`;
+  const mostrar7d = horasDatos !== 168;
   const color = actual?.estado ? COLOR_ESTADO[actual.estado] : COLOR_ESTADO.ninguno;
 
   return (
@@ -43,7 +52,7 @@ export function PanelZona({
           <div className="flex items-center gap-3">
             <span className="h-5 w-5 rounded-full" style={{ background: color }} />
             <div>
-              <div className="font-semibold">{actual.estado ? `Mayoría: ${ETIQUETAS[actual.estado]}` : "Sin reportes en las últimas 24 h"}</div>
+              <div className="font-semibold">{actual.estado ? `Mayoría: ${ETIQUETAS[actual.estado]}` : `Sin reportes en ${textoPeriodo(horasDatos)}`}</div>
               <div className="text-sm text-gray-500">
                 Último reporte: {actual.ultimo_reporte ? `${haceCuanto(actual.ultimo_reporte)} (${horaLocal(actual.ultimo_reporte)})` : "nunca"}
               </div>
@@ -54,8 +63,8 @@ export function PanelZona({
             <thead>
               <tr className="text-left text-gray-500">
                 <th className="py-1 font-normal">Reportes</th>
-                <th className="py-1 text-right font-normal">24 h</th>
-                <th className="py-1 text-right font-normal">7 días</th>
+                <th className="py-1 text-right font-normal">{etiquetaPeriodo}</th>
+                {mostrar7d && <th className="py-1 text-right font-normal">7 días</th>}
               </tr>
             </thead>
             <tbody>
@@ -65,17 +74,17 @@ export function PanelZona({
                     <span className="mr-2 inline-block h-3 w-3 rounded-full align-middle" style={{ background: COLOR_ESTADO[e] }} />
                     {ETIQUETAS[e]}
                   </td>
-                  <td className="py-1.5 text-right font-semibold">{actual.conteo_24h[e] ?? 0}</td>
-                  <td className="py-1.5 text-right">{actual.conteo_7d[e] ?? 0}</td>
+                  <td className="py-1.5 text-right font-semibold">{conteoPeriodo[e] ?? 0}</td>
+                  {mostrar7d && <td className="py-1.5 text-right">{actual.conteo_7d[e] ?? 0}</td>}
                 </tr>
               ))}
             </tbody>
           </table>
 
-          {Object.keys(actual.detalles_sucia_24h).length > 0 && (
+          {Object.keys(detallesSucia).length > 0 && (
             <p className="text-sm text-gray-600">
-              Agua sucia (24 h):{" "}
-              {Object.entries(actual.detalles_sucia_24h)
+              Agua sucia ({etiquetaPeriodo}):{" "}
+              {Object.entries(detallesSucia)
                 .map(([d, n]) => `${ETIQUETAS[d] ?? d} (${n})`)
                 .join(", ")}
             </p>

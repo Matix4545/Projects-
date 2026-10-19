@@ -20,9 +20,10 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------
--- (interna) Estado mayoritario de cada zona en las últimas 24 horas
+-- (interna) Estado mayoritario de cada zona en las últimas p_horas horas
+-- (entre 1 y 720). Los reportes nunca se borran: solo cambia la ventana.
 -- ---------------------------------------------------------------------
-create or replace function public._estado_mayoria_24h()
+create or replace function public._estado_mayoria(p_horas int)
 returns table (zona_id bigint, estado public.estado_agua, total bigint)
 language sql stable security definer
 set search_path = public, extensions
@@ -30,7 +31,7 @@ as $$
   with conteos as (
     select r.zona_id, r.estado, count(*) as n
     from reportes_agua r
-    where r.creado_en > now() - interval '24 hours'
+    where r.creado_en > now() - make_interval(hours => least(greatest(coalesce(p_horas, 72), 1), 720))
     group by r.zona_id, r.estado
   ),
   ordenados as (
@@ -42,6 +43,12 @@ as $$
   )
   select o.zona_id, o.estado, o.total::bigint from ordenados o where o.rn = 1
 $$;
+
+create or replace function public._estado_mayoria_24h()
+returns table (zona_id bigint, estado public.estado_agua, total bigint)
+language sql stable security definer
+set search_path = public, extensions
+as $$ select * from _estado_mayoria(24) $$;
 
 -- =====================================================================
 -- FUNCIONES PÚBLICAS DE LECTURA (las puede llamar cualquiera)
@@ -66,27 +73,38 @@ as $$
   from zonas z
 $$;
 
--- Estado actual (color) de las zonas con reportes en 24 h
-create or replace function public.estado_zonas()
+-- Color de cada zona según la mayoría de reportes de agua en las últimas p_horas horas
+drop function if exists public.estado_zonas();
+create or replace function public.estado_zonas(p_horas int default 72)
 returns json
 language sql stable security definer
 set search_path = public, extensions
 as $$
   select coalesce(json_agg(json_build_object('id', m.zona_id, 'estado', m.estado, 'total', m.total)), '[]'::json)
-  from _estado_mayoria_24h() m
+  from _estado_mayoria(p_horas) m
 $$;
 
--- Detalle de una zona: estado, conteos 24 h / 7 días, último reporte y comentarios
-create or replace function public.detalle_zona(p_id bigint)
+-- Detalle de una zona: estado y conteos del periodo elegido, conteos de 7 días,
+-- último reporte y comentarios. (conteo_24h y detalles_sucia_24h se conservan por compatibilidad.)
+drop function if exists public.detalle_zona(bigint);
+create or replace function public.detalle_zona(p_id bigint, p_horas int default 72)
 returns json
 language sql stable security definer
 set search_path = public, extensions
 as $$
+  with v as (select make_interval(hours => least(greatest(coalesce(p_horas, 72), 1), 720)) as ventana,
+                    least(greatest(coalesce(p_horas, 72), 1), 720) as horas)
   select json_build_object(
     'id', z.id,
     'nombre', z.nombre,
     'fuente', z.fuente,
-    'estado', (select m.estado from _estado_mayoria_24h() m where m.zona_id = z.id),
+    'horas', v.horas,
+    'estado', (select m.estado from _estado_mayoria(v.horas) m where m.zona_id = z.id),
+    'conteo_periodo', (
+      select coalesce(json_object_agg(c.estado, c.n), '{}'::json)
+      from (select estado, count(*) as n from reportes_agua
+            where zona_id = z.id and creado_en > now() - v.ventana
+            group by estado) c),
     'conteo_24h', (
       select coalesce(json_object_agg(c.estado, c.n), '{}'::json)
       from (select estado, count(*) as n from reportes_agua
@@ -97,6 +115,11 @@ as $$
       from (select estado, count(*) as n from reportes_agua
             where zona_id = z.id and creado_en > now() - interval '7 days'
             group by estado) c),
+    'detalles_sucia', (
+      select coalesce(json_object_agg(d.detalle, d.n), '{}'::json)
+      from (select unnest(detalles_sucia) as detalle, count(*) as n from reportes_agua
+            where zona_id = z.id and estado = 'sucia' and creado_en > now() - v.ventana
+            group by 1) d),
     'detalles_sucia_24h', (
       select coalesce(json_object_agg(d.detalle, d.n), '{}'::json)
       from (select unnest(detalles_sucia) as detalle, count(*) as n from reportes_agua
@@ -107,10 +130,10 @@ as $$
       select coalesce(json_agg(c order by c.creado_en desc), '[]'::json)
       from (select id, estado, comentario as texto, creado_en from reportes_agua
             where zona_id = z.id and comentario is not null and not comentario_oculto
-              and creado_en > now() - interval '7 days'
+              and creado_en > now() - greatest(v.ventana, interval '7 days')
             order by creado_en desc limit 10) c)
   )
-  from zonas z
+  from zonas z, v
   where z.id = p_id
 $$;
 
@@ -146,20 +169,29 @@ as $$
   left join zonas z on z.id = p.zona_id
 $$;
 
--- Resumen para la barra inferior
-create or replace function public.resumen_24h()
+-- Resumen para la barra inferior: reportes y colonias afectadas en las últimas p_horas horas
+create or replace function public.resumen(p_horas int default 72)
 returns json
 language sql stable security definer
 set search_path = public, extensions
 as $$
+  with v as (select least(greatest(coalesce(p_horas, 72), 1), 720) as horas)
   select json_build_object(
+    'horas', v.horas,
     'reportes',
-      (select count(*) from reportes_agua where creado_en > now() - interval '24 hours') +
-      (select count(*) from reportes_pin  where creado_en > now() - interval '24 hours'),
+      (select count(*) from reportes_agua where creado_en > now() - make_interval(hours => v.horas)) +
+      (select count(*) from reportes_pin  where creado_en > now() - make_interval(hours => v.horas)),
     'colonias_afectadas',
-      (select count(*) from _estado_mayoria_24h() m where m.estado <> 'con_agua')
+      (select count(*) from _estado_mayoria(v.horas) m where m.estado <> 'con_agua')
   )
+  from v
 $$;
+
+create or replace function public.resumen_24h()
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$ select resumen(24) $$;
 
 -- ¿En qué zona cae un punto? Si no cae en ninguna, la más cercana a < ~300 m
 create or replace function public.zona_de_punto(p_lng double precision, p_lat double precision)
