@@ -97,10 +97,13 @@ export type HorasPeriodo = (typeof PERIODOS)[number]["horas"];
 export const PERIODO_PREDETERMINADO: HorasPeriodo = 72;
 export const textoPeriodo = (horas: number) => PERIODOS.find((p) => p.horas === horas)?.largo ?? `las últimas ${horas} h`;
 
-// Reglas antispam
-export const LIMITE_DIARIO_IP = 10;
-// Votos (+1 / arreglado) y denuncias por IP al día
-export const LIMITE_DIARIO_INTERACCIONES_IP = 40;
+// Reglas antispam. Por teléfono (cookie) el límite es estricto; por IP es amplio porque
+// en datos móviles (Telcel, AT&T…) cientos de vecinos pueden salir con la misma IP.
+export const LIMITE_DIARIO_DISPOSITIVO = 10;
+export const LIMITE_DIARIO_IP = 60;
+// Votos (+1 / arreglado) y denuncias al día
+export const LIMITE_DIARIO_INTERACCIONES_DISPOSITIVO = 40;
+export const LIMITE_DIARIO_INTERACCIONES_IP = 250;
 export const HORAS_ENTRE_REPORTES_AGUA = 6;
 export const MAX_COMENTARIO = 280;
 export const MAX_FOTO_BYTES = 1024 * 1024;

@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { after } from "next/server";
 import { z } from "zod";
-import { LIMITE_DIARIO_IP, MAX_COMENTARIO, MAX_FOTO_BYTES, SUBTIPOS, TIPOS_PIN, dentroDeCajeme } from "@/lib/constantes";
+import { MAX_COMENTARIO, MAX_FOTO_BYTES, SUBTIPOS, TIPOS_PIN, dentroDeCajeme } from "@/lib/constantes";
 import { limpiarFoto } from "@/lib/fotos";
 import { avisarSiHayHito } from "@/lib/notificaciones";
 import { limpiarComentario, revisarComentario } from "@/lib/groserias";
 import { obtenerIdentidad } from "@/lib/identidad";
 import { error, ok } from "@/lib/respuestas";
+import { consumirCupo } from "@/lib/limites";
 import { supabaseServidor } from "@/lib/supabase/servidor";
 import { verificarTurnstile } from "@/lib/turnstile";
 
@@ -67,8 +68,8 @@ export async function POST(req: Request) {
 
   const db = supabaseServidor();
 
-  const { data: hayCupo, error: errCupo } = await db.rpc("consumir_cupo_ip", { p_ip_hash: ipHash, p_max: LIMITE_DIARIO_IP });
-  if (errCupo) return error("Error al guardar. Intenta más tarde.", 500);
+  const hayCupo = await consumirCupo(db, { ipHash, dispositivoHash }, "reportes");
+  if (hayCupo === null) return error("Error al guardar. Intenta más tarde.", 500);
   if (!hayCupo) return error("Llegaste al límite de reportes de hoy. Gracias por participar; vuelve mañana.", 429);
 
   let fotoRuta: string | null = null;

@@ -27,7 +27,7 @@ servicios públicos: **agua**, **baches** y **drenaje**. Es anónimo, está en e
 - **Sin nombre, teléfono ni correo.** Solo se guarda un *hash* (huella cifrada irreversible) de la IP y de un ID
   aleatorio del dispositivo, guardado en una cookie.
 - **Cloudflare Turnstile** en cada envío: reportes, votos y denuncias.
-- **Límites:** 1 reporte de agua por colonia por dispositivo cada 6 horas, y máximo 10 reportes por IP al día.
+- **Límites:** 1 reporte de agua por colonia por dispositivo cada 6 horas, máximo 10 reportes por teléfono al día y 60 por IP (amplio porque en datos móviles muchos comparten IP).
 - **Comentarios y fotos:** en los comentarios se rechazan groserías, teléfonos, correos y enlaces. Comentarios y
   fotos tienen botón "Denunciar": con 3 denuncias se ocultan solos.
 - **Votos y denuncias:** 1 por dispositivo **y** 1 por conexión (IP), y máximo 40 al día por IP. Así nadie puede
@@ -248,11 +248,12 @@ delete from reportes_pin where id = 123;
 ```
 
 ### Ajustar las reglas
-Los límites (10 por IP al día, 6 horas por colonia, 280 caracteres) están en `lib/constantes.ts`. La lista de
+Los límites (10 por teléfono y 60 por IP al día, 6 horas por colonia, 280 caracteres) están en `lib/constantes.ts`. La lista de
 groserías está en `lib/groserias.ts`.
 
-> ⚠️ Muchos celulares con datos móviles (Telcel, AT&T…) comparten IP. Si ves vecinos legítimos que topan con el
-> límite de 10 al día, súbelo en `LIMITE_DIARIO_IP`.
+> ⚠️ Muchos celulares con datos móviles (Telcel, AT&T…) comparten IP. Por eso el límite estricto es por teléfono
+> (`LIMITE_DIARIO_DISPOSITIVO`) y el de IP (`LIMITE_DIARIO_IP`) es amplio. Si ves vecinos legítimos que topan
+> con el límite, sube `LIMITE_DIARIO_IP`.
 
 ### Límites de los planes gratuitos
 - **Supabase gratis:** 500 MB de base de datos y 1 GB de fotos. El proyecto **se pausa si pasa 7 días sin uso**; se

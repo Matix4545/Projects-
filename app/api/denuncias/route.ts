@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { LIMITE_DIARIO_INTERACCIONES_IP } from "@/lib/constantes";
 import { obtenerIdentidad } from "@/lib/identidad";
 import { error, ok } from "@/lib/respuestas";
+import { consumirCupo } from "@/lib/limites";
 import { supabaseServidor } from "@/lib/supabase/servidor";
 import { verificarTurnstile } from "@/lib/turnstile";
 
@@ -32,11 +32,8 @@ export async function POST(req: Request) {
   const { data: existe } = await db.from(tabla).select("id").eq("id", cuerpo.id).not(columna, "is", null).maybeSingle();
   if (!existe) return error(cuerpo.tipo === "foto" ? "Esa foto ya no existe." : "Ese comentario ya no existe.", 404);
 
-  const { data: hayCupo, error: errCupo } = await db.rpc("consumir_cupo_ip", {
-    p_ip_hash: `${ipHash}:interacciones`,
-    p_max: LIMITE_DIARIO_INTERACCIONES_IP,
-  });
-  if (errCupo) return error("Error al guardar. Intenta más tarde.", 500);
+  const hayCupo = await consumirCupo(db, { ipHash, dispositivoHash }, "interacciones");
+  if (hayCupo === null) return error("Error al guardar. Intenta más tarde.", 500);
   if (!hayCupo) return error("Llegaste al límite de denuncias de hoy. Vuelve mañana.", 429);
 
   const { error: errDenuncia } = await db

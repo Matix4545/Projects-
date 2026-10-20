@@ -56,7 +56,7 @@ export default function Acerca() {
         </li>
         <li>
           Para evitar abusos: cada dispositivo puede reportar el agua de una misma colonia una vez cada 6 horas, y cada
-          conexión puede enviar hasta 10 reportes al día.
+          teléfono puede enviar hasta 10 reportes al día.
         </li>
       </ul>
 

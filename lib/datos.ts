@@ -69,6 +69,28 @@ export const cargarDetalleZona = (id: number, horas: number) =>
     () => rpc<DetalleZona | null>("detalle_zona", { p_id: id, p_horas: horas }),
     () => rpc<DetalleZona | null>("detalle_zona", { p_id: id }),
   );
+export type DatosMapa = { estados: EstadoZona[]; pins: Pin[]; resumen: Resumen };
+/** Lectura directa de Supabase (la usa la ruta /api/publico/mapa). */
+export async function leerMapa(horas: number): Promise<DatosMapa> {
+  const [estados, pins, resumen] = await Promise.all([cargarEstados(horas), cargarPins(), cargarResumen(horas)]);
+  return { estados, pins, resumen };
+}
+
+/** Lee por la caché de Vercel (/api/publico/...); si falla, va directo a Supabase. */
+async function desdeCache<T>(ruta: string, directo: () => Promise<T>): Promise<T> {
+  try {
+    const res = await fetch(ruta);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as T;
+  } catch {
+    return directo();
+  }
+}
+/** Datos del mapa. "fresco" se salta la caché (tras enviar un reporte o voto, para verlo de inmediato). */
+export const cargarMapa = (horas: number, fresco = false) =>
+  desdeCache(`/api/publico/mapa?horas=${horas}${fresco ? `&t=${Date.now()}` : ""}`, () => leerMapa(horas));
+export const cargarZonasCache = () => desdeCache("/api/publico/zonas", cargarZonas);
+
 export const zonaDePunto = (lat: number, lng: number) =>
   rpc<{ id: number; nombre: string } | null>("zona_de_punto", { p_lat: lat, p_lng: lng });
 

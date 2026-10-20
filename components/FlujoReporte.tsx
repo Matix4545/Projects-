@@ -74,7 +74,7 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
       const { default: comprimir } = await import("browser-image-compression");
       const comprimida = await comprimir(archivo, {
         maxSizeMB: 0.9,
-        maxWidthOrHeight: 1600,
+        maxWidthOrHeight: 1280,
         useWebWorker: true,
         fileType: "image/jpeg",
         initialQuality: 0.8,

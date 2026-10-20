@@ -1,10 +1,11 @@
 import { after } from "next/server";
 import { z } from "zod";
-import { DETALLES_SUCIA, ESTADOS_AGUA, HORAS_ENTRE_REPORTES_AGUA, LIMITE_DIARIO_IP, MAX_COMENTARIO, dentroDeCajeme } from "@/lib/constantes";
+import { DETALLES_SUCIA, ESTADOS_AGUA, HORAS_ENTRE_REPORTES_AGUA, MAX_COMENTARIO, dentroDeCajeme } from "@/lib/constantes";
 import { avisarSiHayHito } from "@/lib/notificaciones";
 import { limpiarComentario, revisarComentario } from "@/lib/groserias";
 import { obtenerIdentidad } from "@/lib/identidad";
 import { error, ok } from "@/lib/respuestas";
+import { consumirCupo } from "@/lib/limites";
 import { supabaseServidor } from "@/lib/supabase/servidor";
 import { verificarTurnstile } from "@/lib/turnstile";
 
@@ -61,9 +62,9 @@ export async function POST(req: Request) {
     return error(`Ya reportaste el agua de ${zona.nombre}. Puedes volver a reportar en ${HORAS_ENTRE_REPORTES_AGUA} horas.`, 429);
   }
 
-  // Límite: máximo 10 reportes por IP al día
-  const { data: hayCupo, error: errCupo } = await db.rpc("consumir_cupo_ip", { p_ip_hash: ipHash, p_max: LIMITE_DIARIO_IP });
-  if (errCupo) return error("Error al guardar. Intenta más tarde.", 500);
+  // Límite diario por teléfono y por conexión
+  const hayCupo = await consumirCupo(db, { ipHash, dispositivoHash }, "reportes");
+  if (hayCupo === null) return error("Error al guardar. Intenta más tarde.", 500);
   if (!hayCupo) return error("Llegaste al límite de reportes de hoy. Gracias por participar; vuelve mañana.", 429);
 
   const { error: errInsert } = await db.from("reportes_agua").insert({

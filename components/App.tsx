@@ -5,10 +5,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { INFO_PIN, PERIODOS, PERIODO_PREDETERMINADO, TIPOS_PIN, dentroDeCajeme, type EstadoAgua, type HorasPeriodo } from "@/lib/constantes";
 import {
-  cargarEstados,
-  cargarPins,
-  cargarResumen,
-  cargarZonas,
+  cargarMapa,
+  cargarZonasCache,
   type EstadoZona,
   type Pin,
   type Resumen,
@@ -52,10 +50,9 @@ export function App() {
   const eligioEnMapa = useRef(false);
   const [centrarEn, setCentrarEn] = useState<{ punto: [number, number]; zoom: number; n: number } | null>(null);
 
-  const recargar = useCallback(async () => {
+  const recargar = useCallback(async (fresco = false) => {
     try {
-      const h = horasRef.current;
-      const [e, p, r] = await Promise.all([cargarEstados(h), cargarPins(), cargarResumen(h)]);
+      const { estados: e, pins: p, resumen: r } = await cargarMapa(horasRef.current, fresco);
       setEstados(e);
       setPins(p);
       setResumen(r);
@@ -77,7 +74,7 @@ export function App() {
     } catch {
       /* sin almacenamiento: se usa el predeterminado */
     }
-    cargarZonas()
+    cargarZonasCache()
       .then(setZonas)
       .catch((err) => {
         console.error(err);
@@ -244,7 +241,7 @@ export function App() {
           pin={vista.pin}
           onCerrar={() => setVista({ tipo: "nada" })}
           onAviso={setAviso}
-          onCambio={recargar}
+          onCambio={() => recargar(true)}
         />
       )}
       {reportando && (
@@ -255,7 +252,7 @@ export function App() {
           onEnviado={(mensaje) => {
             setVista({ tipo: "nada" });
             setAviso(mensaje);
-            recargar();
+            recargar(true);
           }}
         />
       )}
