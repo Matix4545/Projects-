@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { obtenerIdentidad } from "@/lib/identidad";
-import { COOKIE_PANEL, claveCorrecta, panelConfigurado, tokenPanel } from "@/lib/panel";
+import { COOKIE_AVISO_EQUIPO, COOKIE_PANEL, claveCorrecta, panelConfigurado, tokenPanel } from "@/lib/panel";
 import { supabaseServidor } from "@/lib/supabase/servidor";
 
 export const runtime = "nodejs";
@@ -28,6 +28,12 @@ export async function POST(req: Request) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  res.cookies.set(COOKIE_AVISO_EQUIPO, "1", {
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });

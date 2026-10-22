@@ -1,23 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { ETIQUETAS, INFO_PIN, esLinea } from "@/lib/constantes";
+import { esLinea, tituloReporte } from "@/lib/constantes";
 import { enviar, type Pin } from "@/lib/datos";
 import { urlFoto } from "@/lib/supabase/navegador";
 import { haceCuanto, horaLocal } from "@/lib/tiempo";
+import { folio } from "@/lib/urgencia";
+import { BadgeDias } from "./BadgeDias";
 import { BotonDenunciar } from "./BotonDenunciar";
 import { HojaInferior } from "./HojaInferior";
+import { NotasEquipo } from "./NotasEquipo";
 import { ERROR_TURNSTILE_NAVEGADOR, useTurnstile } from "./Turnstile";
 
 type Conteos = Pick<Pin, "confirmaciones" | "votos_arreglado" | "estado">;
 
 export function PanelPin({
   pin,
+  equipo,
   onCerrar,
   onAviso,
   onCambio,
 }: {
   pin: Pin;
+  /** Modo equipo: días sin resolver, folio y notas privadas */
+  equipo: boolean;
   onCerrar: () => void;
   onAviso: (m: string) => void;
   onCambio: () => void;
@@ -54,24 +60,35 @@ export function PanelPin({
     }
   }
 
-  const titulo =
-    pin.tipo === "bache"
-      ? `Bache ${ETIQUETAS[pin.subtipo]?.toLowerCase()}`
-      : pin.tipo === "drenaje" || pin.tipo === "baldio"
-        ? (ETIQUETAS[pin.subtipo] ?? pin.subtipo)
-        : `${INFO_PIN[pin.tipo]?.nombre ?? pin.tipo}: ${(ETIQUETAS[pin.subtipo] ?? pin.subtipo).toLowerCase()}`;
+  const titulo = tituloReporte(pin);
 
   return (
     <HojaInferior titulo={titulo} onCerrar={onCerrar}>
       <div className="space-y-3">
-        <p className="text-sm text-gray-600">
-          {pin.colonia ? `${pin.colonia} · ` : ""}Reportado {haceCuanto(pin.creado_en)} ({horaLocal(pin.creado_en)})
-        </p>
-
-        {arreglado && (
-          <p className="rounded-lg bg-green-50 p-2 text-sm font-semibold text-green-800">
-            ✔ Vecinos confirmaron: {textoArreglo.toLowerCase()}{pin.arreglado_en ? ` (${haceCuanto(pin.arreglado_en)})` : ""}.
+        {/* Equipo: una sola línea de contexto, porque la etiqueta ya dice cuántos días lleva */}
+        {equipo ? (
+        <div className="space-y-1">
+          <BadgeDias
+            pin={{ ...pin, estado: conteos.estado, arreglado_en: pin.arreglado_en ?? (arreglado ? new Date().toISOString() : null) }}
+          />
+          <p className="text-sm text-gray-500">
+            {[pin.colonia, horaLocal(pin.creado_en), conteos.confirmaciones > 0 ? `+${conteos.confirmaciones} lo confirman` : null]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
+        </div>
+        ) : (
+          <>
+            <p className="text-sm text-gray-600">
+              {pin.colonia ? `${pin.colonia} · ` : ""}Reportado {haceCuanto(pin.creado_en)} ({horaLocal(pin.creado_en)})
+            </p>
+            {arreglado && (
+              <p className="rounded-lg bg-green-50 p-2 text-sm font-semibold text-green-800">
+                ✔ Vecinos confirmaron: {textoArreglo.toLowerCase()}
+                {pin.arreglado_en ? ` (${haceCuanto(pin.arreglado_en)})` : ""}.
+              </p>
+            )}
+          </>
         )}
 
         {pin.foto && (
@@ -93,9 +110,12 @@ export function PanelPin({
           </div>
         )}
 
-        <p className="text-sm">
-          <strong>{conteos.confirmaciones}</strong> {conteos.confirmaciones === 1 ? "vecino más lo confirmó" : "vecinos más lo confirmaron"}
-        </p>
+        {!equipo && (
+          <p className="text-sm">
+            <strong>{conteos.confirmaciones}</strong>{" "}
+            {conteos.confirmaciones === 1 ? "vecino más lo confirmó" : "vecinos más lo confirmaron"}
+          </p>
+        )}
 
         {!arreglado && (
           <div className="grid grid-cols-2 gap-2">
@@ -115,6 +135,8 @@ export function PanelPin({
             </button>
           </div>
         )}
+        {equipo && <NotasEquipo pinId={pin.id} />}
+        {equipo && <p className="text-center font-mono text-xs text-gray-400">Folio {folio(pin.id)}</p>}
       </div>
     </HojaInferior>
   );

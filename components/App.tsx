@@ -23,6 +23,7 @@ import {
   type ZonasGeoJSON,
 } from "@/lib/datos";
 import { BarraResumen } from "./BarraResumen";
+import { FILTROS_INICIALES, Filtros, filtrarPins, type FiltrosMapa } from "./Filtros";
 import { FlujoReporte, type EstadoTramo, type OrigenUbicacion } from "./FlujoReporte";
 import { Leyenda } from "./Leyenda";
 import type { Capas } from "./Mapa";
@@ -51,6 +52,11 @@ export function App() {
   const horasRef = useRef<HorasPeriodo>(PERIODO_PREDETERMINADO);
 
   const [capas, setCapas] = useState<Capas>(() => ({ agua: true, ...(Object.fromEntries(TIPOS_PIN.map((t) => [t, true])) as Record<TipoPin, boolean>) }));
+  const [filtros, setFiltros] = useState<FiltrosMapa>(FILTROS_INICIALES);
+  // Modo equipo: quien entró con la contraseña del panel ve días sin resolver, filtros, calor y notas
+  const [equipo, setEquipo] = useState(false);
+  // Enlace "/?pin=123" (desde estadísticas): se abre cuando llegan los reportes
+  const pinEnlace = useRef<number | null>(null);
   const [vista, setVista] = useState<Vista>({ tipo: "nada" });
   const [aviso, setAviso] = useState<string | null>(null);
 
@@ -96,6 +102,18 @@ export function App() {
         setErrorCarga(true);
       });
     recargar();
+    const pedido = Number(new URLSearchParams(window.location.search).get("pin"));
+    if (Number.isSafeInteger(pedido) && pedido > 0) {
+      pinEnlace.current = pedido;
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    // La cookie "rc_equipo" solo es un aviso; quien decide es el servidor
+    if (document.cookie.split("; ").includes("rc_equipo=1")) {
+      fetch("/api/equipo/sesion", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => setEquipo(d.equipo === true))
+        .catch(() => {});
+    }
     const intervalo = setInterval(() => document.visibilityState === "visible" && recargar(), RECARGA_MS);
     const alVolver = () => document.visibilityState === "visible" && recargar();
     document.addEventListener("visibilitychange", alVolver);
@@ -110,6 +128,18 @@ export function App() {
     const t = setTimeout(() => setAviso(null), 4500);
     return () => clearTimeout(t);
   }, [aviso]);
+
+  useEffect(() => {
+    if (pinEnlace.current === null || pins.length === 0) return;
+    const pin = pins.find((p) => p.id === pinEnlace.current);
+    pinEnlace.current = null;
+    if (!pin) return;
+    setVista({ tipo: "pin", pin });
+    setCentrarEn((c) => ({ punto: [pin.lat, pin.lng], zoom: 17, n: (c?.n ?? 0) + 1 }));
+  }, [pins]);
+
+  const pinsFiltrados = useMemo(() => (equipo ? filtrarPins(pins, filtros) : pins), [pins, filtros, equipo]);
+  const totalFiltrados = useMemo(() => pinsFiltrados.filter((p) => capas[p.tipo]).length, [pinsFiltrados, capas]);
 
   const mapaEstados = useMemo(() => new Map<number, EstadoAgua>(estados.map((e) => [e.id, e.estado])), [estados]);
 
@@ -185,8 +215,10 @@ export function App() {
         <Mapa
           zonas={zonas}
           estados={mapaEstados}
-          pins={pins}
+          pins={pinsFiltrados}
           capas={capas}
+          vistaCalor={equipo && filtros.vista === "calor" && !reportando}
+          puntosFinos={equipo}
           zonaSeleccionada={vista.tipo === "zona" ? vista.id : null}
           pinSeleccionado={vista.tipo === "pin" ? vista.pin.id : null}
           eligiendoUbicacion={reportando}
@@ -221,9 +253,16 @@ export function App() {
             </h1>
             <p className="text-xs leading-tight text-gray-500">Proyecto ciudadano · No es del gobierno</p>
           </div>
-          <Link href="/acerca" className="text-sm font-semibold text-blue-700 underline">
-            Acerca de
-          </Link>
+          <div className="flex items-center gap-3 text-sm font-semibold">
+            {equipo && (
+              <Link href="/estadisticas" className="whitespace-nowrap rounded-full bg-gray-900 px-2.5 py-1 text-xs text-white" title="Estadísticas (solo equipo)">
+                🔒 Equipo
+              </Link>
+            )}
+            <Link href="/acerca" className="whitespace-nowrap text-blue-700 underline">
+              Acerca de
+            </Link>
+          </div>
         </div>
         <div
           className="sin-barra pointer-events-auto -mx-3 mt-2 flex max-w-lg gap-2 overflow-x-auto px-3 pb-1 sm:mx-auto sm:px-0"
@@ -256,6 +295,7 @@ export function App() {
       {vista.tipo === "nada" && (
         <>
           <Leyenda horas={horas} />
+          {equipo && <Filtros filtros={filtros} onCambio={setFiltros} total={totalFiltrados} />}
           <button
             onClick={abrirReporte}
             className="fixed bottom-12 left-1/2 z-[1000] -translate-x-1/2 whitespace-nowrap rounded-full bg-red-600 px-10 py-4 text-xl font-extrabold text-white shadow-xl active:scale-95"
@@ -287,6 +327,7 @@ export function App() {
         <PanelPin
           key={vista.pin.id}
           pin={vista.pin}
+          equipo={equipo}
           onCerrar={() => setVista({ tipo: "nada" })}
           onAviso={setAviso}
           onCambio={() => recargar(true)}

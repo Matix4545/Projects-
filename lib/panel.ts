@@ -3,6 +3,11 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 
 export const COOKIE_PANEL = "rc_panel";
+/**
+ * Aviso visible para el navegador (no es la sesión): le dice al mapa que pregunte si hay modo equipo.
+ * La seguridad la da COOKIE_PANEL, que el navegador no puede leer.
+ */
+export const COOKIE_AVISO_EQUIPO = "rc_equipo";
 
 /** El panel solo existe si se configuró una contraseña de al menos 10 caracteres. */
 export function panelConfigurado() {

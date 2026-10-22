@@ -164,3 +164,14 @@ alter table public.reportes_pin add constraint trazo_solo_en_calles check (
 -- Usan la columna osm_id como identificador externo (p. ej. "archivo/las-misiones").
 alter table public.zonas drop constraint if exists zonas_fuente_check;
 alter table public.zonas add constraint zonas_fuente_check check (fuente in ('osm', 'h3', 'oficial'));
+
+-- Notas privadas del equipo sobre un reporte (p. ej. "ya se le avisó a OOMAPASC").
+-- Nunca se muestran al público: solo las leen y escriben las rutas /api/equipo.
+create table if not exists public.notas_pin (
+  id        bigint generated always as identity primary key,
+  pin_id    bigint not null references public.reportes_pin (id) on delete cascade,
+  texto     text   not null check (char_length(texto) between 1 and 500),
+  autor     text   check (char_length(autor) <= 40),
+  creado_en timestamptz not null default now()
+);
+create index if not exists notas_pin_pin_idx on public.notas_pin (pin_id, creado_en);

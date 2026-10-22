@@ -3,6 +3,7 @@ import Link from "next/link";
 import { COLOR_ESTADO, ESTADOS_AGUA, ETIQUETAS, INFO_PIN, type EstadoAgua, type TipoPin } from "@/lib/constantes";
 import { diasValidos, panelConfigurado, sesionPanelValida } from "@/lib/panel";
 import { supabaseServidor } from "@/lib/supabase/servidor";
+import { Barras, Caja, Seccion, Tabla, Tarjeta, Vacio, num } from "@/components/graficas";
 import { BotonImprimir } from "./BotonImprimir";
 
 export const metadata: Metadata = {
@@ -30,7 +31,6 @@ type Reporte = {
   moderacion: { comentarios_ocultos: number; fotos_ocultas: number; en_revision: number };
 };
 
-const num = (n: number) => n.toLocaleString("es-MX");
 const fechaCorta = (iso: string) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 const nombreTipo = (t: string) => (t === "agua" ? "💧 Agua" : `${INFO_PIN[t as TipoPin]?.emoji ?? ""} ${INFO_PIN[t as TipoPin]?.plural ?? t}`);
@@ -101,6 +101,12 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
           <p className="text-sm text-gray-500">Generado el {generado} (hora de Sonora)</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
+          <Link href="/" className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white">
+            🔒 Mapa del equipo
+          </Link>
+          <Link href="/estadisticas" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold">
+            Estadísticas
+          </Link>
           <nav className="flex overflow-hidden rounded-lg border border-gray-300 text-sm" aria-label="Periodo">
             {[7, 30, 90].map((d) => (
               <Link key={d} href={`/panel?dias=${d}`} aria-current={d === dias ? "page" : undefined}
@@ -210,84 +216,5 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
         laboratorio. Proyecto ciudadano sin afiliación al gobierno.
       </p>
     </main>
-  );
-}
-
-function Caja({ children }: { children: React.ReactNode }) {
-  return <main className="mx-auto mt-16 max-w-sm rounded-2xl bg-white p-6 shadow">{children}</main>;
-}
-
-function Tarjeta({ titulo, valor, nota }: { titulo: string; valor: string; nota: string }) {
-  return (
-    <div className="rounded-xl border border-gray-200 p-3 print:break-inside-avoid">
-      <p className="text-xs font-semibold text-gray-500">{titulo}</p>
-      <p className="mt-1 text-3xl font-extrabold tabular-nums">{valor}</p>
-      <p className="mt-1 text-xs text-gray-500">{nota}</p>
-    </div>
-  );
-}
-
-function Seccion({ titulo, nota, className = "", children }: { titulo: string; nota?: string; className?: string; children: React.ReactNode }) {
-  return (
-    <section className={`mt-8 print:break-inside-avoid ${className}`}>
-      <h2 className="text-lg font-bold">{titulo}</h2>
-      {nota && <p className="text-xs text-gray-500">{nota}</p>}
-      <div className="mt-3">{children}</div>
-    </section>
-  );
-}
-
-function Vacio() {
-  return <p className="text-sm text-gray-500">Sin reportes en este periodo.</p>;
-}
-
-function Barras({ filas }: { filas: { etiqueta: string; valor: number; extra?: string; muestra?: string }[] }) {
-  if (filas.length === 0) return <Vacio />;
-  const max = Math.max(1, ...filas.map((f) => f.valor));
-  return (
-    <ul className="space-y-2">
-      {filas.map((f) => (
-        <li key={f.etiqueta} title={`${f.etiqueta}: ${num(f.valor)}${f.extra ? ` (${f.extra})` : ""}`}>
-          <div className="flex items-baseline justify-between gap-2 text-sm">
-            <span className="flex items-center gap-2">
-              {f.muestra && <span className="inline-block h-3 w-3 rounded-sm" style={{ background: f.muestra }} />}
-              {f.etiqueta}
-            </span>
-            <span className="tabular-nums text-gray-700">
-              <strong>{num(f.valor)}</strong>
-              {f.extra && <span className="ml-1 text-xs text-gray-500">· {f.extra}</span>}
-            </span>
-          </div>
-          <div className="mt-1 h-2 rounded-full bg-gray-100">
-            <div className="h-2 rounded-full bg-blue-600" style={{ width: `${(f.valor / max) * 100}%` }} />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Tabla({ encabezados, filas, numericas = [] }: { encabezados: string[]; filas: React.ReactNode[][]; numericas?: number[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-300 text-left text-xs text-gray-500">
-            {encabezados.map((e, i) => (
-              <th key={e} className={`py-2 pr-3 font-semibold ${numericas.includes(i) ? "text-right" : ""}`}>{e}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {filas.map((f, i) => (
-            <tr key={i} className="border-b border-gray-100">
-              {f.map((c, j) => (
-                <td key={j} className={`py-2 pr-3 ${numericas.includes(j) ? "text-right tabular-nums" : ""}`}>{c}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   );
 }

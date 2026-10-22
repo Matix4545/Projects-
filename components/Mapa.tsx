@@ -2,10 +2,11 @@
 
 import "leaflet/dist/leaflet.css";
 import L, { type LeafletMouseEvent, type PathOptions } from "leaflet";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { CENTRO_OBREGON, COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, SUBTIPOS_PELIGROSOS, type EstadoAgua, type TipoPin } from "@/lib/constantes";
 import type { Pin, ZonasGeoJSON } from "@/lib/datos";
+import { CapaCalor } from "./CapaCalor";
 
 export type Capas = Record<"agua" | TipoPin, boolean>;
 
@@ -14,6 +15,10 @@ type Props = {
   estados: Map<number, EstadoAgua>;
   pins: Pin[];
   capas: Capas;
+  /** Mapa de calor en lugar de puntos y líneas */
+  vistaCalor: boolean;
+  /** Puntos más chicos al alejar el mapa (por ahora solo en modo equipo) */
+  puntosFinos: boolean;
   zonaSeleccionada: number | null;
   pinSeleccionado: number | null;
   /** Modo "elige un punto": los toques en el mapa mueven el marcador del reporte */
@@ -54,6 +59,15 @@ function Centrador({ centrarEn }: { centrarEn: Props["centrarEn"] }) {
   return null;
 }
 
+/** Avisa el zoom actual para ajustar el tamaño de los puntos */
+function ObservarZoom({ onZoom }: { onZoom: (z: number) => void }) {
+  useMapEvents({ zoomend: (e) => onZoom(e.target.getZoom()) });
+  return null;
+}
+
+// Alejado los puntos se amontonan: se dibujan más chicos y con borde fino
+const escalaPunto = (zoom: number) => (zoom <= 13 ? 0.65 : zoom === 14 ? 0.8 : 1);
+
 function Clics({ onClick }: { onClick: (e: LeafletMouseEvent) => void }) {
   useMapEvents({ click: onClick });
   return null;
@@ -63,6 +77,8 @@ export default function Mapa(props: Props) {
   const { zonas, estados, pins, capas, eligiendoUbicacion } = props;
 
   // Las funciones de Leaflet se crean una sola vez; con refs siempre ven los props actuales.
+  const [zoomReal, setZoom] = useState(13);
+  const zoom = props.puntosFinos ? zoomReal : 99;
   const refProps = useRef(props);
   refProps.current = props;
 
@@ -104,8 +120,11 @@ export default function Mapa(props: Props) {
   }, []);
 
   const pinsVisibles = useMemo(() => pins.filter((p) => capas[p.tipo] ?? true), [pins, capas]);
-  const calles = useMemo(() => pinsVisibles.filter((p) => p.trazo && p.trazo.length >= 2), [pinsVisibles]);
-  const puntos = useMemo(() => pinsVisibles.filter((p) => !p.trazo), [pinsVisibles]);
+  const calles = useMemo(
+    () => (props.vistaCalor ? [] : pinsVisibles.filter((p) => p.trazo && p.trazo.length >= 2)),
+    [pinsVisibles, props.vistaCalor],
+  );
+  const puntos = useMemo(() => (props.vistaCalor ? [] : pinsVisibles.filter((p) => !p.trazo)), [pinsVisibles, props.vistaCalor]);
 
   const alClickPin = (pin: Pin) => (e: LeafletMouseEvent) => {
     L.DomEvent.stopPropagation(e);
@@ -131,6 +150,7 @@ export default function Mapa(props: Props) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       />
       <Centrador centrarEn={props.centrarEn} />
+      <ObservarZoom onZoom={setZoom} />
       <Clics
         onClick={(e) => {
           const p = refProps.current;
@@ -140,6 +160,8 @@ export default function Mapa(props: Props) {
       />
 
       {capas.agua && zonas && <GeoJSON data={zonas} style={estilo} onEachFeature={alClickZona} />}
+
+      {props.vistaCalor && <CapaCalor pins={pinsVisibles} />}
 
       {/* Calles cerradas (rojo) y con baches (amarillo): línea con contorno oscuro para que resalte */}
       {calles.map((pin) => {
@@ -175,10 +197,10 @@ export default function Mapa(props: Props) {
           <CircleMarker
             key={`${pin.id}-${pin.estado}`}
             center={[pin.lat, pin.lng]}
-            radius={pin.tipo === "bache" ? (RADIO_BACHE[pin.subtipo] ?? 8) : 8}
+            radius={(pin.tipo === "bache" ? (RADIO_BACHE[pin.subtipo] ?? 8) : 8) * (seleccionado ? 1.2 : escalaPunto(zoom))}
             pathOptions={{
               color: seleccionado ? "#111827" : SUBTIPOS_PELIGROSOS.has(pin.subtipo) ? "#dc2626" : "#1f2937",
-              weight: seleccionado ? 4 : 2,
+              weight: seleccionado ? 4 : zoom <= 13 && !SUBTIPOS_PELIGROSOS.has(pin.subtipo) ? 1 : 2,
               fillColor: arreglado ? COLOR_ARREGLADO : (INFO_PIN[pin.tipo]?.color ?? "#6b7280"),
               fillOpacity: arreglado ? 0.6 : 0.95,
             }}

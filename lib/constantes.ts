@@ -83,6 +83,26 @@ export const ETIQUETAS: Record<string, string> = {
   calle_baches: "Calle con baches",
 };
 
+/** "Bache grande", "Drenaje tapado", "Alumbrado: lámpara apagada o fundida"… */
+export function tituloReporte({ tipo, subtipo }: { tipo: TipoPin; subtipo: string }) {
+  const detalle = ETIQUETAS[subtipo] ?? subtipo;
+  if (tipo === "bache") return `Bache ${detalle.toLowerCase()}`;
+  if (tipo === "drenaje" || tipo === "baldio") return detalle;
+  return `${INFO_PIN[tipo]?.nombre ?? tipo}: ${detalle.toLowerCase()}`;
+}
+
+// A quién le toca atenderlo: guía aproximada para el tablero del equipo, no una asignación oficial.
+// Las calles cerradas no tienen una dependencia clara y no se cuentan aquí.
+export const DEPENDENCIAS: { clave: string; nombre: string; descripcion: string; tipos: TipoPin[] }[] = [
+  { clave: "oomapasc", nombre: "OOMAPASC", descripcion: "Agua potable y drenaje", tipos: ["drenaje"] },
+  {
+    clave: "servicios",
+    nombre: "Servicios Públicos / Imagen Urbana",
+    descripcion: "Baches, alumbrado, banquetas y baldíos",
+    tipos: ["bache", "calle_baches", "alumbrado", "banqueta", "baldio"],
+  },
+];
+
 export const COLOR_ESTADO: Record<EstadoAgua | "ninguno", string> = {
   sin_agua: "#dc2626", // rojo
   baja_presion: "#f97316", // naranja

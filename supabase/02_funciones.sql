@@ -167,11 +167,77 @@ as $$
   from (
     select * from reportes_pin
     where (estado = 'activo'    and ultima_actividad > now() - interval '60 days')
-       or (estado = 'arreglado' and arreglado_en     > now() - interval '7 days')
+       or (estado = 'arreglado' and arreglado_en     > now() - interval '90 days')
     order by creado_en desc
     limit 3000
   ) p
   left join zonas z on z.id = p.zona_id
+$$;
+
+-- Tablero de estadísticas del equipo (/estadisticas). PRIVADA: solo la llama el servidor
+-- con la clave service_role, después de verificar la contraseña del panel.
+--   Pendientes: activos con actividad en los últimos 60 días (los mismos del mapa).
+--   Resueltos:  3 vecinos confirmaron el arreglo en los últimos 90 días.
+create or replace function public.estadisticas_equipo()
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  with pend as (
+    select p.id, p.tipo, p.subtipo, p.zona_id, p.foto_oculta, p.foto_ruta, p.confirmaciones, p.creado_en,
+           extract(epoch from now() - p.creado_en) / 86400 as dias
+    from reportes_pin p
+    where p.estado = 'activo' and p.ultima_actividad > now() - interval '60 days'
+  ),
+  res as (
+    select p.tipo, extract(epoch from p.arreglado_en - p.creado_en) / 86400 as dias
+    from reportes_pin p
+    where p.estado = 'arreglado' and p.arreglado_en > now() - interval '90 days'
+  ),
+  tipos as (select unnest(array['bache', 'drenaje', 'alumbrado', 'banqueta', 'baldio', 'calle_cerrada', 'calle_baches']) as tipo)
+  select json_build_object(
+    'generado', now(),
+    'pendientes', (select count(*) from pend),
+    'criticos', (select count(*) from pend where dias > 30),
+    'resueltos_90d', (select count(*) from res),
+    'dias_promedio_resolucion', (select round(avg(dias)::numeric, 1) from res),
+    'dias_promedio_pendientes', (select round(avg(dias)::numeric, 1) from pend),
+    'agua_problemas_7d',
+      (select count(*) from reportes_agua where creado_en > now() - interval '7 days' and estado <> 'con_agua'),
+    'colonias_agua_afectadas', (select count(*) from _estado_mayoria(72) m where m.estado <> 'con_agua'),
+    'por_tipo', (
+      select json_agg(json_build_object(
+        'tipo', t.tipo,
+        'pendientes', (select count(*) from pend where pend.tipo = t.tipo),
+        'criticos', (select count(*) from pend where pend.tipo = t.tipo and pend.dias > 30),
+        'resueltos', (select count(*) from res where res.tipo = t.tipo),
+        'suma_dias_resolucion', (select coalesce(round(sum(res.dias)::numeric, 1), 0) from res where res.tipo = t.tipo)
+      ))
+      from tipos t
+    ),
+    'top_colonias', (
+      select coalesce(json_agg(c order by c.pendientes desc, c.criticos desc), '[]'::json)
+      from (
+        select z.nombre as colonia, count(*) as pendientes,
+               count(*) filter (where pend.dias > 30) as criticos,
+               floor(max(pend.dias))::int as dias_max
+        from pend join zonas z on z.id = pend.zona_id
+        group by z.nombre
+        order by count(*) desc, count(*) filter (where pend.dias > 30) desc
+        limit 10
+      ) c
+    ),
+    'olvidados', (
+      select coalesce(json_agg(o order by o.creado_en), '[]'::json)
+      from (
+        select pend.id, pend.tipo, pend.subtipo, z.nombre as colonia, pend.confirmaciones, pend.creado_en,
+               case when pend.foto_oculta then null else pend.foto_ruta end as foto
+        from pend left join zonas z on z.id = pend.zona_id
+        order by pend.creado_en
+        limit 10
+      ) o
+    )
+  )
 $$;
 
 -- Resumen para la barra inferior: reportes y colonias afectadas en las últimas p_horas horas

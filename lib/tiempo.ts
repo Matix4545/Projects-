@@ -9,7 +9,8 @@ export function haceCuanto(fechaIso: string | null | undefined): string {
   if (abs < 3600) return rtf.format(Math.round(segundos / 60), "minute");
   if (abs < 86400) return rtf.format(Math.round(segundos / 3600), "hour");
   if (abs < 86400 * 30) return rtf.format(Math.round(segundos / 86400), "day");
-  return rtf.format(Math.round(segundos / (86400 * 30)), "month");
+  // 45 días es "hace 1 mes", no "hace 2 meses"
+  return rtf.format(Math.trunc(segundos / (86400 * 30)), "month");
 }
 
 export function horaLocal(fechaIso: string | null | undefined): string {
