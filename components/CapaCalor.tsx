@@ -20,14 +20,15 @@ export function CapaCalor({ pins }: { pins: Pin[] }) {
     import("leaflet.heat").then(() => {
       if (cancelado) return;
       capa.current = L.heatLayer([], {
-        radius: 26,
-        blur: 18,
-        // Intensidad completa desde la vista de toda la ciudad (zoom 11). Con el valor anterior (16),
-        // a zoom 13 cada reporte pintaba con 1/8 de su peso y casi no se veía.
-        maxZoom: 11,
-        max: 1,
-        minOpacity: 0.3,
-        gradient: { 0.2: "#facc15", 0.5: "#f97316", 0.8: "#dc2626", 1: "#7f1d1d" },
+        radius: 20,
+        blur: 16,
+        // Intensidad completa desde zoom 13; al alejar se atenúa un poco (zoom 12: ½, zoom 11: ¼).
+        maxZoom: 13,
+        // Hacen falta ~2–3 reportes encimados para llegar al rojo oscuro: un reporte solo se ve
+        // amarillo/naranja y el rojo queda para donde de verdad se amontonan.
+        max: 2,
+        minOpacity: 0.35,
+        gradient: { 0.15: "#fde047", 0.4: "#f97316", 0.7: "#dc2626", 1: "#7f1d1d" },
       }).addTo(mapa);
       capa.current.setLatLngs(puntos(pinsRef.current));
     });
