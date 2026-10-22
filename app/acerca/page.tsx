@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { version } from "@/package.json";
 
 export const metadata: Metadata = {
   title: "Acerca de · Reporta Cajeme",
@@ -145,6 +146,7 @@ export default function Acerca() {
         </a>
         . Proyecto ciudadano sin fines de lucro.
       </p>
+      <p className="mt-2 text-xs text-gray-400">Versión {version.split(".").slice(0, 2).join(".")}</p>
     </main>
   );
 }
