@@ -1,0 +1,61 @@
+# Carga las secciones electorales del INE (solo las de Cajeme) en Supabase.
+# Son de uso interno del equipo: el público nunca las ve.
+# Se corre a mano: GitHub → pestaña "Actions" → "Importar secciones electorales" → "Run workflow".
+#   · "archivo": el Shapefile en .zip que subiste al repositorio (p. ej. data/secciones.zip),
+#     un GeoJSON/KML/KMZ, o un enlace PÚBLICO de ArcGIS con la capa de secciones.
+# Necesita los secretos NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (los mismos de "Importar colonias").
+name: Importar secciones electorales
+
+on:
+  workflow_dispatch:
+    inputs:
+      archivo:
+        description: "Archivo en el repositorio (p. ej. data/secciones.zip) o enlace de ArcGIS"
+        required: true
+      solo_revisar:
+        description: "Solo revisar: muestra qué secciones encontró SIN cambiar la base de datos"
+        type: boolean
+        required: false
+        default: false
+      municipio:
+        description: "Opcional: clave del municipio en el archivo (se detecta sola)"
+        required: false
+        default: ""
+      capa:
+        description: "Opcional: nombre o número de la capa, si el archivo o mapa tiene varias"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Importar secciones y subirlas a Supabase
+        # Las entradas van por variables de entorno (nunca dentro del comando) para evitar inyección
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ARCHIVO: ${{ inputs.archivo }}
+          SOLO_REVISAR: ${{ inputs.solo_revisar }}
+          MUNICIPIO: ${{ inputs.municipio }}
+          CAPA: ${{ inputs.capa }}
+        run: |
+          if [ "$SOLO_REVISAR" = "true" ]; then
+            unset NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY
+            npm run importar-secciones -- --sin-subir --archivo "$ARCHIVO" --municipio "$MUNICIPIO" --capa "$CAPA"
+          else
+            npm run importar-secciones -- --archivo "$ARCHIVO" --municipio "$MUNICIPIO" --capa "$CAPA"
+          fi

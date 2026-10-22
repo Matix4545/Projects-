@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BadgeDias } from "@/components/BadgeDias";
-import { Barras, Seccion, Tarjeta, Vacio, num } from "@/components/graficas";
+import { Barras, Seccion, Tabla, Tarjeta, Vacio, num } from "@/components/graficas";
 import { DEPENDENCIAS, INFO_PIN, tituloReporte, type TipoPin } from "@/lib/constantes";
 import type { Pin } from "@/lib/datos";
 import { sesionPanelValida } from "@/lib/panel";
@@ -38,6 +38,12 @@ export default async function PaginaEstadisticas() {
   const { data, error } = await supabaseServidor().rpc("estadisticas_equipo");
   if (error) console.error("estadisticas_equipo:", error.message);
   const e = (data as Estadisticas | null) ?? null;
+  // Secciones electorales con más reportes en 30 días (vacío si aún no se importan)
+  const { data: secciones } = await supabaseServidor()
+    .rpc("conteo_secciones", { p_dias: 30 })
+    .gt("total", 0)
+    .order("total", { ascending: false })
+    .limit(15);
 
   return (
     <main className="mx-auto max-w-4xl bg-white px-4 pb-16 pt-6 text-gray-900 sm:my-6 sm:rounded-2xl sm:px-8 sm:shadow">
@@ -57,7 +63,7 @@ export default async function PaginaEstadisticas() {
           No se pudieron calcular las estadísticas. ¿Ya corriste <code>02_funciones.sql</code> en Supabase?
         </p>
       ) : (
-        <Contenido e={e} />
+        <Contenido e={e} secciones={(secciones as FilaSeccion[] | null) ?? null} />
       )}
 
       <p className="mt-10 border-t border-gray-200 pt-4 text-xs text-gray-500">
@@ -68,7 +74,9 @@ export default async function PaginaEstadisticas() {
   );
 }
 
-function Contenido({ e }: { e: Estadisticas }) {
+type FilaSeccion = { seccion: number; distrito_local: number | null; total: number; puntos: number; agua: number };
+
+function Contenido({ e, secciones }: { e: Estadisticas; secciones: FilaSeccion[] | null }) {
   const pct = porcentaje(e.resueltos_90d, e.resueltos_90d + e.pendientes);
 
   const dependencias = DEPENDENCIAS.map((d) => {
@@ -172,6 +180,27 @@ function Contenido({ e }: { e: Estadisticas }) {
           />
         </Seccion>
       </div>
+
+      <Seccion
+        titulo="🗳️ Secciones electorales con más reportes"
+        nota="Últimos 30 días. El agua se asigna por el centro de la colonia (aproximado)."
+      >
+        {!secciones || secciones.length === 0 ? (
+          <Vacio texto="Sin datos: aún no se importan las secciones o no hay reportes en ellas." />
+        ) : (
+          <Tabla
+            encabezados={["Sección", "Distrito local", "Total", "Con ubicación", "Agua"]}
+            numericas={[1, 2, 3, 4]}
+            filas={secciones.map((s) => [
+              <strong key={s.seccion}>{s.seccion}</strong>,
+              s.distrito_local ?? "—",
+              num(s.total),
+              num(s.puntos),
+              num(s.agua),
+            ])}
+          />
+        )}
+      </Seccion>
 
       <Seccion titulo="Los más olvidados" nota="Reportes pendientes más antiguos. Toca uno para verlo en el mapa.">
         {e.olvidados.length === 0 ? (

@@ -17,6 +17,17 @@ export async function avisarSiHayHito(db: SupabaseClient) {
     if (!hito) return;
 
     const { data: resumen } = await db.rpc("resumen_24h");
+    // Las 3 secciones electorales con más reportes en 30 días (si ya se importaron)
+    const { data: top } = await db
+      .rpc("conteo_secciones", { p_dias: 30 })
+      .gt("total", 0)
+      .order("total", { ascending: false })
+      .limit(3);
+    const lineaSecciones = top?.length
+      ? `\nSecciones con más reportes (30 días): ${(top as { seccion: number; total: number }[])
+          .map((s) => `${s.seccion} (${s.total})`)
+          .join(" · ")}`
+      : "";
     const sitio = process.env.NEXT_PUBLIC_SITE_URL
       || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined);
 
@@ -26,9 +37,10 @@ export async function avisarSiHayHito(db: SupabaseClient) {
       body: JSON.stringify({
         topic: tema,
         title: `Reporta Cajeme: ¡${Number(hito).toLocaleString("es-MX")} reportes!`,
-        message: resumen
-          ? `Últimas 24 h: ${resumen.reportes} reportes · ${resumen.colonias_afectadas} colonias afectadas`
-          : "Se alcanzó un nuevo hito de reportes.",
+        message:
+          (resumen
+            ? `Últimas 24 h: ${resumen.reportes} reportes · ${resumen.colonias_afectadas} colonias afectadas`
+            : "Se alcanzó un nuevo hito de reportes.") + lineaSecciones,
         tags: ["tada"],
         ...(sitio ? { click: sitio } : {}),
       }),

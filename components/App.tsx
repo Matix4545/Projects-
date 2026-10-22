@@ -23,6 +23,7 @@ import {
   type ZonasGeoJSON,
 } from "@/lib/datos";
 import { BarraResumen } from "./BarraResumen";
+import { topSecciones, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
 import { FILTROS_INICIALES, Filtros, filtrarPins, type FiltrosMapa } from "./Filtros";
 import { FlujoReporte, type EstadoTramo, type OrigenUbicacion } from "./FlujoReporte";
 import { Leyenda } from "./Leyenda";
@@ -57,6 +58,11 @@ export function App() {
   const [equipo, setEquipo] = useState(false);
   // Enlace "/?pin=123" (desde estadísticas): se abre cuando llegan los reportes
   const pinEnlace = useRef<number | null>(null);
+  // Secciones electorales (solo equipo)
+  const [verSecciones, setVerSecciones] = useState(false);
+  const [secciones, setSecciones] = useState<SeccionesGeoJSON | null>(null);
+  const [errorSecciones, setErrorSecciones] = useState<string | null>(null);
+  const [infoSeccion, setInfoSeccion] = useState<PropsSeccion | null | "fuera">(null);
   const [vista, setVista] = useState<Vista>({ tipo: "nada" });
   const [aviso, setAviso] = useState<string | null>(null);
 
@@ -139,6 +145,27 @@ export function App() {
   }, [pins]);
 
   // El público siempre ve la vista normal (pendientes + arreglados de la última semana)
+  // Secciones: se recargan al cambiar el periodo y con cada actualización del mapa
+  const diasSecciones = filtros.dias || 3650;
+  useEffect(() => {
+    if (!equipo || !verSecciones) return;
+    let vigente = true;
+    fetch(`/api/equipo/secciones?dias=${diasSecciones}`, { cache: "no-store" })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!vigente) return;
+        if (r.ok && d.type === "FeatureCollection") {
+          setSecciones(d);
+          setErrorSecciones(d.features.length ? null : "Aún no hay secciones cargadas. Corre el importador de secciones.");
+        } else setErrorSecciones(d.error ?? "No se pudieron cargar las secciones.");
+      })
+      .catch(() => vigente && setErrorSecciones("Sin conexión."));
+    return () => {
+      vigente = false;
+    };
+  }, [equipo, verSecciones, diasSecciones, version]);
+  const top5 = useMemo(() => (secciones ? topSecciones(secciones, 5) : []), [secciones]);
+
   const pinsFiltrados = useMemo(() => filtrarPins(pins, equipo ? filtros : FILTROS_INICIALES), [pins, filtros, equipo]);
   const totalFiltrados = useMemo(() => pinsFiltrados.filter((p) => capas[p.tipo]).length, [pinsFiltrados, capas]);
 
@@ -220,6 +247,8 @@ export function App() {
           capas={capas}
           vistaCalor={equipo && filtros.vista === "calor" && !reportando}
           puntosFinos={equipo}
+          secciones={equipo && verSecciones && !reportando ? secciones : null}
+          onSeccion={(s) => setInfoSeccion(s ?? "fuera")}
           zonaSeleccionada={vista.tipo === "zona" ? vista.id : null}
           pinSeleccionado={vista.tipo === "pin" ? vista.pin.id : null}
           eligiendoUbicacion={reportando}
@@ -296,7 +325,40 @@ export function App() {
       {vista.tipo === "nada" && (
         <>
           <Leyenda horas={horas} />
-          {equipo && <Filtros filtros={filtros} onCambio={setFiltros} total={totalFiltrados} />}
+          {equipo && (
+            <Filtros
+              filtros={filtros}
+              onCambio={setFiltros}
+              total={totalFiltrados}
+              secciones={{
+                activas: verSecciones,
+                onCambio: (v) => {
+                  setVerSecciones(v);
+                  setInfoSeccion(null);
+                },
+                top: top5,
+                error: errorSecciones,
+              }}
+            />
+          )}
+          {equipo && verSecciones && infoSeccion && (
+            <div className="fixed inset-x-3 top-32 z-[1002] mx-auto flex max-w-sm items-start justify-between gap-2 rounded-xl bg-violet-900 px-3 py-2 text-sm text-white shadow-xl">
+              {infoSeccion === "fuera" ? (
+                <span>Ese punto no está en ninguna sección de Cajeme.</span>
+              ) : (
+                <span>
+                  🗳️ <strong>Sección {infoSeccion.seccion}</strong>
+                  {infoSeccion.distrito_local ? ` · Distrito local ${infoSeccion.distrito_local}` : ""}
+                  <br />
+                  {infoSeccion.total.toLocaleString("es-MX")} reportes {filtros.dias ? `en ${filtros.dias} días` : "en total"} (
+                  {infoSeccion.puntos} con ubicación · {infoSeccion.agua} de agua)
+                </span>
+              )}
+              <button onClick={() => setInfoSeccion(null)} aria-label="Cerrar" className="px-1 text-lg leading-none text-violet-200">
+                ×
+              </button>
+            </div>
+          )}
           <button
             onClick={abrirReporte}
             className="fixed bottom-12 left-1/2 z-[1000] -translate-x-1/2 whitespace-nowrap rounded-full bg-red-600 px-10 py-4 text-xl font-extrabold text-white shadow-xl active:scale-95"

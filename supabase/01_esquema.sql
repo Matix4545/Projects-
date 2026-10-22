@@ -175,3 +175,14 @@ create table if not exists public.notas_pin (
   creado_en timestamptz not null default now()
 );
 create index if not exists notas_pin_pin_idx on public.notas_pin (pin_id, creado_en);
+
+-- Secciones electorales del INE (solo Cajeme). Uso interno del equipo: nunca son públicas.
+-- Se cargan con scripts/importar-secciones.mjs (o el workflow "Importar secciones electorales").
+create table if not exists public.secciones (
+  id               bigint generated always as identity primary key,
+  seccion          int    not null unique,
+  distrito_local   int,
+  distrito_federal int,
+  geom             extensions.geometry(MultiPolygon, 4326) not null
+);
+create index if not exists secciones_geom_idx on public.secciones using gist (geom);

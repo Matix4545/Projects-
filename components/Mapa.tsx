@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { CENTRO_OBREGON, COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, SUBTIPOS_PELIGROSOS, type EstadoAgua, type TipoPin } from "@/lib/constantes";
 import type { Pin, ZonasGeoJSON } from "@/lib/datos";
+import { seccionEn, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
 import { CapaCalor } from "./CapaCalor";
 
 export type Capas = Record<"agua" | TipoPin, boolean>;
@@ -19,6 +20,9 @@ type Props = {
   vistaCalor: boolean;
   /** Puntos más chicos al alejar el mapa (por ahora solo en modo equipo) */
   puntosFinos: boolean;
+  /** Secciones electorales (solo equipo); null = capa apagada */
+  secciones: SeccionesGeoJSON | null;
+  onSeccion: (s: PropsSeccion | null) => void;
   zonaSeleccionada: number | null;
   pinSeleccionado: number | null;
   /** Modo "elige un punto": los toques en el mapa mueven el marcador del reporte */
@@ -115,9 +119,35 @@ export default function Mapa(props: Props) {
       L.DomEvent.stopPropagation(e);
       const p = refProps.current;
       if (p.eligiendoUbicacion) p.onElegirPunto(e.latlng.lat, e.latlng.lng);
+      // Con las secciones prendidas, tocar el mapa dice en qué sección cae (en vez de abrir la colonia)
+      else if (p.secciones) p.onSeccion(seccionEn(e.latlng.lat, e.latlng.lng, p.secciones));
       else p.onZona(Number(feature.properties?.id));
     });
   }, []);
+
+  // Más reportes = morado más intenso; sin reportes, solo el contorno
+  const maxSeccion = useMemo(
+    () => Math.max(1, ...(props.secciones?.features.map((f) => f.properties.total) ?? [0])),
+    [props.secciones],
+  );
+  const seccionesVersion = useMemo(
+    () => `${props.secciones?.features.length ?? 0}-${props.secciones?.features.reduce((s, f) => s + f.properties.total, 0) ?? 0}`,
+    [props.secciones],
+  );
+  const estiloSeccion = useCallback(
+    (f?: GeoJSON.Feature): PathOptions => {
+      const total = Number(f?.properties?.total ?? 0);
+      return {
+        color: "#4c1d95",
+        weight: 1.2,
+        opacity: 0.8,
+        dashArray: "4 3",
+        fillColor: "#6d28d9",
+        fillOpacity: total > 0 ? 0.08 + 0.5 * (total / maxSeccion) : 0,
+      };
+    },
+    [maxSeccion],
+  );
 
   const pinsVisibles = useMemo(() => pins.filter((p) => capas[p.tipo] ?? true), [pins, capas]);
   const calles = useMemo(
@@ -155,11 +185,27 @@ export default function Mapa(props: Props) {
         onClick={(e) => {
           const p = refProps.current;
           if (p.eligiendoUbicacion) p.onElegirPunto(e.latlng.lat, e.latlng.lng);
+          else if (p.secciones) p.onSeccion(seccionEn(e.latlng.lat, e.latlng.lng, p.secciones));
           else p.onFondo();
         }}
       />
 
       {capas.agua && zonas && <GeoJSON data={zonas} style={estilo} onEachFeature={alClickZona} />}
+
+      {/* Secciones electorales: no reciben toques (así no tapan los puntos); la sección se busca por coordenadas */}
+      {props.secciones && (
+        <GeoJSON
+          key={`secciones-${seccionesVersion}-${zoomReal >= 14}`}
+          data={props.secciones}
+          interactive={false}
+          style={estiloSeccion}
+          onEachFeature={(f, capa) => {
+            if (zoomReal >= 14) {
+              capa.bindTooltip(String(f.properties.seccion), { permanent: true, direction: "center", className: "etiqueta-seccion" });
+            }
+          }}
+        />
+      )}
 
       {props.vistaCalor && <CapaCalor pins={pinsVisibles} />}
 

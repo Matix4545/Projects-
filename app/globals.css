@@ -72,3 +72,17 @@ body {
   font-size: 13px;
   padding: 2px 8px;
 }
+
+/* Número de sección electoral (mapa del equipo, al acercar) */
+.leaflet-tooltip.etiqueta-seccion {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #4c1d95;
+  color: #4c1d95;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 0 4px;
+  box-shadow: none;
+}
+.leaflet-tooltip.etiqueta-seccion::before {
+  display: none;
+}

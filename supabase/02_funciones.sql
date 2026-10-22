@@ -252,6 +252,95 @@ as $$
   )
 $$;
 
+-- ---------------------------------------------------------------------
+-- SECCIONES ELECTORALES (privadas: solo service_role, para el equipo)
+-- ---------------------------------------------------------------------
+
+-- Reportes por sección en los últimos p_dias días.
+--   puntos: reportes con ubicación exacta (baches, drenaje, alumbrado, calles…), de cualquier estado.
+--   agua:   reportes de falta de agua, baja presión o agua sucia. Como el agua solo guarda la
+--           colonia (no el punto), se asigna a la sección donde cae el centro de la colonia: es aproximado.
+create or replace function public.conteo_secciones(p_dias int default 30)
+returns table (seccion int, distrito_local int, distrito_federal int, total bigint, puntos bigint, agua bigint)
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  with desde as (select now() - make_interval(days => least(greatest(coalesce(p_dias, 30), 1), 3650)) as t),
+  pin as (
+    select s.id, count(*) as n
+    from reportes_pin r
+    join secciones s on st_intersects(s.geom, r.ubicacion)
+    where r.creado_en > (select t from desde)
+    group by s.id
+  ),
+  zona_seccion as (
+    select z.id as zona_id, s.id as seccion_id
+    from zonas z
+    join secciones s on st_intersects(s.geom, st_pointonsurface(z.geom))
+  ),
+  agua as (
+    select zs.seccion_id as id, count(*) as n
+    from reportes_agua r
+    join zona_seccion zs on zs.zona_id = r.zona_id
+    where r.creado_en > (select t from desde) and r.estado <> 'con_agua'
+    group by zs.seccion_id
+  )
+  select s.seccion, s.distrito_local, s.distrito_federal,
+         coalesce(pin.n, 0) + coalesce(agua.n, 0), coalesce(pin.n, 0), coalesce(agua.n, 0)
+  from secciones s
+  left join pin  on pin.id  = s.id
+  left join agua on agua.id = s.id
+$$;
+
+-- Secciones como GeoJSON con su conteo, para la capa del mapa del equipo
+create or replace function public.secciones_mapa(p_dias int default 30)
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  select json_build_object(
+    'type', 'FeatureCollection',
+    'features', coalesce(json_agg(json_build_object(
+      'type', 'Feature',
+      'properties', json_build_object(
+        'seccion', s.seccion, 'distrito_local', s.distrito_local, 'distrito_federal', s.distrito_federal,
+        'total', c.total, 'puntos', c.puntos, 'agua', c.agua),
+      'geometry', st_asgeojson(st_simplifypreservetopology(s.geom, 0.00005), 5)::json
+    )), '[]'::json)
+  )
+  from secciones s
+  join conteo_secciones(p_dias) c on c.seccion = s.seccion
+$$;
+
+-- Reemplaza todas las secciones (se manda en lotes; el primer lote borra las anteriores)
+create or replace function public.importar_secciones(p_secciones jsonb, p_borrar_antes boolean default false)
+returns int
+language plpgsql volatile security definer
+set search_path = public, extensions
+as $$
+declare
+  v_s    jsonb;
+  v_geom geometry;
+  v_n    int := 0;
+begin
+  if p_borrar_antes then
+    delete from secciones where id is not null;
+  end if;
+  for v_s in select * from jsonb_array_elements(p_secciones) loop
+    v_geom := st_multi(st_collectionextract(st_makevalid(
+                st_setsrid(st_geomfromgeojson(v_s->>'geometria'), 4326)), 3));
+    continue when v_geom is null or st_isempty(v_geom);
+    insert into secciones (seccion, distrito_local, distrito_federal, geom)
+    values ((v_s->>'seccion')::int, (v_s->>'distrito_local')::int, (v_s->>'distrito_federal')::int, v_geom)
+    on conflict (seccion) do update
+      set distrito_local = excluded.distrito_local, distrito_federal = excluded.distrito_federal,
+          geom = st_multi(st_union(secciones.geom, excluded.geom));
+    v_n := v_n + 1;
+  end loop;
+  return v_n;
+end;
+$$;
+
 -- Resumen para la barra inferior: reportes y colonias afectadas en las últimas p_horas horas
 create or replace function public.resumen(p_horas int default 168)
 returns json

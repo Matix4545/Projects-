@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 import type { Pin } from "@/lib/datos";
+import type { PropsSeccion } from "@/lib/secciones";
+
+/** Capa de secciones electorales dentro del panel de filtros */
+export type ControlSecciones = {
+  activas: boolean;
+  onCambio: (activas: boolean) => void;
+  top: PropsSeccion[];
+  error: string | null;
+};
 
 export type FiltrosMapa = {
   vista: "pines" | "calor";
@@ -73,7 +82,17 @@ function Segmentos<T extends string | number>({
 }
 
 /** Botón "Filtros" del mapa: puntos o calor, estado y antigüedad de los reportes. */
-export function Filtros({ filtros, onCambio, total }: { filtros: FiltrosMapa; onCambio: (f: FiltrosMapa) => void; total: number }) {
+export function Filtros({
+  filtros,
+  onCambio,
+  total,
+  secciones,
+}: {
+  filtros: FiltrosMapa;
+  onCambio: (f: FiltrosMapa) => void;
+  total: number;
+  secciones: ControlSecciones;
+}) {
   const [abierto, setAbierto] = useState(false);
   const activos = (filtros.vista !== "pines" ? 1 : 0) + (filtros.estado !== "normal" ? 1 : 0) + (filtros.dias ? 1 : 0);
   const cambiar = (parcial: Partial<FiltrosMapa>) => onCambio({ ...filtros, ...parcial });
@@ -99,6 +118,42 @@ export function Filtros({ filtros, onCambio, total }: { filtros: FiltrosMapa; on
           />
           <Segmentos etiqueta="Estado" opciones={OPCIONES_ESTADO} valor={filtros.estado} onCambio={(estado) => cambiar({ estado })} />
           <Segmentos etiqueta="Reportados en los últimos" opciones={OPCIONES_DIAS} valor={filtros.dias} onCambio={(dias) => cambiar({ dias })} />
+          <label className="flex items-center justify-between rounded-xl bg-gray-100 px-3 py-2 font-semibold">
+            🗳️ Secciones electorales
+            <input
+              type="checkbox"
+              checked={secciones.activas}
+              onChange={(e) => secciones.onCambio(e.target.checked)}
+              className="h-4 w-4 accent-violet-700"
+            />
+          </label>
+          {secciones.activas && (
+            <div className="text-xs text-gray-600">
+              {secciones.error ? (
+                <p className="text-red-700">{secciones.error}</p>
+              ) : secciones.top.length === 0 ? (
+                <p>Sin reportes en secciones en este periodo.</p>
+              ) : (
+                <>
+                  <p className="mb-1 font-semibold text-gray-500">
+                    Más reportes{filtros.dias ? ` (últimos ${filtros.dias} días)` : " (siempre)"}:
+                  </p>
+                  <ol className="space-y-0.5">
+                    {secciones.top.map((s, i) => (
+                      <li key={s.seccion} className="flex justify-between tabular-nums">
+                        <span>
+                          {i + 1}. Sección <strong>{s.seccion}</strong>
+                          {s.distrito_local ? <span className="text-gray-400"> · DL {s.distrito_local}</span> : null}
+                        </span>
+                        <strong>{s.total.toLocaleString("es-MX")}</strong>
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="mt-1 text-gray-400">Toca el mapa para ver la sección de cualquier punto.</p>
+                </>
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-between pt-0.5 text-xs text-gray-500">
             <span>
               {total.toLocaleString("es-MX")} {total === 1 ? "reporte" : "reportes"}

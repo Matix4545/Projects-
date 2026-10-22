@@ -25,7 +25,7 @@ const CAMPOS_NOMBRE = [
 const LIMITES = { sur: 27.3, norte: 27.65, oeste: -110.15, este: -109.75 };
 
 /** Abre el archivo y devuelve un arreglo de "features" GeoJSON (sin procesar). */
-async function abrir(ruta) {
+export async function abrir(ruta) {
   const ext = extname(ruta).toLowerCase();
   const datos = readFileSync(ruta);
   if (ext === ".geojson" || ext === ".json") return aFeatures(JSON.parse(datos.toString("utf8")));
@@ -75,7 +75,7 @@ function aFeatures(gj) {
 }
 
 /** Solo polígonos (también saca los polígonos de un GeometryCollection). */
-function poligonos(geom) {
+export function poligonos(geom) {
   if (!geom) return [];
   if (geom.type === "Polygon") return [geom.coordinates];
   if (geom.type === "MultiPolygon") return geom.coordinates;
@@ -84,9 +84,9 @@ function poligonos(geom) {
 }
 
 const round6 = (n) => Math.round(n * 1e6) / 1e6;
-const redondear = (c) => (typeof c[0] === "number" ? [round6(c[0]), round6(c[1])] : c.map(redondear));
+export const redondear = (c) => (typeof c[0] === "number" ? [round6(c[0]), round6(c[1])] : c.map(redondear));
 
-function centro(coords) {
+export function centro(coords) {
   const anillo = coords[0][0];
   const [x, y] = anillo.reduce(([a, b], [px, py]) => [a + px, b + py], [0, 0]);
   return [x / anillo.length, y / anillo.length];
