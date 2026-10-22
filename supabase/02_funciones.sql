@@ -28,11 +28,23 @@ returns table (zona_id bigint, estado public.estado_agua, total bigint)
 language sql stable security definer
 set search_path = public, extensions
 as $$
-  with conteos as (
-    select r.zona_id, r.estado, count(*) as n
+  -- Estado de cada colonia: el más reportado en el periodo (en empate, el más grave).
+  -- Si alguien reportó "con agua", los reportes de problema ANTERIORES dejan de contar:
+  -- la colonia se pone verde hasta que lleguen reportes de problema nuevos.
+  with ventana as (
+    select r.zona_id, r.estado, r.creado_en
     from reportes_agua r
-    where r.creado_en > now() - make_interval(hours => least(greatest(coalesce(p_horas, 72), 1), 720))
-    group by r.zona_id, r.estado
+    where r.creado_en > now() - make_interval(hours => least(greatest(coalesce(p_horas, 168), 1), 720))
+  ),
+  resuelto as (
+    select v.zona_id, max(v.creado_en) as desde from ventana v where v.estado = 'con_agua' group by v.zona_id
+  ),
+  conteos as (
+    select v.zona_id, v.estado, count(*) as n
+    from ventana v
+    left join resuelto u on u.zona_id = v.zona_id
+    where u.desde is null or v.creado_en >= u.desde
+    group by v.zona_id, v.estado
   ),
   ordenados as (
     select c.zona_id, c.estado,
@@ -75,7 +87,7 @@ $$;
 
 -- Color de cada zona según la mayoría de reportes de agua en las últimas p_horas horas
 drop function if exists public.estado_zonas();
-create or replace function public.estado_zonas(p_horas int default 72)
+create or replace function public.estado_zonas(p_horas int default 168)
 returns json
 language sql stable security definer
 set search_path = public, extensions
@@ -87,13 +99,13 @@ $$;
 -- Detalle de una zona: estado y conteos del periodo elegido, conteos de 7 días,
 -- último reporte y comentarios. (conteo_24h y detalles_sucia_24h se conservan por compatibilidad.)
 drop function if exists public.detalle_zona(bigint);
-create or replace function public.detalle_zona(p_id bigint, p_horas int default 72)
+create or replace function public.detalle_zona(p_id bigint, p_horas int default 168)
 returns json
 language sql stable security definer
 set search_path = public, extensions
 as $$
-  with v as (select make_interval(hours => least(greatest(coalesce(p_horas, 72), 1), 720)) as ventana,
-                    least(greatest(coalesce(p_horas, 72), 1), 720) as horas)
+  with v as (select make_interval(hours => least(greatest(coalesce(p_horas, 168), 1), 720)) as ventana,
+                    least(greatest(coalesce(p_horas, 168), 1), 720) as horas)
   select json_build_object(
     'id', z.id,
     'nombre', z.nombre,
@@ -204,7 +216,7 @@ as $$
     'dias_promedio_pendientes', (select round(avg(dias)::numeric, 1) from pend),
     'agua_problemas_7d',
       (select count(*) from reportes_agua where creado_en > now() - interval '7 days' and estado <> 'con_agua'),
-    'colonias_agua_afectadas', (select count(*) from _estado_mayoria(72) m where m.estado <> 'con_agua'),
+    'colonias_agua_afectadas', (select count(*) from _estado_mayoria(168) m where m.estado <> 'con_agua'),
     'por_tipo', (
       select json_agg(json_build_object(
         'tipo', t.tipo,
@@ -241,12 +253,12 @@ as $$
 $$;
 
 -- Resumen para la barra inferior: reportes y colonias afectadas en las últimas p_horas horas
-create or replace function public.resumen(p_horas int default 72)
+create or replace function public.resumen(p_horas int default 168)
 returns json
 language sql stable security definer
 set search_path = public, extensions
 as $$
-  with v as (select least(greatest(coalesce(p_horas, 72), 1), 720) as horas)
+  with v as (select least(greatest(coalesce(p_horas, 168), 1), 720) as horas)
   select json_build_object(
     'horas', v.horas,
     'reportes',

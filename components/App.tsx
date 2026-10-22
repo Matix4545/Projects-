@@ -47,7 +47,7 @@ export function App() {
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [errorCarga, setErrorCarga] = useState(false);
   const [version, setVersion] = useState(0);
-  // Periodo para pintar las colonias (24 h, 72 h o 7 días); se recuerda en este navegador
+  // Periodo para pintar las colonias (7 días por defecto, o 24 h / 72 h); se recuerda en este navegador
   const [horas, setHoras] = useState<HorasPeriodo>(PERIODO_PREDETERMINADO);
   const horasRef = useRef<HorasPeriodo>(PERIODO_PREDETERMINADO);
 

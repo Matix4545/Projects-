@@ -52,7 +52,7 @@ export function PanelZona({
           <div className="flex items-center gap-3">
             <span className="h-5 w-5 rounded-full" style={{ background: color }} />
             <div>
-              <div className="font-semibold">{actual.estado ? `Mayoría: ${ETIQUETAS[actual.estado]}` : `Sin reportes en ${textoPeriodo(horasDatos)}`}</div>
+              <div className="font-semibold">{actual.estado ? `Estado: ${ETIQUETAS[actual.estado]}` : `Sin reportes en ${textoPeriodo(horasDatos)}`}</div>
               <div className="text-sm text-gray-500">
                 Último reporte: {actual.ultimo_reporte ? `${haceCuanto(actual.ultimo_reporte)} (${horaLocal(actual.ultimo_reporte)})` : "nunca"}
               </div>

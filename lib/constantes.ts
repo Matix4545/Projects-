@@ -133,7 +133,7 @@ export const PERIODOS = [
   { horas: 168, corto: "7 días", largo: "los últimos 7 días" },
 ] as const;
 export type HorasPeriodo = (typeof PERIODOS)[number]["horas"];
-export const PERIODO_PREDETERMINADO: HorasPeriodo = 72;
+export const PERIODO_PREDETERMINADO: HorasPeriodo = 168;
 export const textoPeriodo = (horas: number) => PERIODOS.find((p) => p.horas === horas)?.largo ?? `las últimas ${horas} h`;
 
 // Reglas antispam. Por teléfono (cookie) el límite es estricto; por IP es amplio porque

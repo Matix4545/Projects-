@@ -4,10 +4,10 @@ import { useState } from "react";
 import { COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, TIPOS_PIN, esLinea, textoPeriodo } from "@/lib/constantes";
 
 const FILAS: [string, string, "zona" | "pin" | "linea"][] = [
-  [COLOR_ESTADO.sin_agua, "Mayoría sin agua", "zona"],
-  [COLOR_ESTADO.baja_presion, "Mayoría baja presión", "zona"],
-  [COLOR_ESTADO.sucia, "Mayoría agua sucia", "zona"],
-  [COLOR_ESTADO.con_agua, "Mayoría con agua", "zona"],
+  [COLOR_ESTADO.sin_agua, "Sin agua", "zona"],
+  [COLOR_ESTADO.baja_presion, "Baja presión", "zona"],
+  [COLOR_ESTADO.sucia, "Agua sucia", "zona"],
+  [COLOR_ESTADO.con_agua, "Con agua", "zona"],
   [COLOR_ESTADO.ninguno, "Sin reportes en el periodo", "zona"],
   ...TIPOS_PIN.map((t): [string, string, "pin" | "linea"] => [
     INFO_PIN[t].color,
@@ -47,7 +47,9 @@ export function Leyenda({ horas }: { horas: number }) {
                 {forma === "zona" && color === COLOR_ESTADO.ninguno ? `Sin reportes en ${textoPeriodo(horas)}` : texto}
               </li>
             ))}
-            <li className="pt-1 text-xs text-gray-500">Colonias: reportes de agua de {textoPeriodo(horas)}.</li>
+            <li className="pt-1 text-xs text-gray-500">
+              Colonias: lo más reportado en {textoPeriodo(horas)}. Un reporte de “con agua” la pone en verde.
+            </li>
             <li className="text-xs text-gray-500">Borde rojo: peligro (bache peligroso, alcantarilla sin tapa, cables expuestos o quema).</li>
           </ul>
         </div>

@@ -136,7 +136,7 @@ function Contenido({ e }: { e: Estadisticas }) {
               {d.clave === "oomapasc" && (
                 <p className="mt-3 rounded-lg bg-blue-50 p-2 text-xs text-blue-900">
                   💧 Agua: {num(e.agua_problemas_7d)} reportes de falta de agua, baja presión o agua sucia en 7 días ·{" "}
-                  {num(e.colonias_agua_afectadas)} colonias afectadas ahora (72 h).
+                  {num(e.colonias_agua_afectadas)} colonias afectadas ahora (7 días).
                 </p>
               )}
             </article>
