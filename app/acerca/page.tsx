@@ -20,7 +20,7 @@ export default function Acerca() {
       <p className="mt-3">
         Reporta Cajeme es un mapa ciudadano donde los vecinos de Ciudad Obregón y el municipio de Cajeme, Sonora,
         comparten lo que viven con los servicios públicos: falta de agua, baja presión, agua sucia, baches,
-        problemas de drenaje, alumbrado público, banquetas en mal estado y baldíos con basura.
+        problemas de drenaje, alumbrado público, banquetas en mal estado, baldíos con basura y calles cerradas o llenas de baches.
       </p>
 
       <div className="mt-4 rounded-xl border-l-4 border-amber-500 bg-amber-50 p-4">
@@ -53,6 +53,11 @@ export default function Acerca() {
           <strong>Baches, drenaje, alumbrado, banquetas y baldíos:</strong> se marcan con un punto en el lugar exacto. Otros vecinos pueden confirmar
           con “+1”. Cuando 3 vecinos indican que ya lo arreglaron, el punto se muestra en gris durante 7 días y luego
           desaparece. Los reportes sin actividad en 60 días se archivan.
+        </li>
+        <li>
+          <strong>Calles cerradas y calles con baches:</strong> se marcan tocando dónde empieza y dónde termina el tramo;
+          la línea sigue la calle usando las rutas de OpenStreetMap. Rojo: calle cerrada. Amarillo: más de la mitad de
+          la calle con baches. Se quitan cuando 3 vecinos confirman que ya la abrieron o la arreglaron.
         </li>
         <li>
           Para evitar abusos: cada dispositivo puede reportar el agua de una misma colonia una vez cada 6 horas, y cada

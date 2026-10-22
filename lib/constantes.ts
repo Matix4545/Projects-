@@ -8,7 +8,7 @@ export type DetalleSucia = (typeof DETALLES_SUCIA)[number];
 
 // Reportes con pin (ubicación exacta). Para agregar un tipo nuevo hay que
 // tocarlo aquí y en el "check" de reportes_pin (supabase/01_esquema.sql).
-export const TIPOS_PIN = ["bache", "drenaje", "alumbrado", "banqueta", "baldio"] as const;
+export const TIPOS_PIN = ["bache", "drenaje", "alumbrado", "banqueta", "baldio", "calle_cerrada", "calle_baches"] as const;
 export type TipoPin = (typeof TIPOS_PIN)[number];
 
 export const SUBTIPOS: Record<TipoPin, readonly string[]> = {
@@ -17,7 +17,16 @@ export const SUBTIPOS: Record<TipoPin, readonly string[]> = {
   alumbrado: ["apagada", "parpadea", "poste_danado", "cables_expuestos"],
   banqueta: ["quebrada", "incompleta", "obstruida"],
   baldio: ["basura", "maleza", "quema", "escombro"],
+  calle_cerrada: ["obra", "inundada", "accidente", "otro_cierre"],
+  calle_baches: ["mitad", "toda"],
 };
+
+/** Tipos que se marcan como un tramo de calle (línea) en lugar de un punto */
+export const TIPOS_LINEA: ReadonlySet<TipoPin> = new Set(["calle_cerrada", "calle_baches"]);
+export const esLinea = (tipo: TipoPin) => TIPOS_LINEA.has(tipo);
+/** Largo permitido de un tramo de calle, en metros */
+export const LARGO_MIN_TRAMO = 20;
+export const LARGO_MAX_TRAMO = 3000;
 
 /** Subtipos que se marcan con borde rojo en el mapa */
 export const SUBTIPOS_PELIGROSOS = new Set(["peligroso", "sin_tapa", "cables_expuestos", "quema"]);
@@ -28,6 +37,8 @@ export const INFO_PIN: Record<TipoPin, { nombre: string; plural: string; emoji: 
   alumbrado: { nombre: "Alumbrado", plural: "Alumbrado", emoji: "💡", color: "#0ea5e9", pregunta: "¿Qué pasa con la luz?" },
   banqueta: { nombre: "Banqueta", plural: "Banquetas", emoji: "🚶", color: "#ec4899", pregunta: "¿Cómo está la banqueta?" },
   baldio: { nombre: "Baldío", plural: "Baldíos", emoji: "🗑️", color: "#84cc16", pregunta: "¿Qué hay en el baldío?" },
+  calle_cerrada: { nombre: "Calle cerrada", plural: "Calles cerradas", emoji: "⛔", color: "#dc2626", pregunta: "¿Por qué está cerrada?" },
+  calle_baches: { nombre: "Calle con baches", plural: "Calles con baches", emoji: "🛣️", color: "#facc15", pregunta: "¿Cuánto de la calle tiene baches?" },
 };
 
 export const ETIQUETAS: Record<string, string> = {
@@ -62,6 +73,14 @@ export const ETIQUETAS: Record<string, string> = {
   alumbrado: "Alumbrado",
   banqueta: "Banqueta",
   baldio: "Baldío",
+  obra: "Obra o reparación",
+  inundada: "Inundada o fuga de agua",
+  accidente: "Accidente o algo atravesado",
+  otro_cierre: "Otro motivo",
+  mitad: "Más de la mitad de la calle",
+  toda: "Toda la calle",
+  calle_cerrada: "Calle cerrada",
+  calle_baches: "Calle con baches",
 };
 
 export const COLOR_ESTADO: Record<EstadoAgua | "ninguno", string> = {

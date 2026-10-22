@@ -3,7 +3,7 @@
 import "leaflet/dist/leaflet.css";
 import L, { type LeafletMouseEvent, type PathOptions } from "leaflet";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { CircleMarker, GeoJSON, MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { CENTRO_OBREGON, COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, SUBTIPOS_PELIGROSOS, type EstadoAgua, type TipoPin } from "@/lib/constantes";
 import type { Pin, ZonasGeoJSON } from "@/lib/datos";
 
@@ -19,6 +19,8 @@ type Props = {
   /** Modo "elige un punto": los toques en el mapa mueven el marcador del reporte */
   eligiendoUbicacion: boolean;
   ubicacionReporte: [number, number] | null;
+  /** Calle que se está marcando: extremos tocados y tramo que sigue la calle */
+  tramoReporte: { extremos: [number, number][]; puntos: [number, number][] | null } | null;
   miUbicacion: [number, number] | null;
   centrarEn: { punto: [number, number]; zoom: number; n: number } | null;
   onZona: (id: number) => void;
@@ -35,6 +37,9 @@ const iconoReporte = L.divIcon({
   iconSize: [36, 46],
   iconAnchor: [18, 44],
 });
+
+// En canvas, tolerancia extra para poder tocar las líneas de calles con el dedo
+const RENDERIZADOR = L.canvas({ tolerance: 8 });
 
 const RADIO_BACHE: Record<string, number> = { chico: 6, mediano: 8, grande: 10, peligroso: 11 };
 
@@ -99,6 +104,15 @@ export default function Mapa(props: Props) {
   }, []);
 
   const pinsVisibles = useMemo(() => pins.filter((p) => capas[p.tipo] ?? true), [pins, capas]);
+  const calles = useMemo(() => pinsVisibles.filter((p) => p.trazo && p.trazo.length >= 2), [pinsVisibles]);
+  const puntos = useMemo(() => pinsVisibles.filter((p) => !p.trazo), [pinsVisibles]);
+
+  const alClickPin = (pin: Pin) => (e: LeafletMouseEvent) => {
+    L.DomEvent.stopPropagation(e);
+    const p = refProps.current;
+    if (p.eligiendoUbicacion) p.onElegirPunto(e.latlng.lat, e.latlng.lng);
+    else p.onPin(pin);
+  };
 
   return (
     <MapContainer
@@ -108,6 +122,7 @@ export default function Mapa(props: Props) {
       maxZoom={19}
       zoomControl={false}
       preferCanvas
+      renderer={RENDERIZADOR}
       className="h-full w-full"
     >
       <TileLayer
@@ -126,7 +141,34 @@ export default function Mapa(props: Props) {
 
       {capas.agua && zonas && <GeoJSON data={zonas} style={estilo} onEachFeature={alClickZona} />}
 
-      {pinsVisibles.map((pin) => {
+      {/* Calles cerradas (rojo) y con baches (amarillo): línea con contorno oscuro para que resalte */}
+      {calles.map((pin) => {
+        const arreglado = pin.estado === "arreglado";
+        const seleccionado = pin.id === props.pinSeleccionado;
+        const trazo = pin.trazo!;
+        return [
+          <Polyline
+            key={`${pin.id}-${pin.estado}-borde`}
+            positions={trazo}
+            pathOptions={{ color: "#111827", weight: seleccionado ? 13 : 10, opacity: arreglado ? 0.25 : 0.7, lineCap: "round" }}
+            eventHandlers={{ click: alClickPin(pin) }}
+          />,
+          <Polyline
+            key={`${pin.id}-${pin.estado}`}
+            positions={trazo}
+            pathOptions={{
+              color: arreglado ? COLOR_ARREGLADO : (INFO_PIN[pin.tipo]?.color ?? "#6b7280"),
+              weight: seleccionado ? 8 : 6,
+              opacity: arreglado ? 0.7 : 1,
+              dashArray: arreglado ? "8 10" : undefined,
+              lineCap: "round",
+            }}
+            eventHandlers={{ click: alClickPin(pin) }}
+          />,
+        ];
+      })}
+
+      {puntos.map((pin) => {
         const arreglado = pin.estado === "arreglado";
         const seleccionado = pin.id === props.pinSeleccionado;
         return (
@@ -140,17 +182,27 @@ export default function Mapa(props: Props) {
               fillColor: arreglado ? COLOR_ARREGLADO : (INFO_PIN[pin.tipo]?.color ?? "#6b7280"),
               fillOpacity: arreglado ? 0.6 : 0.95,
             }}
-            eventHandlers={{
-              click: (e) => {
-                L.DomEvent.stopPropagation(e);
-                const p = refProps.current;
-                if (p.eligiendoUbicacion) p.onElegirPunto(e.latlng.lat, e.latlng.lng);
-                else p.onPin(pin);
-              },
-            }}
+            eventHandlers={{ click: alClickPin(pin) }}
           />
         );
       })}
+
+      {props.tramoReporte?.puntos && (
+        <Polyline
+          positions={props.tramoReporte.puntos}
+          interactive={false}
+          pathOptions={{ color: "#1d4ed8", weight: 7, opacity: 0.9, dashArray: "10 8", lineCap: "round" }}
+        />
+      )}
+      {props.tramoReporte?.extremos.map((punto, i) => (
+        <CircleMarker
+          key={`extremo-${i}`}
+          center={punto}
+          radius={9}
+          interactive={false}
+          pathOptions={{ color: "#ffffff", weight: 3, fillColor: i === 0 ? "#16a34a" : "#dc2626", fillOpacity: 1 }}
+        />
+      ))}
 
       {props.miUbicacion && (
         <CircleMarker

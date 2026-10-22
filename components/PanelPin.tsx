@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ETIQUETAS, INFO_PIN } from "@/lib/constantes";
+import { ETIQUETAS, INFO_PIN, esLinea } from "@/lib/constantes";
 import { enviar, type Pin } from "@/lib/datos";
 import { urlFoto } from "@/lib/supabase/navegador";
 import { haceCuanto, horaLocal } from "@/lib/tiempo";
@@ -26,6 +26,8 @@ export function PanelPin({
   const [conteos, setConteos] = useState<Conteos>(pin);
   const [enviando, setEnviando] = useState<null | "confirmo" | "arreglado">(null);
   const arreglado = conteos.estado === "arreglado";
+  // Calle cerrada: "ya la abrieron"; calle con baches: "ya la arreglaron"
+  const textoArreglo = pin.tipo === "calle_cerrada" ? "Ya la abrieron" : esLinea(pin.tipo) ? "Ya la arreglaron" : "Ya lo arreglaron";
 
   async function votar(tipo: "confirmo" | "arreglado") {
     setEnviando(tipo);
@@ -38,8 +40,8 @@ export function PanelPin({
           tipo === "confirmo"
             ? "¡Gracias por confirmar!"
             : r.pin.estado === "arreglado"
-              ? "¡Listo! 3 vecinos confirmaron que ya lo arreglaron."
-              : "Gracias. Se marcará como arreglado cuando lo confirmen 3 vecinos.",
+              ? `¡Listo! 3 vecinos confirmaron: ${textoArreglo.toLowerCase()}.`
+              : "Gracias. Se marcará cuando lo confirmen 3 vecinos.",
         );
         onCambio();
       } else {
@@ -68,7 +70,7 @@ export function PanelPin({
 
         {arreglado && (
           <p className="rounded-lg bg-green-50 p-2 text-sm font-semibold text-green-800">
-            ✔ Vecinos confirmaron que ya lo arreglaron{pin.arreglado_en ? ` (${haceCuanto(pin.arreglado_en)})` : ""}.
+            ✔ Vecinos confirmaron: {textoArreglo.toLowerCase()}{pin.arreglado_en ? ` (${haceCuanto(pin.arreglado_en)})` : ""}.
           </p>
         )}
 
@@ -109,7 +111,7 @@ export function PanelPin({
               disabled={enviando !== null}
               className="rounded-xl bg-green-600 px-3 py-3 font-semibold text-white disabled:opacity-60"
             >
-              {enviando === "arreglado" ? "Enviando…" : `Ya lo arreglaron (${conteos.votos_arreglado}/3)`}
+              {enviando === "arreglado" ? "Enviando…" : `${textoArreglo} (${conteos.votos_arreglado}/3)`}
             </button>
           </div>
         )}

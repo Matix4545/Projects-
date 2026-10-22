@@ -157,7 +157,12 @@ as $$
     'estado', p.estado,
     'creado_en', p.creado_en,
     'arreglado_en', p.arreglado_en,
-    'colonia', z.nombre
+    'colonia', z.nombre,
+    -- Tramo de calle como [[lat, lng], ...]; null en reportes de un solo punto
+    'trazo', case when p.trazo is null then null else (
+      select json_agg(json_build_array(round(st_y(d.geom)::numeric, 6), round(st_x(d.geom)::numeric, 6)) order by d.path)
+      from st_dumppoints(p.trazo) d
+    ) end
   ) order by p.creado_en desc), '[]'::json)
   from (
     select * from reportes_pin

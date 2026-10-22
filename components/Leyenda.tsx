@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, TIPOS_PIN, textoPeriodo } from "@/lib/constantes";
+import { COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, TIPOS_PIN, esLinea, textoPeriodo } from "@/lib/constantes";
 
-const FILAS: [string, string, "zona" | "pin"][] = [
+const FILAS: [string, string, "zona" | "pin" | "linea"][] = [
   [COLOR_ESTADO.sin_agua, "Mayoría sin agua", "zona"],
   [COLOR_ESTADO.baja_presion, "Mayoría baja presión", "zona"],
   [COLOR_ESTADO.sucia, "Mayoría agua sucia", "zona"],
   [COLOR_ESTADO.con_agua, "Mayoría con agua", "zona"],
   [COLOR_ESTADO.ninguno, "Sin reportes en el periodo", "zona"],
-  ...TIPOS_PIN.map((t): [string, string, "pin"] => [INFO_PIN[t].color, `${INFO_PIN[t].emoji} ${INFO_PIN[t].nombre}`, "pin"]),
+  ...TIPOS_PIN.map((t): [string, string, "pin" | "linea"] => [
+    INFO_PIN[t].color,
+    `${INFO_PIN[t].emoji} ${INFO_PIN[t].nombre}`,
+    esLinea(t) ? "linea" : "pin",
+  ]),
   [COLOR_ARREGLADO, "Ya lo arreglaron", "pin"],
 ];
 
@@ -29,9 +33,11 @@ export function Leyenda({ horas }: { horas: number }) {
             {FILAS.map(([color, texto, forma]) => (
               <li key={texto} className="flex items-center gap-2">
                 <span
-                  className={`inline-block h-4 w-4 shrink-0 ${forma === "pin" ? "rounded-full border border-gray-700/40" : "rounded-sm"}`}
+                  className={`inline-block shrink-0 ${
+                    forma === "linea" ? "h-1.5 w-4 rounded-full ring-1 ring-gray-900/60" : forma === "pin" ? "h-4 w-4 rounded-full border border-gray-700/40" : "h-4 w-4 rounded-sm"
+                  }`}
                   style={
-                    forma === "pin"
+                    forma !== "zona"
                       ? { background: color }
                       : color === COLOR_ESTADO.ninguno
                         ? { background: `${color}38`, border: "1px solid #4b5563" } // igual que en el mapa: gris transparente

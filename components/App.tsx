@@ -3,9 +3,19 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { INFO_PIN, PERIODOS, PERIODO_PREDETERMINADO, TIPOS_PIN, dentroDeCajeme, type EstadoAgua, type HorasPeriodo } from "@/lib/constantes";
+import {
+  INFO_PIN,
+  PERIODOS,
+  PERIODO_PREDETERMINADO,
+  TIPOS_PIN,
+  dentroDeCajeme,
+  type EstadoAgua,
+  type HorasPeriodo,
+  type TipoPin,
+} from "@/lib/constantes";
 import {
   cargarMapa,
+  cargarRuta,
   cargarZonasCache,
   type EstadoZona,
   type Pin,
@@ -13,7 +23,7 @@ import {
   type ZonasGeoJSON,
 } from "@/lib/datos";
 import { BarraResumen } from "./BarraResumen";
-import { FlujoReporte, type OrigenUbicacion } from "./FlujoReporte";
+import { FlujoReporte, type EstadoTramo, type OrigenUbicacion } from "./FlujoReporte";
 import { Leyenda } from "./Leyenda";
 import type { Capas } from "./Mapa";
 import { PanelPin } from "./PanelPin";
@@ -40,7 +50,7 @@ export function App() {
   const [horas, setHoras] = useState<HorasPeriodo>(PERIODO_PREDETERMINADO);
   const horasRef = useRef<HorasPeriodo>(PERIODO_PREDETERMINADO);
 
-  const [capas, setCapas] = useState<Capas>({ agua: true, bache: true, drenaje: true, alumbrado: true, banqueta: true, baldio: true });
+  const [capas, setCapas] = useState<Capas>(() => ({ agua: true, ...(Object.fromEntries(TIPOS_PIN.map((t) => [t, true])) as Record<TipoPin, boolean>) }));
   const [vista, setVista] = useState<Vista>({ tipo: "nada" });
   const [aviso, setAviso] = useState<string | null>(null);
 
@@ -48,6 +58,11 @@ export function App() {
   const [origen, setOrigen] = useState<OrigenUbicacion>("buscando");
   const [miUbicacion, setMiUbicacion] = useState<[number, number] | null>(null);
   const eligioEnMapa = useRef(false);
+  // Calles cerradas / con baches: se toca el inicio y el fin, y la línea sigue la calle
+  const [modoLinea, setModoLinea] = useState(false);
+  const [extremos, setExtremos] = useState<[number, number][]>([]);
+  const [tramo, setTramo] = useState<{ puntos: [number, number][]; ajustada: boolean } | null>(null);
+  const [errorTramo, setErrorTramo] = useState<string | null>(null);
   const [centrarEn, setCentrarEn] = useState<{ punto: [number, number]; zoom: number; n: number } | null>(null);
 
   const recargar = useCallback(async (fresco = false) => {
@@ -98,11 +113,28 @@ export function App() {
 
   const mapaEstados = useMemo(() => new Map<number, EstadoAgua>(estados.map((e) => [e.id, e.estado])), [estados]);
 
+  useEffect(() => {
+    if (extremos.length !== 2) return;
+    let vigente = true;
+    cargarRuta(extremos[0], extremos[1]).then((r) => {
+      if (!vigente) return;
+      if ("error" in r) setErrorTramo(r.error);
+      else setTramo(r);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [extremos]);
+
   const centrar = (punto: [number, number], zoom: number) => setCentrarEn((c) => ({ punto, zoom, n: (c?.n ?? 0) + 1 }));
 
   function abrirReporte() {
     setVista({ tipo: "reporte" });
     setUbicacion(null);
+    setModoLinea(false);
+    setExtremos([]);
+    setTramo(null);
+    setErrorTramo(null);
     eligioEnMapa.current = false;
     if (!("geolocation" in navigator)) {
       setOrigen("sin_gps");
@@ -138,6 +170,14 @@ export function App() {
   }
 
   const reportando = vista.tipo === "reporte";
+  const dibujandoLinea = reportando && modoLinea;
+  const estadoTramo: EstadoTramo = {
+    extremos: extremos.length,
+    puntos: tramo?.puntos ?? null,
+    ajustada: tramo?.ajustada ?? false,
+    buscando: extremos.length === 2 && !tramo && !errorTramo,
+    error: errorTramo,
+  };
 
   return (
     <main className="relative h-dvh w-full overflow-hidden">
@@ -150,12 +190,20 @@ export function App() {
           zonaSeleccionada={vista.tipo === "zona" ? vista.id : null}
           pinSeleccionado={vista.tipo === "pin" ? vista.pin.id : null}
           eligiendoUbicacion={reportando}
-          ubicacionReporte={reportando ? ubicacion : null}
+          ubicacionReporte={reportando && !modoLinea ? ubicacion : null}
+          tramoReporte={dibujandoLinea ? { extremos, puntos: tramo?.puntos ?? null } : null}
           miUbicacion={miUbicacion}
           centrarEn={centrarEn}
           onZona={(id) => setVista({ tipo: "zona", id })}
           onPin={(pin) => setVista({ tipo: "pin", pin })}
           onElegirPunto={(lat, lng) => {
+            if (dibujandoLinea) {
+              // 1er toque: inicio · 2º: fin · 3º: empezar de nuevo
+              setExtremos((e) => (e.length >= 2 ? [[lat, lng]] : [...e, [lat, lng]]));
+              setTramo(null);
+              setErrorTramo(null);
+              return;
+            }
             eligioEnMapa.current = true;
             setUbicacion([lat, lng]);
             setOrigen("mapa");
@@ -248,6 +296,13 @@ export function App() {
         <FlujoReporte
           ubicacion={ubicacion}
           origen={origen}
+          tramo={estadoTramo}
+          onModoLinea={(linea) => {
+            setModoLinea(linea);
+            setExtremos([]);
+            setTramo(null);
+            setErrorTramo(null);
+          }}
           onCerrar={() => setVista({ tipo: "nada" })}
           onEnviado={(mensaje) => {
             setVista({ tipo: "nada" });

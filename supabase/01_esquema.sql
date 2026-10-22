@@ -147,7 +147,17 @@ alter table public.reportes_pin add constraint subtipo_valido check (
   (tipo = 'drenaje'   and subtipo in ('tapado', 'aguas_negras', 'sin_tapa', 'mal_olor')) or
   (tipo = 'alumbrado' and subtipo in ('apagada', 'parpadea', 'poste_danado', 'cables_expuestos')) or
   (tipo = 'banqueta'  and subtipo in ('quebrada', 'incompleta', 'obstruida')) or
-  (tipo = 'baldio'    and subtipo in ('basura', 'maleza', 'quema', 'escombro'))
+  (tipo = 'baldio'    and subtipo in ('basura', 'maleza', 'quema', 'escombro')) or
+  (tipo = 'calle_cerrada' and subtipo in ('obra', 'inundada', 'accidente', 'otro_cierre')) or
+  (tipo = 'calle_baches'  and subtipo in ('mitad', 'toda'))
+);
+
+-- Calles cerradas y calles con baches: se guardan como un tramo (línea).
+-- "ubicacion" guarda el punto medio del tramo (para colonia, mapa de calor y listados).
+alter table public.reportes_pin add column if not exists trazo extensions.geometry(LineString, 4326);
+alter table public.reportes_pin drop constraint if exists trazo_solo_en_calles;
+alter table public.reportes_pin add constraint trazo_solo_en_calles check (
+  (tipo in ('calle_cerrada', 'calle_baches')) = (trazo is not null)
 );
 
 -- Zonas "oficiales": colonias importadas de un archivo (IMIP, catastro, dibujadas a mano…).

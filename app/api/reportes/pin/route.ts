@@ -1,7 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { after } from "next/server";
 import { z } from "zod";
-import { MAX_COMENTARIO, MAX_FOTO_BYTES, SUBTIPOS, TIPOS_PIN, dentroDeCajeme } from "@/lib/constantes";
+import {
+  LARGO_MAX_TRAMO,
+  LARGO_MIN_TRAMO,
+  MAX_COMENTARIO,
+  MAX_FOTO_BYTES,
+  SUBTIPOS,
+  TIPOS_PIN,
+  dentroDeCajeme,
+  esLinea,
+} from "@/lib/constantes";
 import { limpiarFoto } from "@/lib/fotos";
 import { avisarSiHayHito } from "@/lib/notificaciones";
 import { limpiarComentario, revisarComentario } from "@/lib/groserias";
@@ -9,6 +18,7 @@ import { obtenerIdentidad } from "@/lib/identidad";
 import { error, ok } from "@/lib/respuestas";
 import { consumirCupo } from "@/lib/limites";
 import { supabaseServidor } from "@/lib/supabase/servidor";
+import { largoM, limpiarTrazo, puntoMedio, trazoAWkt, type Punto } from "@/lib/tramos";
 import { verificarTurnstile } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
@@ -20,6 +30,8 @@ const Esquema = z
     lat: z.coerce.number().finite(),
     lng: z.coerce.number().finite(),
     comentario: z.string().max(MAX_COMENTARIO * 2).optional(),
+    // Calles cerradas / con baches: el tramo como JSON [[lat, lng], ...]
+    trazo: z.string().max(40_000).optional(),
     token: z.string(),
   })
   .refine((d) => SUBTIPOS[d.tipo].includes(d.subtipo));
@@ -33,13 +45,25 @@ export async function POST(req: Request) {
   }
 
   const campos = Object.fromEntries(
-    ["tipo", "subtipo", "lat", "lng", "comentario", "token"].map((k) => [k, form.get(k) ?? undefined]),
+    ["tipo", "subtipo", "lat", "lng", "comentario", "trazo", "token"].map((k) => [k, form.get(k) ?? undefined]),
   );
   const resultado = Esquema.safeParse(campos);
   if (!resultado.success) return error("Datos del reporte incompletos o inválidos.");
   const cuerpo = resultado.data;
 
   if (!dentroDeCajeme(cuerpo.lat, cuerpo.lng)) return error("La ubicación está fuera de Cajeme.");
+
+  // Tramo de calle: obligatorio solo en calles cerradas / con baches
+  let trazo: Punto[] | null = null;
+  if (esLinea(cuerpo.tipo)) {
+    trazo = leerTrazo(cuerpo.trazo);
+    if (!trazo) return error("Marca en el mapa dónde empieza y dónde termina la calle.");
+    const largo = largoM(trazo);
+    if (largo < LARGO_MIN_TRAMO) return error("El tramo es muy corto. Marca dónde empieza y dónde termina la calle.");
+    if (largo > LARGO_MAX_TRAMO * 1.8) return error("El tramo es muy largo (máximo 3 km). Márcalo por partes.");
+    // El punto del reporte es la mitad del tramo
+    [cuerpo.lat, cuerpo.lng] = puntoMedio(trazo);
+  }
 
   const comentario = limpiarComentario(cuerpo.comentario);
   if (comentario && comentario.length > MAX_COMENTARIO) return error(`El comentario debe tener máximo ${MAX_COMENTARIO} caracteres.`);
@@ -93,6 +117,7 @@ export async function POST(req: Request) {
       tipo: cuerpo.tipo,
       subtipo: cuerpo.subtipo,
       ubicacion: `SRID=4326;POINT(${cuerpo.lng} ${cuerpo.lat})`,
+      ...(trazo ? { trazo: trazoAWkt(trazo) } : {}),
       zona_id: zona?.id ?? null,
       foto_ruta: fotoRuta,
       comentario,
@@ -110,4 +135,22 @@ export async function POST(req: Request) {
   // El aviso se manda después de responder, para no hacer esperar a quien reporta
   after(() => avisarSiHayHito(db));
   return ok({ id: pin.id });
+}
+
+function leerTrazo(texto: string | undefined): Punto[] | null {
+  if (!texto) return null;
+  let datos: unknown;
+  try {
+    datos = JSON.parse(texto);
+  } catch {
+    return null;
+  }
+  const valido = z
+    .array(z.tuple([z.number().finite(), z.number().finite()]))
+    .min(2)
+    .max(500)
+    .safeParse(datos);
+  if (!valido.success || !valido.data.every(([lat, lng]) => dentroDeCajeme(lat, lng))) return null;
+  const puntos = limpiarTrazo(valido.data);
+  return puntos.length >= 2 ? puntos : null;
 }

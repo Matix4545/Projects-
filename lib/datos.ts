@@ -21,6 +21,8 @@ export type Pin = {
   creado_en: string;
   arreglado_en: string | null;
   colonia: string | null;
+  /** Tramo de calle [[lat, lng], ...] en calles cerradas / con baches */
+  trazo?: [number, number][] | null;
 };
 
 export type DetalleZona = {
@@ -90,6 +92,22 @@ async function desdeCache<T>(ruta: string, directo: () => Promise<T>): Promise<T
 export const cargarMapa = (horas: number, fresco = false) =>
   desdeCache(`/api/publico/mapa?horas=${horas}${fresco ? `&t=${Date.now()}` : ""}`, () => leerMapa(horas));
 export const cargarZonasCache = () => desdeCache("/api/publico/zonas", cargarZonas);
+
+/** Tramo de calle entre dos puntos, siguiendo las calles (o recto si el servicio de rutas falló). */
+export async function cargarRuta(
+  de: [number, number],
+  a: [number, number],
+): Promise<{ puntos: [number, number][]; ajustada: boolean } | { error: string }> {
+  try {
+    const res = await fetch(`/api/ruta?de=${de.join(",")}&a=${a.join(",")}`);
+    const datos = await res.json();
+    if (res.ok && Array.isArray(datos.puntos)) return datos;
+    if (typeof datos.error === "string") return { error: datos.error };
+  } catch {
+    /* sin conexión: línea recta */
+  }
+  return { puntos: [de, a], ajustada: false };
+}
 
 export const zonaDePunto = (lat: number, lng: number) =>
   rpc<{ id: number; nombre: string } | null>("zona_de_punto", { p_lat: lat, p_lng: lng });

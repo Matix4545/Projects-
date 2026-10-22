@@ -10,20 +10,33 @@ import {
   SUBTIPOS,
   SUBTIPOS_PELIGROSOS,
   TIPOS_PIN,
+  esLinea,
   type DetalleSucia,
   type EstadoAgua,
   type TipoPin,
 } from "@/lib/constantes";
 import { enviar, zonaDePunto } from "@/lib/datos";
+import { largoM, puntoMedio } from "@/lib/tramos";
 import { HojaInferior } from "./HojaInferior";
 import { ERROR_TURNSTILE_NAVEGADOR, useTurnstile } from "./Turnstile";
 
 export type OrigenUbicacion = "buscando" | "gps" | "mapa" | "sin_gps" | "fuera" | "impreciso";
 type Paso = "tipo" | "agua" | TipoPin;
 
+/** Calle cerrada / con baches: cuántos extremos se han tocado y el tramo resultante */
+export type EstadoTramo = {
+  extremos: number;
+  puntos: [number, number][] | null;
+  ajustada: boolean;
+  buscando: boolean;
+  error: string | null;
+};
+
 type Props = {
   ubicacion: [number, number] | null;
   origen: OrigenUbicacion;
+  tramo: EstadoTramo;
+  onModoLinea: (linea: boolean) => void;
   onCerrar: () => void;
   onEnviado: (mensaje: string) => void;
 };
@@ -34,7 +47,7 @@ const TITULOS: Record<Paso, string> = {
   ...(Object.fromEntries(TIPOS_PIN.map((t) => [t, INFO_PIN[t].pregunta])) as Record<TipoPin, string>),
 };
 
-export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) {
+export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, onCerrar, onEnviado }: Props) {
   const obtenerToken = useTurnstile();
   const [paso, setPaso] = useState<Paso>("tipo");
   const [comentario, setComentario] = useState("");
@@ -95,12 +108,21 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
     if (entradaFoto.current) entradaFoto.current.value = "";
   }
 
-  const sinUbicacion = !ubicacion;
+  const linea = paso !== "tipo" && paso !== "agua" && esLinea(paso);
+  const sinUbicacion = linea ? !tramo.puntos : !ubicacion;
+
+  function irA(nuevo: Paso) {
+    setPaso(nuevo);
+    setError(null);
+    setEligiendoSucia(false);
+    onModoLinea(nuevo !== "tipo" && nuevo !== "agua" && esLinea(nuevo));
+  }
   const coloniaInvalida = paso === "agua" && (colonia === null || colonia === "buscando");
   const bloqueado = enviando || comprimiendo || sinUbicacion || coloniaInvalida;
 
   async function enviarReporte(subtipo: string) {
-    if (!ubicacion || bloqueado) return;
+    const punto = linea ? (tramo.puntos ? puntoMedio(tramo.puntos) : null) : ubicacion;
+    if (!punto || bloqueado) return;
     setError(null);
     setEnviando(true);
     try {
@@ -111,7 +133,7 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
         setError(ERROR_TURNSTILE_NAVEGADOR);
         return;
       }
-      const [lat, lng] = ubicacion;
+      const [lat, lng] = punto;
       const r =
         paso === "agua"
           ? await enviar<{ zona: { nombre: string } }>("/api/reportes/agua", {
@@ -122,7 +144,10 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
               lng,
               token,
             })
-          : await enviar("/api/reportes/pin", armarFormulario(paso as TipoPin, subtipo, lat, lng, comentario, foto, token));
+          : await enviar(
+              "/api/reportes/pin",
+              armarFormulario(paso as TipoPin, subtipo, lat, lng, comentario, foto, token, linea ? tramo.puntos : null),
+            );
       if (r.ok) {
         onEnviado(paso === "agua" ? "¡Gracias! Tu reporte de agua se registró." : "¡Gracias! Tu reporte ya aparece en el mapa.");
       } else {
@@ -134,6 +159,14 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
   }
 
   const textoUbicacion = (() => {
+    if (linea) {
+      if (tramo.extremos === 0) return "Toca en el mapa dónde EMPIEZA la calle afectada.";
+      if (tramo.extremos === 1) return "Ahora toca dónde TERMINA.";
+      if (tramo.error) return `${tramo.error} Toca el mapa para empezar de nuevo.`;
+      if (tramo.buscando || !tramo.puntos) return "Buscando la calle…";
+      const metros = Math.round(largoM(tramo.puntos) / 10) * 10;
+      return `Tramo de ${metros.toLocaleString("es-MX")} m${tramo.ajustada ? " siguiendo la calle" : " en línea recta"}. ¿No es la calle correcta? Toca el mapa para empezar de nuevo.`;
+    }
     if (origen === "buscando" && !ubicacion) return "Buscando tu ubicación…";
     if (!ubicacion && origen === "fuera") return "Parece que no estás en Cajeme. Toca el mapa donde está el problema.";
     if (!ubicacion && origen === "impreciso") return "Tu ubicación es poco precisa. Toca el mapa justo donde está el problema.";
@@ -153,11 +186,7 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
         <span className="flex items-center gap-2">
           {paso !== "tipo" && (
             <button
-              onClick={() => {
-                setPaso("tipo");
-                setError(null);
-                setEligiendoSucia(false);
-              }}
+              onClick={() => irA("tipo")}
               aria-label="Regresar"
               className="-ml-2 grid h-9 w-9 place-items-center rounded-full text-xl hover:bg-gray-100"
             >
@@ -170,19 +199,19 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
     >
       {paso === "tipo" ? (
         <div className="grid grid-cols-3 gap-2">
-          <BotonTipo emoji="💧" texto="Agua" color="#2563eb" onClick={() => setPaso("agua")} />
+          <BotonTipo emoji="💧" texto="Agua" color="#2563eb" onClick={() => irA("agua")} />
           {TIPOS_PIN.map((t) => (
-            <BotonTipo key={t} emoji={INFO_PIN[t].emoji} texto={INFO_PIN[t].nombre} color={INFO_PIN[t].color} onClick={() => setPaso(t)} />
+            <BotonTipo key={t} emoji={INFO_PIN[t].emoji} texto={INFO_PIN[t].nombre} color={INFO_PIN[t].color} onClick={() => irA(t)} />
           ))}
         </div>
       ) : (
         <div className="space-y-3">
           <p
             className={`rounded-lg px-3 py-2 text-sm ${
-              sinUbicacion || (paso === "agua" && colonia === null) ? "bg-amber-50 text-amber-900" : "bg-blue-50 text-blue-900"
+              sinUbicacion || (paso === "agua" && colonia === null) || (linea && tramo.error) ? "bg-amber-50 text-amber-900" : "bg-blue-50 text-blue-900"
             }`}
           >
-            📍 {textoUbicacion}
+            {linea ? "🛣️" : "📍"} {textoUbicacion}
           </p>
 
           {paso !== "agua" && (
@@ -278,7 +307,7 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
           {paso !== "agua" && (
             <>
               <p className="text-xs text-gray-500">Toca una opción para enviar:</p>
-              <div className={`grid gap-2 ${paso === "bache" ? "grid-cols-2" : "grid-cols-1"}`}>
+              <div className={`grid gap-2 ${paso === "bache" || paso === "calle_cerrada" ? "grid-cols-2" : "grid-cols-1"}`}>
                 {SUBTIPOS[paso].map((t) => (
                   <BotonOpcion
                     key={t}
@@ -304,8 +333,18 @@ export function FlujoReporte({ ubicacion, origen, onCerrar, onEnviado }: Props) 
   );
 }
 
-function armarFormulario(tipo: TipoPin, subtipo: string, lat: number, lng: number, comentario: string, foto: File | null, token: string) {
+function armarFormulario(
+  tipo: TipoPin,
+  subtipo: string,
+  lat: number,
+  lng: number,
+  comentario: string,
+  foto: File | null,
+  token: string,
+  trazo: [number, number][] | null,
+) {
   const f = new FormData();
+  if (trazo) f.set("trazo", JSON.stringify(trazo));
   f.set("tipo", tipo);
   f.set("subtipo", subtipo);
   f.set("lat", String(lat));
