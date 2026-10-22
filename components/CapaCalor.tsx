@@ -20,10 +20,13 @@ export function CapaCalor({ pins }: { pins: Pin[] }) {
     import("leaflet.heat").then(() => {
       if (cancelado) return;
       capa.current = L.heatLayer([], {
-        radius: 28,
-        blur: 22,
-        maxZoom: 16,
-        minOpacity: 0.35,
+        radius: 26,
+        blur: 18,
+        // Intensidad completa desde la vista de toda la ciudad (zoom 11). Con el valor anterior (16),
+        // a zoom 13 cada reporte pintaba con 1/8 de su peso y casi no se veía.
+        maxZoom: 11,
+        max: 1,
+        minOpacity: 0.3,
         gradient: { 0.2: "#facc15", 0.5: "#f97316", 0.8: "#dc2626", 1: "#7f1d1d" },
       }).addTo(mapa);
       capa.current.setLatLngs(puntos(pinsRef.current));
