@@ -36,7 +36,11 @@ const Mapa = dynamic(() => import("./Mapa"), {
   loading: () => <div className="grid h-full place-items-center bg-gray-100 text-gray-500">Cargando mapa…</div>,
 });
 
-type Vista = { tipo: "nada" } | { tipo: "zona"; id: number } | { tipo: "pin"; pin: Pin } | { tipo: "reporte" };
+type Vista =
+  | { tipo: "nada" }
+  | { tipo: "zona"; id: number; punto: [number, number] }
+  | { tipo: "pin"; pin: Pin }
+  | { tipo: "reporte"; agua?: boolean };
 
 const RECARGA_MS = 60_000;
 
@@ -180,6 +184,18 @@ export function App() {
     };
   }, [extremos]);
 
+  /** Desde el panel de una colonia: abre el reporte de agua con ese punto ya elegido */
+  function reportarAguaEn(punto: [number, number]) {
+    setVista({ tipo: "reporte", agua: true });
+    setModoLinea(false);
+    setExtremos([]);
+    setTramo(null);
+    setErrorTramo(null);
+    eligioEnMapa.current = true;
+    setUbicacion(punto);
+    setOrigen("mapa");
+  }
+
   const centrar = (punto: [number, number], zoom: number) => setCentrarEn((c) => ({ punto, zoom, n: (c?.n ?? 0) + 1 }));
 
   function abrirReporte() {
@@ -252,7 +268,7 @@ export function App() {
           tramoReporte={dibujandoLinea ? { extremos, puntos: tramo?.puntos ?? null } : null}
           miUbicacion={miUbicacion}
           centrarEn={centrarEn}
-          onZona={(id) => setVista({ tipo: "zona", id })}
+          onZona={(id, punto) => setVista({ tipo: "zona", id, punto })}
           onPin={(pin) => setVista({ tipo: "pin", pin })}
           onElegirPunto={(lat, lng) => {
             if (dibujandoLinea) {
@@ -375,7 +391,14 @@ export function App() {
       />
 
       {vista.tipo === "zona" && (
-        <PanelZona zonaId={vista.id} horas={horas} version={version} onCerrar={() => setVista({ tipo: "nada" })} onAviso={setAviso} />
+        <PanelZona
+          zonaId={vista.id}
+          horas={horas}
+          version={version}
+          onCerrar={() => setVista({ tipo: "nada" })}
+          onAviso={setAviso}
+          onReportarAgua={() => reportarAguaEn(vista.punto)}
+        />
       )}
       {vista.tipo === "pin" && (
         <PanelPin
@@ -389,6 +412,7 @@ export function App() {
       )}
       {reportando && (
         <FlujoReporte
+          pasoInicial={vista.agua ? "agua" : "tipo"}
           ubicacion={ubicacion}
           origen={origen}
           tramo={estadoTramo}

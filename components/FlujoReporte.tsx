@@ -37,6 +37,8 @@ type Props = {
   origen: OrigenUbicacion;
   tramo: EstadoTramo;
   onModoLinea: (linea: boolean) => void;
+  /** "agua" cuando se abre desde el panel de una colonia */
+  pasoInicial?: "tipo" | "agua";
   onCerrar: () => void;
   onEnviado: (mensaje: string) => void;
 };
@@ -47,9 +49,9 @@ const TITULOS: Record<Paso, string> = {
   ...(Object.fromEntries(TIPOS_PIN.map((t) => [t, INFO_PIN[t].pregunta])) as Record<TipoPin, string>),
 };
 
-export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, onCerrar, onEnviado }: Props) {
+export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicial = "tipo", onCerrar, onEnviado }: Props) {
   const obtenerToken = useTurnstile();
-  const [paso, setPaso] = useState<Paso>("tipo");
+  const [paso, setPaso] = useState<Paso>(pasoInicial);
   const [comentario, setComentario] = useState("");
   const [verComentario, setVerComentario] = useState(false);
   const [detalles, setDetalles] = useState<DetalleSucia[]>([]);

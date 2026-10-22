@@ -14,12 +14,14 @@ export function PanelZona({
   version,
   onCerrar,
   onAviso,
+  onReportarAgua,
 }: {
   zonaId: number;
   horas: number;
   version: number;
   onCerrar: () => void;
   onAviso: (m: string) => void;
+  onReportarAgua: () => void;
 }) {
   const [detalle, setDetalle] = useState<DetalleZona | null>(null);
   const [error, setError] = useState(false);
@@ -57,6 +59,20 @@ export function PanelZona({
                 Último reporte: {actual.ultimo_reporte ? `${haceCuanto(actual.ultimo_reporte)} (${horaLocal(actual.ultimo_reporte)})` : "nunca"}
               </div>
             </div>
+          </div>
+
+          {/* Invitar a reportar: el verde solo sale de vecinos que confirman que hay agua */}
+          <div className="rounded-xl bg-blue-50 p-3">
+            <p className="text-sm text-blue-900">
+              {!actual.estado
+                ? "¿Tienes agua hoy? Repórtalo: también sirve saber dónde sí hay."
+                : actual.estado === "con_agua"
+                  ? "¿Cómo está el agua en tu casa? Tu reporte mantiene el mapa al día."
+                  : "¿Ya volvió el agua? Repórtalo y la colonia se pondrá en verde."}
+            </p>
+            <button onClick={onReportarAgua} className="mt-2 w-full rounded-lg bg-blue-700 px-3 py-2.5 font-semibold text-white">
+              💧 Reportar el agua de esta colonia
+            </button>
           </div>
 
           <table className="w-full text-sm">

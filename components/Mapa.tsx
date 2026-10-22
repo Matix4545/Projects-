@@ -32,7 +32,7 @@ type Props = {
   tramoReporte: { extremos: [number, number][]; puntos: [number, number][] | null } | null;
   miUbicacion: [number, number] | null;
   centrarEn: { punto: [number, number]; zoom: number; n: number } | null;
-  onZona: (id: number) => void;
+  onZona: (id: number, punto: [number, number]) => void;
   onPin: (pin: Pin) => void;
   onElegirPunto: (lat: number, lng: number) => void;
   onFondo: () => void;
@@ -100,11 +100,11 @@ export default function Mapa(props: Props) {
           fillOpacity: estado ? 0.6 : 0.35,
         };
       }
-      // Sin reportes: gris transparente con borde gris oscuro, para que se vea cada colonia
+      // Sin reportes: gris muy tenue con contorno visible, para que se vea cada colonia
       // sin tapar las calles. Con reportes: el color del estado, con borde del mismo tono.
       return estado
-        ? { color: COLOR_ESTADO[estado], weight: 1.5, opacity: 0.9, fillColor: COLOR_ESTADO[estado], fillOpacity: 0.45 }
-        : { color: "#4b5563", weight: 1, opacity: 0.55, fillColor: COLOR_ESTADO.ninguno, fillOpacity: 0.22 };
+        ? { color: COLOR_ESTADO[estado], weight: 1.5, opacity: 0.9, fillColor: COLOR_ESTADO[estado], fillOpacity: 0.5 }
+        : { color: "#6b7280", weight: 1, opacity: 0.45, fillColor: COLOR_ESTADO.ninguno, fillOpacity: 0.08 };
     },
     [estados, props.zonaSeleccionada],
   );
@@ -121,7 +121,7 @@ export default function Mapa(props: Props) {
       if (p.eligiendoUbicacion) p.onElegirPunto(e.latlng.lat, e.latlng.lng);
       // Con las secciones prendidas, tocar el mapa dice en qué sección cae (en vez de abrir la colonia)
       else if (p.secciones) p.onSeccion(seccionEn(e.latlng.lat, e.latlng.lng, p.secciones));
-      else p.onZona(Number(feature.properties?.id));
+      else p.onZona(Number(feature.properties?.id), [e.latlng.lat, e.latlng.lng]);
     });
   }, []);
 

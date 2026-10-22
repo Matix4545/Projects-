@@ -40,8 +40,8 @@ export function Leyenda({ horas }: { horas: number }) {
                     forma !== "zona"
                       ? { background: color }
                       : color === COLOR_ESTADO.ninguno
-                        ? { background: `${color}38`, border: "1px solid #4b5563" } // igual que en el mapa: gris transparente
-                        : { background: `${color}73`, border: `1.5px solid ${color}` }
+                        ? { background: `${color}14`, border: "1px solid #6b728073" } // igual que en el mapa: gris muy tenue
+                        : { background: `${color}80`, border: `1.5px solid ${color}` }
                   }
                 />
                 {forma === "zona" && color === COLOR_ESTADO.ninguno ? `Sin reportes en ${textoPeriodo(horas)}` : texto}
