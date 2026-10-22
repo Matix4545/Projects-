@@ -138,7 +138,8 @@ export function App() {
     setCentrarEn((c) => ({ punto: [pin.lat, pin.lng], zoom: 17, n: (c?.n ?? 0) + 1 }));
   }, [pins]);
 
-  const pinsFiltrados = useMemo(() => (equipo ? filtrarPins(pins, filtros) : pins), [pins, filtros, equipo]);
+  // El público siempre ve la vista normal (pendientes + arreglados de la última semana)
+  const pinsFiltrados = useMemo(() => filtrarPins(pins, equipo ? filtros : FILTROS_INICIALES), [pins, filtros, equipo]);
   const totalFiltrados = useMemo(() => pinsFiltrados.filter((p) => capas[p.tipo]).length, [pinsFiltrados, capas]);
 
   const mapaEstados = useMemo(() => new Map<number, EstadoAgua>(estados.map((e) => [e.id, e.estado])), [estados]);
