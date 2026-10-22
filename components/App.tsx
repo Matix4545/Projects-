@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   INFO_PIN,
-  PERIODOS,
   PERIODO_PREDETERMINADO,
   TIPOS_PIN,
   dentroDeCajeme,
@@ -48,7 +47,7 @@ export function App() {
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [errorCarga, setErrorCarga] = useState(false);
   const [version, setVersion] = useState(0);
-  // Periodo para pintar las colonias (7 días por defecto, o 24 h / 72 h); se recuerda en este navegador
+  // Periodo para pintar las colonias: siempre abre en 7 días; 24 h / 72 h solo durante la visita
   const [horas, setHoras] = useState<HorasPeriodo>(PERIODO_PREDETERMINADO);
   const horasRef = useRef<HorasPeriodo>(PERIODO_PREDETERMINADO);
 
@@ -92,14 +91,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    // Ya no se recuerda el periodo entre visitas: todos entran viendo 7 días
     try {
-      const guardado = Number(localStorage.getItem("rc_periodo"));
-      if (PERIODOS.some((p) => p.horas === guardado)) {
-        horasRef.current = guardado as HorasPeriodo;
-        setHoras(guardado as HorasPeriodo);
-      }
+      localStorage.removeItem("rc_periodo");
     } catch {
-      /* sin almacenamiento: se usa el predeterminado */
+      /* sin almacenamiento */
     }
     cargarZonasCache()
       .then(setZonas)
@@ -374,11 +370,6 @@ export function App() {
         onHoras={(h) => {
           horasRef.current = h;
           setHoras(h);
-          try {
-            localStorage.setItem("rc_periodo", String(h));
-          } catch {
-            /* no pasa nada si no se puede guardar */
-          }
           recargar();
         }}
       />
