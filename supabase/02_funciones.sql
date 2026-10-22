@@ -266,17 +266,21 @@ language sql stable security definer
 set search_path = public, extensions
 as $$
   with desde as (select now() - make_interval(days => least(greatest(coalesce(p_dias, 30), 1), 3650)) as t),
-  pin as (
-    select s.id, count(*) as n
+  -- Si dos secciones se traslapan (bordes imprecisos o una sección dividida), cada reporte
+  -- cuenta una sola vez: en la sección más chica que lo contiene.
+  pin_seccion as (
+    select distinct on (r.id) s.id
     from reportes_pin r
     join secciones s on st_intersects(s.geom, r.ubicacion)
     where r.creado_en > (select t from desde)
-    group by s.id
+    order by r.id, st_area(s.geom)
   ),
+  pin as (select id, count(*) as n from pin_seccion group by id),
   zona_seccion as (
-    select z.id as zona_id, s.id as seccion_id
+    select distinct on (z.id) z.id as zona_id, s.id as seccion_id
     from zonas z
     join secciones s on st_intersects(s.geom, st_pointonsurface(z.geom))
+    order by z.id, st_area(s.geom)
   ),
   agua as (
     select zs.seccion_id as id, count(*) as n

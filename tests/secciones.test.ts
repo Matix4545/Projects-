@@ -25,3 +25,15 @@ test("encuentra la sección de un punto, respetando huecos", () => {
 test("top de secciones ignora las que no tienen reportes", () => {
   assert.deepEqual(topSecciones(fc, 5).map((s) => s.seccion), [2, 1]);
 });
+
+test("si dos secciones se traslapan, gana la más chica", () => {
+  const traslape: SeccionesGeoJSON = {
+    type: "FeatureCollection",
+    features: [
+      { type: "Feature", properties: props(887, 1), geometry: { type: "Polygon", coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] } },
+      { type: "Feature", properties: props(1735, 1), geometry: { type: "Polygon", coordinates: [[[1, 1], [3, 1], [3, 3], [1, 3], [1, 1]]] } },
+    ],
+  };
+  assert.equal(seccionEn(2, 2, traslape)?.seccion, 1735);
+  assert.equal(seccionEn(8, 8, traslape)?.seccion, 887);
+});

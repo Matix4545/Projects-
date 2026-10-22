@@ -26,14 +26,25 @@ function enPoligono(punto: Position, poligono: Position[][]) {
   return enAnillo(punto, poligono[0]) && !poligono.slice(1).some((hueco) => enAnillo(punto, hueco));
 }
 
-/** Sección que contiene el punto, o null. */
+/** Área aproximada (en grados²) del rectángulo que encierra el polígono */
+function areaCaja(poligonos: Position[][][]) {
+  const puntos = poligonos.flatMap((p) => p[0]);
+  const xs = puntos.map((p) => p[0]);
+  const ys = puntos.map((p) => p[1]);
+  return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
+}
+
+/** Sección que contiene el punto, o null. Si hay traslape, la más chica (igual que en la base de datos). */
 export function seccionEn(lat: number, lng: number, secciones: SeccionesGeoJSON): PropsSeccion | null {
+  let mejor: { props: PropsSeccion; area: number } | null = null;
   for (const f of secciones.features) {
     const g = f.geometry;
     const poligonos = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
-    if (poligonos.some((p) => enPoligono([lng, lat], p))) return f.properties;
+    if (!poligonos.some((p) => enPoligono([lng, lat], p))) continue;
+    const area = areaCaja(poligonos);
+    if (!mejor || area < mejor.area) mejor = { props: f.properties, area };
   }
-  return null;
+  return mejor?.props ?? null;
 }
 
 /** Top de secciones con más reportes */
