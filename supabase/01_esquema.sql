@@ -186,3 +186,23 @@ create table if not exists public.secciones (
   geom             extensions.geometry(MultiPolygon, 4326) not null
 );
 create index if not exists secciones_geom_idx on public.secciones using gist (geom);
+
+-- Rugosidad medida con el celular ("Medir mi recorrido", /medir).
+-- Cada fila es un tramo de ~100 m. "sesion" es un id al azar por recorrido (no identifica a la
+-- persona) para poder calibrar por vehículo. Nunca se guarda la hora exacta ni el inicio/final.
+create table if not exists public.tramos_rugosidad (
+  id         bigint generated always as identity primary key,
+  sesion     uuid not null,
+  fecha      date not null,
+  vehiculo   text not null check (vehiculo in ('auto', 'camioneta', 'pickup', 'moto', 'otro')),
+  trazo      extensions.geometry(LineString, 4326) not null,
+  largo_m    real not null,
+  vel_kmh    real not null,
+  rms        real not null,
+  golpes     extensions.geometry(MultiPoint, 4326),
+  n_golpes   int not null default 0,
+  hz         real,
+  creado_en  timestamptz not null default now()
+);
+create index if not exists tramos_rugosidad_geom_idx  on public.tramos_rugosidad using gist (trazo);
+create index if not exists tramos_rugosidad_fecha_idx on public.tramos_rugosidad (fecha desc);

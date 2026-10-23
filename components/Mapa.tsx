@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { CENTRO_OBREGON, COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, SUBTIPOS_PELIGROSOS, type EstadoAgua, type TipoPin } from "@/lib/constantes";
 import type { Pin, ZonasGeoJSON } from "@/lib/datos";
+import { COLOR_CLASE, clasificar } from "@/lib/rugosidad";
 import { seccionEn, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
 import { CapaCalor } from "./CapaCalor";
 
@@ -23,6 +24,8 @@ type Props = {
   /** Secciones electorales (solo equipo); null = capa apagada */
   secciones: SeccionesGeoJSON | null;
   onSeccion: (s: PropsSeccion | null) => void;
+  /** Rugosidad medida con celulares (solo equipo); null = capa apagada */
+  rugosidad: GeoJSON.FeatureCollection | null;
   zonaSeleccionada: number | null;
   pinSeleccionado: number | null;
   /** Modo "elige un punto": los toques en el mapa mueven el marcador del reporte */
@@ -191,6 +194,24 @@ export default function Mapa(props: Props) {
       />
 
       {capas.agua && zonas && <GeoJSON data={zonas} style={estilo} onEachFeature={alClickZona} />}
+
+      {/* Rugosidad medida: tramos verde/amarillo/rojo y golpes en negro. No reciben toques. */}
+      {props.rugosidad && (
+        <GeoJSON
+          key={`rugosidad-${props.rugosidad.features.length}`}
+          data={props.rugosidad}
+          interactive={false}
+          style={(f) => ({
+            color: COLOR_CLASE[clasificar(Number(f?.properties?.rms ?? 0))],
+            weight: 5,
+            opacity: 0.9,
+            lineCap: "round",
+          })}
+          pointToLayer={(_f, ll) =>
+            L.circleMarker(ll, { radius: 3, color: "#ffffff", weight: 1, fillColor: "#111827", fillOpacity: 1, interactive: false })
+          }
+        />
+      )}
 
       {/* Secciones electorales: no reciben toques (así no tapan los puntos); la sección se busca por coordenadas */}
       {props.secciones && (

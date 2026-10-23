@@ -345,6 +345,40 @@ begin
 end;
 $$;
 
+-- Rugosidad medida (privada, para el mapa del equipo): tramos y golpes de los últimos p_dias días
+create or replace function public.rugosidad_equipo(p_dias int default 30)
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  with t as (
+    select * from tramos_rugosidad
+    where fecha > current_date - least(greatest(coalesce(p_dias, 30), 1), 3650)
+    order by fecha desc
+    limit 20000
+  )
+  select json_build_object(
+    'type', 'FeatureCollection',
+    'sesiones', (select count(distinct sesion) from t),
+    'km', (select round((coalesce(sum(largo_m), 0) / 1000)::numeric, 1) from t),
+    'features', coalesce((
+      select json_agg(f) from (
+        select json_build_object(
+          'type', 'Feature',
+          'properties', json_build_object('tipo', 'tramo', 'rms', t.rms, 'vel_kmh', t.vel_kmh, 'vehiculo', t.vehiculo, 'fecha', t.fecha, 'n_golpes', t.n_golpes),
+          'geometry', st_asgeojson(t.trazo, 6)::json) as f
+        from t
+        union all
+        select json_build_object(
+          'type', 'Feature',
+          'properties', json_build_object('tipo', 'golpe', 'fecha', t.fecha),
+          'geometry', st_asgeojson(g.geom, 6)::json)
+        from t, st_dump(t.golpes) g
+        where t.golpes is not null
+      ) x), '[]'::json)
+  )
+$$;
+
 -- Resumen para la barra inferior: reportes y colonias afectadas en las últimas p_horas horas
 create or replace function public.resumen(p_horas int default 168)
 returns json

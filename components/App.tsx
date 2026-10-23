@@ -65,6 +65,10 @@ export function App() {
   const [verSecciones, setVerSecciones] = useState(false);
   const [secciones, setSecciones] = useState<SeccionesGeoJSON | null>(null);
   const [errorSecciones, setErrorSecciones] = useState<string | null>(null);
+  // Rugosidad medida con celulares (solo equipo)
+  const [verRugosidad, setVerRugosidad] = useState(false);
+  const [rugosidad, setRugosidad] = useState<(GeoJSON.FeatureCollection & { km?: number; sesiones?: number }) | null>(null);
+  const [errorRugosidad, setErrorRugosidad] = useState<string | null>(null);
   const [infoSeccion, setInfoSeccion] = useState<PropsSeccion | null | "fuera">(null);
   const [vista, setVista] = useState<Vista>({ tipo: "nada" });
   const [aviso, setAviso] = useState<string | null>(null);
@@ -164,6 +168,24 @@ export function App() {
       vigente = false;
     };
   }, [equipo, verSecciones, diasSecciones, version]);
+  useEffect(() => {
+    if (!equipo || !verRugosidad) return;
+    let vigente = true;
+    fetch(`/api/equipo/rugosidad?dias=${filtros.dias || 3650}`, { cache: "no-store" })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!vigente) return;
+        if (r.ok && d.type === "FeatureCollection") {
+          setRugosidad(d);
+          setErrorRugosidad(d.features.length ? null : "Aún no hay recorridos medidos en este periodo.");
+        } else setErrorRugosidad(d.error ?? "No se pudo cargar la rugosidad.");
+      })
+      .catch(() => vigente && setErrorRugosidad("Sin conexión."));
+    return () => {
+      vigente = false;
+    };
+  }, [equipo, verRugosidad, filtros.dias, version]);
+
   const top5 = useMemo(() => (secciones ? topSecciones(secciones, 5) : []), [secciones]);
 
   const pinsFiltrados = useMemo(() => filtrarPins(pins, equipo ? filtros : FILTROS_INICIALES), [pins, filtros, equipo]);
@@ -261,6 +283,7 @@ export function App() {
           puntosFinos={equipo}
           secciones={equipo && verSecciones && !reportando ? secciones : null}
           onSeccion={(s) => setInfoSeccion(s ?? "fuera")}
+          rugosidad={equipo && verRugosidad && !reportando ? rugosidad : null}
           zonaSeleccionada={vista.tipo === "zona" ? vista.id : null}
           pinSeleccionado={vista.tipo === "pin" ? vista.pin.id : null}
           eligiendoUbicacion={reportando}
@@ -350,6 +373,12 @@ export function App() {
                 },
                 top: top5,
                 error: errorSecciones,
+              }}
+              rugosidad={{
+                activa: verRugosidad,
+                onCambio: setVerRugosidad,
+                resumen: rugosidad ? { km: rugosidad.km ?? 0, sesiones: rugosidad.sesiones ?? 0 } : null,
+                error: errorRugosidad,
               }}
             />
           )}

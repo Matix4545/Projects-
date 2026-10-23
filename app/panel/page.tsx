@@ -107,6 +107,9 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
           <Link href="/estadisticas" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold">
             Estadísticas
           </Link>
+          <Link href="/medir" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold">
+            🚗 Medir recorrido
+          </Link>
           <nav className="flex overflow-hidden rounded-lg border border-gray-300 text-sm" aria-label="Periodo">
             {[7, 30, 90].map((d) => (
               <Link key={d} href={`/panel?dias=${d}`} aria-current={d === dias ? "page" : undefined}

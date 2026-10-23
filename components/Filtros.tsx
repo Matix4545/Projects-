@@ -5,6 +5,14 @@ import type { Pin } from "@/lib/datos";
 import type { PropsSeccion } from "@/lib/secciones";
 
 /** Capa de secciones electorales dentro del panel de filtros */
+/** Capa de rugosidad medida con celulares */
+export type ControlRugosidad = {
+  activa: boolean;
+  onCambio: (activa: boolean) => void;
+  resumen: { km: number; sesiones: number } | null;
+  error: string | null;
+};
+
 export type ControlSecciones = {
   activas: boolean;
   onCambio: (activas: boolean) => void;
@@ -87,11 +95,13 @@ export function Filtros({
   onCambio,
   total,
   secciones,
+  rugosidad,
 }: {
   filtros: FiltrosMapa;
   onCambio: (f: FiltrosMapa) => void;
   total: number;
   secciones: ControlSecciones;
+  rugosidad: ControlRugosidad;
 }) {
   const [abierto, setAbierto] = useState(false);
   const activos = (filtros.vista !== "pines" ? 1 : 0) + (filtros.estado !== "normal" ? 1 : 0) + (filtros.dias ? 1 : 0);
@@ -118,6 +128,38 @@ export function Filtros({
           />
           <Segmentos etiqueta="Estado" opciones={OPCIONES_ESTADO} valor={filtros.estado} onCambio={(estado) => cambiar({ estado })} />
           <Segmentos etiqueta="Reportados en los últimos" opciones={OPCIONES_DIAS} valor={filtros.dias} onCambio={(dias) => cambiar({ dias })} />
+          <label className="flex items-center justify-between rounded-xl bg-gray-100 px-3 py-2 font-semibold">
+            🚗 Rugosidad medida
+            <input
+              type="checkbox"
+              checked={rugosidad.activa}
+              onChange={(e) => rugosidad.onCambio(e.target.checked)}
+              className="h-4 w-4 accent-green-700"
+            />
+          </label>
+          {rugosidad.activa && (
+            <div className="text-xs text-gray-600">
+              {rugosidad.error ? (
+                <p className="text-red-700">{rugosidad.error}</p>
+              ) : (
+                <>
+                  <p className="flex flex-wrap gap-x-3 gap-y-1">
+                    <span><i className="mr-1 inline-block h-1.5 w-4 rounded-full align-middle" style={{ background: "#1a9850" }} />Buena</span>
+                    <span><i className="mr-1 inline-block h-1.5 w-4 rounded-full align-middle" style={{ background: "#f2b705" }} />Regular</span>
+                    <span><i className="mr-1 inline-block h-1.5 w-4 rounded-full align-middle" style={{ background: "#d73027" }} />Mala</span>
+                    <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-gray-900 align-middle" />Golpe</span>
+                  </p>
+                  {rugosidad.resumen && (
+                    <p className="mt-1 text-gray-500">
+                      {rugosidad.resumen.km.toLocaleString("es-MX")} km medidos en {rugosidad.resumen.sesiones}{" "}
+                      {rugosidad.resumen.sesiones === 1 ? "recorrido" : "recorridos"}
+                      {filtros.dias ? ` (últimos ${filtros.dias} días)` : " (siempre)"}.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           <label className="flex items-center justify-between rounded-xl bg-gray-100 px-3 py-2 font-semibold">
             🗳️ Secciones electorales
             <input
