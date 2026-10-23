@@ -281,7 +281,7 @@ export function Medidor() {
           {pausa && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900">{pausa}</p>}
           <MiniMapa tramos={tramos} />
           <p className="text-xs text-gray-400">
-            Los tramos aparecen unos minutos después: por privacidad se esperan 300 m antes de guardarlos.
+            Los tramos aparecen unos minutos después: por privacidad se esperan unos 250 m antes de guardarlos.
           </p>
           <button onClick={terminar} className="w-full rounded-2xl bg-red-600 py-4 text-lg font-extrabold text-white active:scale-95">
             Terminar (ya estacionado)

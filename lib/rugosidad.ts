@@ -8,7 +8,8 @@
 //
 // Pensado para jornadas largas (repartidores, taxis): los tramos se liberan para enviarse
 // poco a poco, y por privacidad nunca se envía nada cerca de donde el vehículo se detuvo
-// (entregas, la casa) ni del inicio o el final del recorrido.
+// (entregas, la casa) ni del inicio o el final del recorrido. El recorte es al azar y
+// distinto de cada lado, para que el centro del hueco no delate el punto exacto.
 
 export type LatLon = [number, number];
 export type Clase = "buena" | "regular" | "mala";
@@ -44,10 +45,12 @@ const OPCIONES = {
   velMinKmh: 15,
   velMaxKmh: 80,
   golpeG: 0.7,
-  /** Privacidad: metros que se descartan alrededor de cada parada y al inicio y final */
-  privacidadM: 300,
-  /** Parada: más de 60 s a menos de 5 km/h (una entrega, un semáforo largo) */
-  paradaS: 60,
+  /** Privacidad: metros que se descartan (al azar entre min y max, distinto de cada lado)
+   *  alrededor de cada parada y al inicio y al final */
+  recorteMinM: 150,
+  recorteMaxM: 250,
+  /** Parada: más de 2 min a menos de 5 km/h (una entrega, la casa); los semáforos no cuentan */
+  paradaS: 120,
   paradaKmh: 5,
   /** Si el GPS deja de llegar más de 60 s (pantalla apagada, otra app), se corta el recorrido */
   huecoS: 60,
@@ -83,8 +86,27 @@ export class MotorRugosidad {
   private actual: Abierto | null = null;
   private pendientes: Tramo[] = [];
   private medidos = 0;
-  /** Distancias donde el vehículo se detuvo (o se cortó el GPS) */
-  private paradas: number[] = [];
+  /** Donde el vehículo se detuvo (o se cortó el GPS), con lo que se recorta antes y después */
+  private paradas: { d: number; antes: number; despues: number }[] = [];
+  private recorteInicio: number;
+  private recorteFinal: number;
+
+  private azar: () => number;
+
+  /** azar: se puede fijar en las pruebas */
+  constructor(azar: () => number = Math.random) {
+    this.azar = azar;
+    this.recorteInicio = this.recorte();
+    this.recorteFinal = this.recorte();
+  }
+
+  private recorte() {
+    return this.o.recorteMinM + this.azar() * (this.o.recorteMaxM - this.o.recorteMinM);
+  }
+
+  private marcarParada() {
+    this.paradas.push({ d: this.dist, antes: this.recorte(), despues: this.recorte() });
+  }
   private quietoDesde: number | null = null;
   private paradaMarcada = false;
 
@@ -129,7 +151,7 @@ export class MotorRugosidad {
       const d = distanciaM(this.ultimaPos, pos);
       if (dt > this.o.huecoS) {
         // Hueco (pantalla apagada u otra app): se corta el tramo y se trata como parada
-        this.paradas.push(this.dist);
+        this.marcarParada();
         this.actual = null;
         this.ultimaPos = pos;
         this.ultimaT = t;
@@ -143,11 +165,12 @@ export class MotorRugosidad {
     this.ultimaPos = pos;
     this.ultimaT = t;
 
-    // Paradas: entregas, casa, semáforos largos
+    // Paradas: entregas, casa
     if (this.vel !== null && this.vel * 3.6 < this.o.paradaKmh) {
       this.quietoDesde ??= t;
       if (!this.paradaMarcada && t - this.quietoDesde >= this.o.paradaS) {
-        this.paradas.push(this.dist);
+        // La parada se ubica donde empezó a estar quieto (no se movió desde entonces)
+        this.marcarParada();
         this.paradaMarcada = true;
       }
     } else {
@@ -200,15 +223,15 @@ export class MotorRugosidad {
    * está cerca de una parada; con final = true se descarta también el final del recorrido.
    */
   liberar(final = false): Tramo[] {
-    const R = this.o.privacidadM;
-    const cercaDeParada = (t: Tramo) => this.paradas.some((p) => t.fin_m > p - R && t.inicio_m < p + R);
+    const cercaDeParada = (t: Tramo) => this.paradas.some((p) => t.fin_m > p.d - p.antes && t.inicio_m < p.d + p.despues);
     const listos: Tramo[] = [];
     const siguen: Tramo[] = [];
     for (const t of this.pendientes) {
-      if (t.inicio_m < R || cercaDeParada(t)) continue; // descartado por privacidad
+      if (t.inicio_m < this.recorteInicio || cercaDeParada(t)) continue; // descartado por privacidad
       if (final) {
-        if (t.fin_m <= this.dist - R) listos.push(t);
-      } else if (t.fin_m + R <= this.dist) {
+        if (t.fin_m <= this.dist - this.recorteFinal) listos.push(t);
+      } else if (t.fin_m + this.o.recorteMaxM <= this.dist) {
+        // Ya avanzó lo suficiente: una parada futura no lo alcanzaría
         listos.push(t);
       } else siguen.push(t);
     }
