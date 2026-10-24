@@ -6,6 +6,7 @@ import { Barras, Seccion, Tabla, Tarjeta, Vacio, num } from "@/components/grafic
 import { DEPENDENCIAS, INFO_PIN, tituloReporte, type TipoPin } from "@/lib/constantes";
 import type { Pin } from "@/lib/datos";
 import { sesionPanelValida } from "@/lib/panel";
+import { SUPUESTOS, estimar, type Estimacion, type GrupoMedido } from "@/lib/economia";
 import { COLOR_CLASE, UMBRALES } from "@/lib/rugosidad";
 import { supabaseServidor } from "@/lib/supabase/servidor";
 import { folio } from "@/lib/urgencia";
@@ -49,6 +50,8 @@ export default async function PaginaEstadisticas() {
     p_regular: UMBRALES.regular,
     p_mala: UMBRALES.mala,
   });
+  const { data: distribucion } = await supabaseServidor().rpc("rugosidad_distribucion");
+  const estimacion = estimar(((distribucion as GrupoMedido[] | null) ?? []).map((g) => ({ ...g, m: Number(g.m) })));
 
   return (
     <main className="mx-auto max-w-4xl bg-white px-4 pb-16 pt-6 text-gray-900 sm:my-6 sm:rounded-2xl sm:px-8 sm:shadow">
@@ -72,6 +75,7 @@ export default async function PaginaEstadisticas() {
       )}
 
       <Recorridos r={(rugosidad as ResumenRugosidad | null) ?? null} />
+      <Economia e={estimacion} />
 
       <p className="mt-10 border-t border-gray-200 pt-4 text-xs text-gray-500">
         Datos de percepción ciudadana reportados de forma anónima. “Resuelto” significa que 3 vecinos confirmaron que ya
@@ -294,6 +298,104 @@ function Recorridos({ r }: { r: ResumenRugosidad | null }) {
       <a href="/api/equipo/rugosidad/csv" className="mt-4 inline-block rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold">
         ⬇️ Descargar tramos (CSV)
       </a>
+    </Seccion>
+  );
+}
+
+const pesos = (n: number) => `$${num(Math.round(n))}`;
+const millones = (n: number) => `$${num(Math.round(n / 1e6))} millones`;
+
+/** Costo de las calles en mal estado para los vehículos de Cajeme (PRELIMINAR, ver lib/economia.ts) */
+function Economia({ e }: { e: Estimacion | null }) {
+  const s = SUPUESTOS;
+  const r = (x: { bajo: number; medio: number; alto: number }, f = (n: number) => num(n)) => `${f(x.bajo)} – ${f(x.alto)}`;
+  return (
+    <Seccion
+      titulo="💸 Impacto económico (preliminar)"
+      nota="Estimación con supuestos de la literatura (HDM-4 del Banco Mundial, NCHRP 720). La conversión a IRI aún no está calibrada: no publicar como cifra definitiva."
+    >
+      {!e ? (
+        <Vacio texto="Se calcula cuando haya recorridos medidos (sin contar los de prueba)." />
+      ) : (
+        <>
+          <div className="rounded-xl bg-amber-50 p-4">
+            <p className="text-sm text-amber-900">Costo extra al año para los {num(s.vehiculos)} vehículos de Cajeme</p>
+            <p className="text-3xl font-extrabold tabular-nums">{millones(e.porEscenario.medio.totalAnio)}</p>
+            <p className="text-sm text-amber-900">
+              Rango: {millones(e.porEscenario.bajo.totalAnio)} a {millones(e.porEscenario.alto.totalAnio)}
+            </p>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Tarjeta
+              titulo="Por vehículo al año"
+              valor={pesos(e.porEscenario.medio.porVehiculoAnio)}
+              nota={`${pesos(e.porEscenario.bajo.porVehiculoAnio)} a ${pesos(e.porEscenario.alto.porVehiculoAnio)}`}
+            />
+            <Tarjeta titulo="Por km manejado" valor={`$${e.porEscenario.medio.porKm.toFixed(2)}`} nota="Costo extra promedio" />
+            <Tarjeta titulo="IRI promedio estimado" valor={`${e.iriPromedio.toFixed(1)} m/km`} nota={`DGST: bueno < ${s.iriAceptable}`} />
+            <Tarjeta titulo="Base del cálculo" valor={`${num(Math.round(e.km))} km`} nota="Medidos (sin pruebas ni motos)" />
+          </div>
+
+          <div className="mt-4 grid gap-x-8 sm:grid-cols-2">
+            <div>
+              <h3 className="text-sm font-bold">¿En qué se va el dinero? (pesos por vehículo al año)</h3>
+              <Barras
+                colorBarra="#b45309"
+                filas={(
+                  [
+                    ["Reparaciones y suspensión", e.porEscenario.medio.desglose.reparaciones],
+                    ["Gasolina", e.porEscenario.medio.desglose.gasolina],
+                    ["Llantas", e.porEscenario.medio.desglose.llantas],
+                  ] as const
+                ).map(([etiqueta, porKm]) => ({
+                  etiqueta,
+                  valor: Math.round(porKm * s.kmAnioPorVehiculo.medio),
+                }))}
+              />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold">Km medidos según la escala de la DGST (IRI estimado)</h3>
+              <Barras
+                filas={[
+                  { etiqueta: `Bueno (< ${s.iriAceptable})`, muestra: COLOR_CLASE.buena, valor: Math.round(e.kmPorClase.bueno * 10) / 10 },
+                  {
+                    etiqueta: `Aceptable (${s.iriAceptable}–${s.iriNoSatisfactorio})`,
+                    muestra: COLOR_CLASE.regular,
+                    valor: Math.round(e.kmPorClase.aceptable * 10) / 10,
+                  },
+                  {
+                    etiqueta: `No satisfactorio (> ${s.iriNoSatisfactorio})`,
+                    muestra: COLOR_CLASE.mala,
+                    valor: Math.round(e.kmPorClase.noSatisfactorio * 10) / 10,
+                  },
+                ]}
+              />
+            </div>
+          </div>
+
+          <details className="mt-4 rounded-xl border border-gray-200 p-3 text-sm">
+            <summary className="cursor-pointer font-semibold">Supuestos (se reemplazan cuando haya datos reales)</summary>
+            <Tabla
+              encabezados={["Supuesto", "Rango (bajo – alto)", "Se reemplaza con"]}
+              filas={[
+                ["IRI por cada m/s² medido (a 40 km/h)", r(s.iriPorRms, (n) => n.toFixed(1)), "IRI de la SICT en tramos que recorramos"],
+                ["Km al año por vehículo en Cajeme", r(s.kmAnioPorVehiculo), "Encuesta o dato de movilidad"],
+                ["Gasolina normal por km", r(s.gasolinaPorKm, (n) => `$${n.toFixed(2)}`), "Precio local y rendimiento promedio"],
+                ["Reparaciones normales por km", r(s.reparacionesPorKm, (n) => `$${n.toFixed(2)}`), "Talleres locales"],
+                ["Llantas normales por km", r(s.llantasPorKm, (n) => `$${n.toFixed(2)}`), "Precio y duración de llantas"],
+                ["Gasolina extra por punto de IRI", r(s.gasolinaPctPorIri, (n) => `${n}%`), "HDM-4"],
+                ["Llantas extra por punto de IRI", r(s.llantasPctPorIri, (n) => `${n}%`), "HDM-4"],
+                ["Reparaciones extra", "+10% en IRI 4, +40% en IRI 5", "NCHRP 720"],
+                ["Vehículos", num(s.vehiculos), "Padrón vehicular de Sonora"],
+              ]}
+            />
+            <p className="mt-2 text-xs text-gray-500">
+              Supone que los km medidos representan por dónde circula la gente (los recorridos son de choferes y
+              repartidores en su día normal). Sin calles en buen estado (IRI ≤ {s.iriBase}) no hay costo extra.
+            </p>
+          </details>
+        </>
+      )}
     </Seccion>
   );
 }

@@ -427,6 +427,22 @@ as $$
   from tramos_rugosidad
 $$;
 
+-- Lo medido agrupado por rugosidad y velocidad, para la estimación económica (lib/economia.ts).
+-- Sin recorridos de prueba (repiten la misma calle) ni motos (se sacuden distinto)
+create or replace function public.rugosidad_distribucion()
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  select coalesce(json_agg(x), '[]'::json)
+  from (
+    select round(rms::numeric, 2) as rms, (round(vel_kmh / 5) * 5)::int as vel_kmh, sum(largo_m) as m
+    from tramos_rugosidad
+    where nota is null and vehiculo <> 'moto'
+    group by 1, 2
+  ) x
+$$;
+
 -- Resumen para la barra inferior: reportes y colonias afectadas en las últimas p_horas horas
 create or replace function public.resumen(p_horas int default 168)
 returns json

@@ -11,6 +11,9 @@
 - Los golpes se ubican donde iba el vehículo en ese instante, no en la última lectura del GPS.
 - `/estadisticas`: sección "Recorridos medidos" (km por estado, recorridos de prueba) y descarga
   de todos los tramos en CSV.
+- `/estadisticas`: **impacto económico preliminar** (método simplificado de HDM-4): IRI estimado,
+  costo extra por km, por vehículo al año y total para Cajeme, con rango bajo–alto. Todos los
+  supuestos están en `lib/economia.ts` y se reemplazan cuando haya calibración y datos locales.
 - Requiere correr `01_esquema.sql`, `02_funciones.sql` y `03_seguridad.sql`.
 
 ## 1.2 — 22 de octubre de 2026
