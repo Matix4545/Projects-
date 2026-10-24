@@ -32,6 +32,21 @@ export type EstadoMedicion = {
   gps_ok: boolean;
   hz: number;
   tramos: number;
+  descartes: Descartes;
+};
+
+/** Lo que no se pudo medir y por qué (se muestra al terminar; no se envía) */
+export type Descartes = {
+  /** m recortados alrededor del inicio, el final y las paradas */
+  privacidad_m: number;
+  /** m a vuelta de rueda o detenido casi todo el tramo (menos de 15 km/h) */
+  lento_m: number;
+  /** m a más de 80 km/h */
+  rapido_m: number;
+  /** s con señal de GPS débil (lecturas con mucho error) */
+  gps_debil_s: number;
+  /** veces que la medición se cortó (pantalla apagada u otra app) */
+  cortes: number;
 };
 
 /** Umbrales provisionales (m/s² RMS). Se ajustan con recorridos reales. */
@@ -54,7 +69,7 @@ const OPCIONES = {
   paradaKmh: 5,
   /** Si el GPS deja de llegar más de 60 s (pantalla apagada, otra app), se corta el recorrido */
   huecoS: 60,
-  precisionMaxM: 25,
+  precisionMaxM: 30,
 };
 
 export function distanciaM(a: LatLon, b: LatLon) {
@@ -66,7 +81,19 @@ export function distanciaM(a: LatLon, b: LatLon) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-type Abierto = { inicio_m: number; fin_m: number; t0: number; t1: number; puntos: LatLon[]; sumSq: number; n: number; golpes: LatLon[]; ultimoGolpe: number };
+type Abierto = {
+  inicio_m: number;
+  fin_m: number;
+  puntos: LatLon[];
+  sumSq: number;
+  /** Lecturas del acelerómetro tomadas en movimiento (las de semáforos y tráfico parado no cuentan) */
+  n: number;
+  /** Velocidades del GPS en movimiento, para la velocidad del tramo */
+  sumVel: number;
+  nVel: number;
+  golpes: LatLon[];
+  ultimoGolpe: number;
+};
 
 export class MotorRugosidad {
   private o = OPCIONES;
@@ -109,6 +136,10 @@ export class MotorRugosidad {
   }
   private quietoDesde: number | null = null;
   private paradaMarcada = false;
+  private descartes: Descartes = { privacidad_m: 0, lento_m: 0, rapido_m: 0, gps_debil_s: 0, cortes: 0 };
+  /** Última lectura del GPS aunque haya sido imprecisa, y si en ella el vehículo se movía */
+  private ultimaLecturaT = 0;
+  private seMoviaConGpsDebil = false;
 
   /** Lectura del acelerómetro con gravedad (m/s²) y su tiempo en segundos. */
   movimiento(ax: number, ay: number, az: number, t: number) {
@@ -129,6 +160,8 @@ export class MotorRugosidad {
 
     const tr = this.actual;
     if (!tr || !this.ultimaPos) return;
+    // Solo se mide en movimiento: un semáforo o tráfico parado no tumba el tramo completo
+    if (this.vel === null || this.vel * 3.6 < this.o.velMinKmh) return;
     tr.sumSq += vertical * vertical;
     tr.n++;
     if (Math.abs(vertical) > this.o.golpeG * G && t - tr.ultimoGolpe > 1) {
@@ -139,8 +172,13 @@ export class MotorRugosidad {
 
   /** Lectura del GPS: precisión en metros, velocidad en m/s (o null) y tiempo en segundos. */
   posicion(lat: number, lng: number, precision: number, velocidad: number | null, t: number) {
+    const lecturaPrevia = this.ultimaLecturaT;
+    this.ultimaLecturaT = t;
     if (precision > this.o.precisionMaxM) {
+      if (this.gpsOk === false && lecturaPrevia) this.descartes.gps_debil_s += Math.min(t - lecturaPrevia, this.o.huecoS);
       this.gpsOk = false;
+      // ¿Seguía en movimiento? (si no hay velocidad, se asume que sí)
+      this.seMoviaConGpsDebil = velocidad == null || velocidad * 3.6 >= this.o.paradaKmh;
       return;
     }
     this.gpsOk = true;
@@ -150,8 +188,15 @@ export class MotorRugosidad {
       const dt = t - this.ultimaT;
       const d = distanciaM(this.ultimaPos, pos);
       if (dt > this.o.huecoS) {
-        // Hueco (pantalla apagada u otra app): se corta el tramo y se trata como parada
-        this.marcarParada();
+        const gpsDebilEnMovimiento = t - lecturaPrevia <= this.o.huecoS && this.seMoviaConGpsDebil;
+        if (gpsDebilEnMovimiento) {
+          // Señal débil un rato (puente, vía del tren) pero siguió manejando: se corta el tramo,
+          // sin recorte de privacidad porque no se detuvo
+        } else {
+          // Sin lecturas (pantalla apagada u otra app): se corta y se trata como parada
+          this.marcarParada();
+          this.descartes.cortes++;
+        }
         this.actual = null;
         this.ultimaPos = pos;
         this.ultimaT = t;
@@ -186,7 +231,10 @@ export class MotorRugosidad {
     const ultimo = tr.puntos[tr.puntos.length - 1];
     if (distanciaM(ultimo, pos) > 15) tr.puntos.push(pos);
     tr.fin_m = this.dist;
-    tr.t1 = t;
+    if (this.vel !== null && this.vel * 3.6 >= this.o.velMinKmh) {
+      tr.sumVel += this.vel;
+      tr.nVel++;
+    }
     if (tr.fin_m - tr.inicio_m >= this.o.tramoM) {
       if (tr.puntos[tr.puntos.length - 1] !== pos) tr.puntos.push(pos);
       this.cerrar(tr);
@@ -194,16 +242,22 @@ export class MotorRugosidad {
     }
   }
 
-  private nuevo(t: number, pos: LatLon): Abierto {
-    return { inicio_m: this.dist, fin_m: this.dist, t0: t, t1: t, puntos: [pos], sumSq: 0, n: 0, golpes: [], ultimoGolpe: 0 };
+  private nuevo(_t: number, pos: LatLon): Abierto {
+    return { inicio_m: this.dist, fin_m: this.dist, puntos: [pos], sumSq: 0, n: 0, sumVel: 0, nVel: 0, golpes: [], ultimoGolpe: 0 };
   }
 
   private cerrar(tr: Abierto) {
     const largo = tr.fin_m - tr.inicio_m;
-    const dur = tr.t1 - tr.t0;
-    if (tr.n < 20 || dur <= 0) return;
-    const kmh = (largo / dur) * 3.6;
-    if (kmh < this.o.velMinKmh || kmh > this.o.velMaxKmh) return;
+    // Muy pocas lecturas en movimiento: fue a vuelta de rueda o detenido casi todo el tramo
+    if (tr.n < 20 || tr.nVel === 0) {
+      this.descartes.lento_m += largo;
+      return;
+    }
+    const kmh = (tr.sumVel / tr.nVel) * 3.6;
+    if (kmh > this.o.velMaxKmh) {
+      this.descartes.rapido_m += largo;
+      return;
+    }
     this.medidos++;
     this.pendientes.push({
       puntos: tr.puntos.slice(0, 30),
@@ -227,9 +281,13 @@ export class MotorRugosidad {
     const listos: Tramo[] = [];
     const siguen: Tramo[] = [];
     for (const t of this.pendientes) {
-      if (t.inicio_m < this.recorteInicio || cercaDeParada(t)) continue; // descartado por privacidad
+      if (t.inicio_m < this.recorteInicio || cercaDeParada(t)) {
+        this.descartes.privacidad_m += t.largo_m; // descartado por privacidad
+        continue;
+      }
       if (final) {
         if (t.fin_m <= this.dist - this.recorteFinal) listos.push(t);
+        else this.descartes.privacidad_m += t.largo_m;
       } else if (t.fin_m + this.o.recorteMaxM <= this.dist) {
         // Ya avanzó lo suficiente: una parada futura no lo alcanzaría
         listos.push(t);
@@ -251,6 +309,7 @@ export class MotorRugosidad {
       gps_ok: this.gpsOk,
       hz: this.hz,
       tramos: this.medidos,
+      descartes: { ...this.descartes },
     };
   }
 }

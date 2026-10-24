@@ -95,6 +95,8 @@ export function Medidor() {
 
   function liberarYEnviar(final: boolean) {
     const nuevos = motor.current?.liberar(final) ?? [];
+    // Al liberar se calculan los recortes de privacidad: se refresca el estado para mostrarlos
+    if (motor.current) setEstado(motor.current.estado());
     if (nuevos.length) {
       cola.current.push(...nuevos);
       setTramos((t) => [...t, ...nuevos]);
@@ -301,11 +303,15 @@ export function Medidor() {
                 <Dato titulo="Mala" valor={pct(resumen.mala, resumen.km)} color={COLOR_CLASE.mala} />
               </div>
               <p className="text-sm text-gray-600">{resumen.golpes} golpes fuertes detectados (baches, topes o vados).</p>
+              {estado && <NoMedido estado={estado} medidoKm={resumen.km} />}
             </>
           ) : (
-            <p className="text-gray-600">
-              No quedaron tramos para guardar. Pasa con recorridos de más de 1 km, a más de 15 km/h y sin muchas paradas.
-            </p>
+            <>
+              <p className="text-gray-600">
+                No quedaron tramos para guardar. Pasa con recorridos de más de 1 km, a más de 15 km/h y sin muchas paradas.
+              </p>
+              {estado && <NoMedido estado={estado} medidoKm={0} />}
+            </>
           )}
           <p className="text-sm text-gray-500">
             {pendientesEnvio > 0 ? `Enviando ${pendientesEnvio} tramos… deja la página abierta un momento.` : "✓ Todo enviado."}
@@ -322,6 +328,32 @@ export function Medidor() {
         </p>
       )}
     </main>
+  );
+}
+
+/** Por qué una parte del recorrido no quedó medida */
+function NoMedido({ estado, medidoKm }: { estado: EstadoMedicion; medidoKm: number }) {
+  const d = estado.descartes;
+  const km = (m: number) => `${(m / 1000).toFixed(1)} km`;
+  const filas = [
+    d.privacidad_m > 0 && `${km(d.privacidad_m)} recortados por privacidad (inicio, final y paradas de más de 2 min)`,
+    d.lento_m > 0 && `${km(d.lento_m)} a vuelta de rueda o detenido`,
+    d.rapido_m > 0 && `${km(d.rapido_m)} a más de 80 km/h`,
+    d.gps_debil_s >= 30 && `${Math.round(d.gps_debil_s / 60) || 1} min con señal de GPS débil`,
+    d.cortes > 0 && `${d.cortes} ${d.cortes === 1 ? "pausa" : "pausas"} por cambiar de app o apagar la pantalla`,
+  ].filter(Boolean);
+  if (filas.length === 0) return null;
+  return (
+    <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-600">
+      <p className="font-semibold text-gray-700">
+        Recorriste {km(estado.distancia_m)} y se midieron {medidoKm.toFixed(1)} km. Lo que no se midió:
+      </p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-5">
+        {filas.map((f) => (
+          <li key={String(f)}>{f}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

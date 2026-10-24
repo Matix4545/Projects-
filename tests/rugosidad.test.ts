@@ -91,8 +91,8 @@ test("un semáforo (90 s) no recorta nada", () => {
   const sinAlto = new MotorRugosidad(() => 0.5);
   manejar(sinAlto, [[3000, 0.5, 0]]);
   const km = (m: MotorRugosidad) => [...m.liberar(false), ...m.liberar(true)].reduce((s, t) => s + t.largo_m, 0);
-  // Solo se pierde el tramo donde estuvo detenido (a esa velocidad no es una medición válida)
-  assert.ok(km(sinAlto) - km(conAlto) <= 120, "el semáforo no recorta como una parada");
+  // Se mide solo en movimiento: el tramo del semáforo se conserva
+  assert.ok(km(sinAlto) - km(conAlto) <= 20, `el semáforo no quita tramos (${km(sinAlto)} vs ${km(conAlto)})`);
 });
 
 test("envíos parciales: solo salen tramos ya alejados 250 m", () => {
@@ -114,4 +114,31 @@ test("si se corta el GPS (otra app), se trata como parada", () => {
   assert.equal(motor.estado().distancia_m, d, "el salto no suma distancia");
   const tramos = motor.liberar(true);
   assert.ok(tramos.every((t) => t.fin_m <= d - 150));
+});
+
+test("GPS débil un rato sin detenerse (puente, vía del tren): no se recorta como parada", () => {
+  const motor = new MotorRugosidad(() => 0.5);
+  manejar(motor, [[1500, 0.5, 0]]);
+  const d = motor.estado().distancia_m;
+  // 70 s de lecturas imprecisas mientras sigue a 36 km/h, y la señal vuelve 700 m adelante
+  for (let s = 1; s <= 70; s++) motor.posicion(27.45 + (d + s * 10) / M_POR_GRADO, -109.94, 60, 10, 151 + s);
+  for (let s = 71; s < 220; s++) {
+    for (let i = 0; i < 60; i++) motor.movimiento(0.3, 0.2, G + 0.5 * Math.SQRT2 * Math.sin((s + i / 60) * 44), s + 151 + i / 60);
+    motor.posicion(27.45 + (d + s * 10) / M_POR_GRADO, -109.94, 5, 10, 151 + s);
+  }
+  const e = motor.estado();
+  assert.equal(e.descartes.cortes, 0, "no cuenta como corte");
+  assert.ok(e.descartes.gps_debil_s >= 60, "registra el tiempo con GPS débil");
+  const tramos = [...motor.liberar(false), ...motor.liberar(true)];
+  assert.ok(tramos.some((t) => t.inicio_m < d && t.fin_m > d - 150), "conserva lo medido justo antes de perder señal");
+});
+
+test("explica lo que no se midió", () => {
+  const motor = new MotorRugosidad(() => 0.5);
+  manejar(motor, [[3000, 0.5, 0]], 1500);
+  motor.liberar(false);
+  motor.liberar(true);
+  const e = motor.estado().descartes;
+  // inicio + final + 2 lados de la parada, ~200 m cada uno
+  assert.ok(e.privacidad_m >= 600 && e.privacidad_m <= 1100, `privacidad: ${e.privacidad_m}`);
 });
