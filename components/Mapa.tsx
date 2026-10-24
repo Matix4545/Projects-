@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { CENTRO_OBREGON, COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, SUBTIPOS_PELIGROSOS, type EstadoAgua, type TipoPin } from "@/lib/constantes";
 import type { Pin, ZonasGeoJSON } from "@/lib/datos";
-import { COLOR_CLASE, clasificar } from "@/lib/rugosidad";
+import { COLOR_CLASE, clasificar, medicionesCerca, type MedicionTramo } from "@/lib/rugosidad";
 import { seccionEn, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
 import { CapaCalor } from "./CapaCalor";
 
@@ -26,6 +26,8 @@ type Props = {
   onSeccion: (s: PropsSeccion | null) => void;
   /** Rugosidad medida con celulares (solo equipo); null = capa apagada */
   rugosidad: GeoJSON.FeatureCollection | null;
+  /** Al tocar cerca de un tramo medido: sus mediciones */
+  onTramo: (m: MedicionTramo[]) => void;
   zonaSeleccionada: number | null;
   pinSeleccionado: number | null;
   /** Modo "elige un punto": los toques en el mapa mueven el marcador del reporte */
@@ -75,6 +77,17 @@ function ObservarZoom({ onZoom }: { onZoom: (z: number) => void }) {
 // Alejado los puntos se amontonan: se dibujan más chicos y con borde fino
 const escalaPunto = (zoom: number) => (zoom <= 13 ? 0.65 : zoom === 14 ? 0.8 : 1);
 
+/** Con la capa de rugosidad prendida, tocar cerca de un tramo muestra sus mediciones */
+function tocarTramo(p: Props, e: LeafletMouseEvent, zoom: number) {
+  if (!p.rugosidad) return false;
+  // ~15 px de tolerancia para atinar con el dedo: en metros depende del zoom (a zoom 16, ~35 m)
+  const radio = Math.min(150, Math.max(15, 35 * 2 ** (16 - zoom)));
+  const m = medicionesCerca(e.latlng.lat, e.latlng.lng, p.rugosidad, radio);
+  if (m.length === 0) return false;
+  p.onTramo(m);
+  return true;
+}
+
 function Clics({ onClick }: { onClick: (e: LeafletMouseEvent) => void }) {
   useMapEvents({ click: onClick });
   return null;
@@ -85,6 +98,7 @@ export default function Mapa(props: Props) {
 
   // Las funciones de Leaflet se crean una sola vez; con refs siempre ven los props actuales.
   const [zoomReal, setZoom] = useState(13);
+  const zoomRef = useRef(13);
   const zoom = props.puntosFinos ? zoomReal : 99;
   const refProps = useRef(props);
   refProps.current = props;
@@ -122,6 +136,7 @@ export default function Mapa(props: Props) {
       L.DomEvent.stopPropagation(e);
       const p = refProps.current;
       if (p.eligiendoUbicacion) p.onElegirPunto(e.latlng.lat, e.latlng.lng);
+      else if (tocarTramo(p, e, zoomRef.current)) return;
       // Con las secciones prendidas, tocar el mapa dice en qué sección cae (en vez de abrir la colonia)
       else if (p.secciones) p.onSeccion(seccionEn(e.latlng.lat, e.latlng.lng, p.secciones));
       else p.onZona(Number(feature.properties?.id), [e.latlng.lat, e.latlng.lng]);
@@ -183,11 +198,17 @@ export default function Mapa(props: Props) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       />
       <Centrador centrarEn={props.centrarEn} />
-      <ObservarZoom onZoom={setZoom} />
+      <ObservarZoom
+        onZoom={(z) => {
+          zoomRef.current = z;
+          setZoom(z);
+        }}
+      />
       <Clics
         onClick={(e) => {
           const p = refProps.current;
           if (p.eligiendoUbicacion) p.onElegirPunto(e.latlng.lat, e.latlng.lng);
+          else if (tocarTramo(p, e, zoomRef.current)) return;
           else if (p.secciones) p.onSeccion(seccionEn(e.latlng.lat, e.latlng.lng, p.secciones));
           else p.onFondo();
         }}

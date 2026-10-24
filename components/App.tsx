@@ -22,7 +22,9 @@ import {
   type ZonasGeoJSON,
 } from "@/lib/datos";
 import { BarraResumen } from "./BarraResumen";
+import type { MedicionTramo } from "@/lib/rugosidad";
 import { topSecciones, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
+import { TarjetaTramo } from "./TarjetaTramo";
 import { FILTROS_INICIALES, Filtros, filtrarPins, type FiltrosMapa } from "./Filtros";
 import { FlujoReporte, type EstadoTramo, type OrigenUbicacion } from "./FlujoReporte";
 import { Leyenda } from "./Leyenda";
@@ -69,6 +71,7 @@ export function App() {
   const [verRugosidad, setVerRugosidad] = useState(false);
   const [rugosidad, setRugosidad] = useState<(GeoJSON.FeatureCollection & { km?: number; sesiones?: number }) | null>(null);
   const [errorRugosidad, setErrorRugosidad] = useState<string | null>(null);
+  const [infoTramo, setInfoTramo] = useState<MedicionTramo[] | null>(null);
   const [infoSeccion, setInfoSeccion] = useState<PropsSeccion | null | "fuera">(null);
   const [vista, setVista] = useState<Vista>({ tipo: "nada" });
   const [aviso, setAviso] = useState<string | null>(null);
@@ -284,6 +287,10 @@ export function App() {
           secciones={equipo && verSecciones && !reportando ? secciones : null}
           onSeccion={(s) => setInfoSeccion(s ?? "fuera")}
           rugosidad={equipo && verRugosidad && !reportando ? rugosidad : null}
+          onTramo={(m) => {
+            setInfoTramo(m);
+            setInfoSeccion(null);
+          }}
           zonaSeleccionada={vista.tipo === "zona" ? vista.id : null}
           pinSeleccionado={vista.tipo === "pin" ? vista.pin.id : null}
           eligiendoUbicacion={reportando}
@@ -376,13 +383,17 @@ export function App() {
               }}
               rugosidad={{
                 activa: verRugosidad,
-                onCambio: setVerRugosidad,
+                onCambio: (v) => {
+                  setVerRugosidad(v);
+                  setInfoTramo(null);
+                },
                 resumen: rugosidad ? { km: rugosidad.km ?? 0, sesiones: rugosidad.sesiones ?? 0 } : null,
                 error: errorRugosidad,
               }}
             />
           )}
-          {equipo && verSecciones && infoSeccion && (
+          {equipo && verRugosidad && infoTramo && <TarjetaTramo mediciones={infoTramo} onCerrar={() => setInfoTramo(null)} />}
+          {equipo && verSecciones && infoSeccion && !infoTramo && (
             <div className="fixed inset-x-3 top-32 z-[1002] mx-auto flex max-w-sm items-start justify-between gap-2 rounded-xl bg-violet-900 px-3 py-2 text-sm text-white shadow-xl">
               {infoSeccion === "fuera" ? (
                 <span>Ese punto no está en ninguna sección de Cajeme.</span>

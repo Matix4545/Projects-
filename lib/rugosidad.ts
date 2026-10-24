@@ -325,3 +325,60 @@ export function resumir(tramos: Pick<Tramo, "largo_m" | "rms" | "golpes">[]) {
     golpes: tramos.reduce((s, t) => s + t.golpes.length, 0),
   };
 }
+
+/** Una medición de rugosidad tal como llega al mapa del equipo */
+export type MedicionTramo = {
+  rms: number;
+  vel_kmh: number;
+  vehiculo: string;
+  fecha: string;
+  n_golpes: number;
+  largo_m: number;
+  distancia_m: number;
+};
+
+/** Distancia en metros de un punto a una línea (aproximación plana, suficiente para ~100 m) */
+function distanciaALinea([lat, lng]: LatLon, linea: LatLon[]) {
+  const kx = 111_320 * Math.cos((lat * Math.PI) / 180);
+  const ky = 110_574;
+  let min = Infinity;
+  for (let i = 1; i < linea.length; i++) {
+    const [ax, ay] = [(linea[i - 1][1] - lng) * kx, (linea[i - 1][0] - lat) * ky];
+    const [bx, by] = [(linea[i][1] - lng) * kx, (linea[i][0] - lat) * ky];
+    const [dx, dy] = [bx - ax, by - ay];
+    const l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+    min = Math.min(min, Math.hypot(ax + t * dx, ay + t * dy));
+  }
+  return min;
+}
+
+/**
+ * Mediciones a menos de radioM metros del punto tocado (todas las pasadas por esa cuadra),
+ * de la más cercana a la más lejana.
+ */
+export function medicionesCerca(lat: number, lng: number, fc: GeoJSON.FeatureCollection, radioM = 25): MedicionTramo[] {
+  const salida: MedicionTramo[] = [];
+  for (const f of fc.features) {
+    if (f.geometry.type !== "LineString" || f.properties?.tipo !== "tramo") continue;
+    const linea = (f.geometry.coordinates as number[][]).map(([x, y]) => [y, x] as LatLon);
+    const d = distanciaALinea([lat, lng], linea);
+    if (d > radioM) continue;
+    let largo = 0;
+    for (let i = 1; i < linea.length; i++) largo += distanciaM(linea[i - 1], linea[i]);
+    const p = f.properties;
+    salida.push({
+      rms: Number(p.rms),
+      vel_kmh: Number(p.vel_kmh),
+      vehiculo: String(p.vehiculo),
+      fecha: String(p.fecha),
+      n_golpes: Number(p.n_golpes ?? 0),
+      largo_m: Math.round(largo),
+      distancia_m: d,
+    });
+  }
+  salida.sort((a, b) => a.distancia_m - b.distancia_m);
+  // Solo la cuadra tocada: las pasadas por ahí quedan casi a la misma distancia (el GPS varía unos
+  // metros); los tramos vecinos de la misma calle quedan más lejos y no se cuentan
+  return salida.filter((m) => m.distancia_m <= salida[0].distancia_m + 12);
+}

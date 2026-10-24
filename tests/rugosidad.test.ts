@@ -142,3 +142,22 @@ test("explica lo que no se midió", () => {
   // inicio + final + 2 lados de la parada, ~200 m cada uno
   assert.ok(e.privacidad_m >= 600 && e.privacidad_m <= 1100, `privacidad: ${e.privacidad_m}`);
 });
+
+test("tocar el mapa encuentra las mediciones de esa cuadra", async () => {
+  const { medicionesCerca } = await import("../lib/rugosidad.ts");
+  const linea = (lat: number, rms: number, vel: number) => ({
+    type: "Feature" as const,
+    properties: { tipo: "tramo", rms, vel_kmh: vel, vehiculo: "auto", fecha: "2026-10-24", n_golpes: 1 },
+    geometry: { type: "LineString" as const, coordinates: [[-109.94, lat], [-109.94, lat + 0.0009]] },
+  });
+  const fc = { type: "FeatureCollection" as const, features: [linea(27.48, 1.4, 35), linea(27.48001, 1.2, 32), linea(27.50, 2.5, 40)] };
+  // A ~10 m al este de la calle: las dos pasadas, no la otra calle
+  const m = medicionesCerca(27.4804, -109.9399, fc);
+  assert.equal(m.length, 2);
+  assert.deepEqual(m.map((x) => x.rms).sort(), [1.2, 1.4]);
+  assert.ok(m[0].largo_m > 90 && m[0].largo_m < 110);
+  assert.equal(medicionesCerca(27.49, -109.94, fc).length, 0);
+  // Con radio grande no se cuelan los tramos vecinos de la misma calle
+  const vecinos = { ...fc, features: [...fc.features, linea(27.4809, 1.9, 40)] };
+  assert.equal(medicionesCerca(27.4804, -109.9399, vecinos, 80).length, 2);
+});
