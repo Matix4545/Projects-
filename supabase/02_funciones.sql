@@ -365,7 +365,7 @@ as $$
       select json_agg(f) from (
         select json_build_object(
           'type', 'Feature',
-          'properties', json_build_object('tipo', 'tramo', 'rms', t.rms, 'vel_kmh', t.vel_kmh, 'vehiculo', t.vehiculo, 'fecha', t.fecha, 'n_golpes', t.n_golpes),
+          'properties', json_build_object('tipo', 'tramo', 'rms', t.rms, 'vel_kmh', t.vel_kmh, 'vehiculo', t.vehiculo, 'fecha', t.fecha, 'n_golpes', t.n_golpes, 'nota', t.nota),
           'geometry', st_asgeojson(t.trazo, 6)::json) as f
         from t
         union all
@@ -377,6 +377,54 @@ as $$
         where t.golpes is not null
       ) x), '[]'::json)
   )
+$$;
+
+-- Tramos de rugosidad para análisis (CSV del equipo): todo lo medido, con los datos de calibración
+create or replace function public.exportar_rugosidad(p_dias int default 3650)
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  select coalesce(json_agg(x order by x.fecha desc, x.id), '[]'::json)
+  from (
+    select t.id, t.fecha, t.sesion, t.vehiculo, t.soporte, t.plataforma, t.nota,
+           t.largo_m, t.vel_kmh, t.vel_sd, t.rms, t.rms_baja, t.p95, t.n_golpes, t.hz,
+           round(st_y(st_lineinterpolatepoint(t.trazo, 0.5))::numeric, 6) as lat,
+           round(st_x(st_lineinterpolatepoint(t.trazo, 0.5))::numeric, 6) as lng,
+           st_astext(t.trazo, 6) as trazo
+    from tramos_rugosidad t
+    where t.fecha > current_date - least(greatest(coalesce(p_dias, 3650), 1), 3650)
+    order by t.fecha desc
+    limit 200000
+  ) x
+$$;
+
+-- Resumen de lo medido (estadísticas del equipo). Los umbrales llegan de la app (lib/rugosidad.ts)
+create or replace function public.resumen_rugosidad(p_regular real, p_mala real)
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  select json_build_object(
+    'km', round((coalesce(sum(largo_m), 0) / 1000)::numeric, 1),
+    'sesiones', count(distinct sesion),
+    'dias', count(distinct fecha),
+    'km_buena', round((coalesce(sum(largo_m) filter (where rms < p_regular), 0) / 1000)::numeric, 1),
+    'km_regular', round((coalesce(sum(largo_m) filter (where rms >= p_regular and rms < p_mala), 0) / 1000)::numeric, 1),
+    'km_mala', round((coalesce(sum(largo_m) filter (where rms >= p_mala), 0) / 1000)::numeric, 1),
+    'golpes', coalesce(sum(n_golpes), 0),
+    'con_calibracion', count(*) filter (where rms_baja is not null),
+    'pruebas', coalesce((
+      select json_agg(p order by p.fecha desc) from (
+        select nota, fecha, count(*) as tramos, round((sum(largo_m) / 1000)::numeric, 1) as km,
+               round(avg(rms)::numeric, 2) as rms, round(avg(vel_kmh)::numeric) as vel_kmh,
+               round(avg(vel_sd)::numeric, 1) as vel_sd
+        from tramos_rugosidad where nota is not null
+        group by sesion, nota, fecha
+        order by fecha desc limit 30
+      ) p), '[]'::json)
+  )
+  from tramos_rugosidad
 $$;
 
 -- Resumen para la barra inferior: reportes y colonias afectadas en las últimas p_horas horas

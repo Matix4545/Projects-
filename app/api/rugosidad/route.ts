@@ -9,7 +9,8 @@ export const runtime = "nodejs";
 
 // POST /api/rugosidad — tramos ya calculados en el celular ("Medir mi recorrido").
 // Llegan en lotes cada ~5 minutos durante el recorrido. No se guarda nada que identifique
-// a la persona: ni hora, ni IP, ni el celular (solo una sesión al azar por recorrido).
+// a la persona: ni hora, ni IP, ni el celular (solo una sesión al azar por recorrido;
+// del teléfono solo si es Android o iPhone, porque sus sensores miden distinto).
 
 // Envíos al día: generoso, porque un repartidor manda un lote cada 5 minutos toda la jornada
 const LOTES_DIA_DISPOSITIVO = 400;
@@ -21,6 +22,9 @@ const Tramo = z.object({
   largo_m: z.number().min(30).max(400),
   vel_kmh: z.number().min(5).max(120),
   rms: z.number().min(0).max(50),
+  rms_baja: z.number().min(0).max(50).optional(),
+  p95: z.number().min(0).max(25).optional(),
+  vel_sd: z.number().min(0).max(100).optional(),
   golpes: z.array(Punto).max(20),
 });
 const Lote = z.object({
@@ -28,6 +32,9 @@ const Lote = z.object({
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   vehiculo: z.enum(["auto", "camioneta", "pickup", "moto", "otro"]),
   hz: z.number().min(0).max(1000).optional(),
+  soporte: z.enum(["rejilla", "parabrisas", "tablero", "portavasos", "otro"]).optional(),
+  plataforma: z.enum(["android", "ios", "otro"]).optional(),
+  nota: z.string().trim().max(60).optional(),
   tramos: z.array(z.unknown()).min(1).max(200),
   token: z.string(),
 });
@@ -65,9 +72,15 @@ export async function POST(req: Request) {
       largo_m: t.largo_m,
       vel_kmh: t.vel_kmh,
       rms: t.rms,
+      rms_baja: t.rms_baja ?? null,
+      p95: t.p95 ?? null,
+      vel_sd: t.vel_sd ?? null,
       golpes: t.golpes.length ? multipunto(t.golpes) : null,
       n_golpes: t.golpes.length,
       hz: lote.hz ?? null,
+      soporte: lote.soporte ?? null,
+      plataforma: lote.plataforma ?? null,
+      nota: lote.nota || null,
     })),
   );
   if (err) {

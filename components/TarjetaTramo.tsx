@@ -22,6 +22,7 @@ export function TarjetaTramo({ mediciones, onCerrar }: { mediciones: MedicionTra
             {Math.round(m.vel_kmh)} km/h · {fecha(m.fecha)} · {VEHICULO[m.vehiculo] ?? m.vehiculo} · {m.n_golpes}{" "}
             {m.n_golpes === 1 ? "golpe" : "golpes"} · tramo de {m.largo_m} m
           </p>
+          {m.nota && <p className="mt-0.5 text-xs font-semibold text-blue-800">🧪 {m.nota}</p>}
         </div>
         <button onClick={onCerrar} aria-label="Cerrar" className="px-1 text-lg leading-none text-gray-400">
           ×
@@ -38,6 +39,7 @@ export function TarjetaTramo({ mediciones, onCerrar }: { mediciones: MedicionTra
               <li key={i} className="flex items-center gap-2 text-gray-700">
                 <span className="inline-block h-2 w-2 rounded-full" style={{ background: COLOR_CLASE[clasificar(x.rms)] }} />
                 <strong>{n2(x.rms)}</strong> · {Math.round(x.vel_kmh)} km/h · {fecha(x.fecha)} · {VEHICULO[x.vehiculo] ?? x.vehiculo}
+                {x.nota && <span className="truncate text-xs text-blue-800">· 🧪 {x.nota}</span>}
               </li>
             ))}
           </ul>

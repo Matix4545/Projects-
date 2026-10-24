@@ -161,3 +161,30 @@ test("tocar el mapa encuentra las mediciones de esa cuadra", async () => {
   const vecinos = { ...fc, features: [...fc.features, linea(27.4809, 1.9, 40)] };
   assert.equal(medicionesCerca(27.4804, -109.9399, vecinos, 80).length, 2);
 });
+
+test("datos para calibrar: parte lenta, percentil 95 y variación de velocidad", () => {
+  const motor = new MotorRugosidad();
+  manejar(motor, [[1500, 0.4, 0], [1000, 2.5, 50], [800, 0.4, 0]]);
+  const tramos = motor.liberar(true);
+  for (const t of tramos) {
+    assert.ok(t.rms_baja >= 0 && t.rms_baja < t.rms, "la vibración de 7 Hz casi no pasa por el filtro de 4 Hz");
+    assert.ok(t.p95 > 0 && t.p95 <= 20);
+    assert.ok(t.vel_sd < 1, "velocidad constante en la simulación");
+  }
+  const lisos = tramos.filter((t) => t.fin_m <= 1450);
+  const baches = tramos.filter((t) => t.inicio_m >= 1550 && t.fin_m <= 2450);
+  assert.ok(Math.min(...baches.map((t) => t.p95)) > Math.max(...lisos.map((t) => t.p95)));
+});
+
+test("el golpe se ubica entre lecturas del GPS, no en la última lectura", () => {
+  const motor = new MotorRugosidad(() => 0); // recortes fijos de 150 m
+  let t = 0;
+  for (let y = 0; y <= 1000; y += 10, t++) {
+    for (let i = 0; i < 60; i++) motor.movimiento(0, 0, G + (y === 300 && i === 45 ? 1.2 * G : 0.3), t + i / 60);
+    motor.posicion(27.45 + y / M_POR_GRADO, -109.94, 5, 10, t + 1);
+  }
+  const golpes = motor.liberar(true).flatMap((x) => x.golpes);
+  // Última lectura antes del golpe: 290 m; el golpe ocurre 0.75 s después a 10 m/s → ~297 m
+  const metros = golpes.map(([lat]) => (lat - 27.45) * M_POR_GRADO);
+  assert.ok(metros.some((m) => m > 295 && m < 300), `golpe en ${metros.join(", ")}`);
+});

@@ -1,5 +1,18 @@
 # Historial de versiones · Reporta Cajeme
 
+## 1.2.1 — 24 de octubre de 2026
+
+### Medir recorrido (solo equipo)
+- Cada tramo guarda datos para **calibrar a IRI después** sin volver a recorrer las calles:
+  rugosidad de la parte lenta (< 4 Hz, el rebote de la carrocería), percentil 95 de los golpes
+  y qué tanto varió la velocidad.
+- `/medir` pregunta dónde va el celular (rejilla, parabrisas, tablero…) y guarda si es Android
+  o iPhone. Casilla "Es un recorrido de prueba" con una nota (p. ej. "Calle 300 a 40 km/h").
+- Los golpes se ubican donde iba el vehículo en ese instante, no en la última lectura del GPS.
+- `/estadisticas`: sección "Recorridos medidos" (km por estado, recorridos de prueba) y descarga
+  de todos los tramos en CSV.
+- Requiere correr `01_esquema.sql`, `02_funciones.sql` y `03_seguridad.sql`.
+
 ## 1.2 — 22 de octubre de 2026
 
 ### Mapa público

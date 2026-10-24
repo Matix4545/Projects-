@@ -1,6 +1,6 @@
 {
   "name": "reporta-cajeme",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Reportes ciudadanos de agua, baches, drenaje, alumbrado, banquetas, baldíos y calles en Ciudad Obregón, Sonora.",
   "scripts": {

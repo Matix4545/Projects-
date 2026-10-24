@@ -6,6 +6,7 @@ import { Barras, Seccion, Tabla, Tarjeta, Vacio, num } from "@/components/grafic
 import { DEPENDENCIAS, INFO_PIN, tituloReporte, type TipoPin } from "@/lib/constantes";
 import type { Pin } from "@/lib/datos";
 import { sesionPanelValida } from "@/lib/panel";
+import { COLOR_CLASE, UMBRALES } from "@/lib/rugosidad";
 import { supabaseServidor } from "@/lib/supabase/servidor";
 import { folio } from "@/lib/urgencia";
 
@@ -44,6 +45,10 @@ export default async function PaginaEstadisticas() {
     .gt("total", 0)
     .order("total", { ascending: false })
     .limit(15);
+  const { data: rugosidad } = await supabaseServidor().rpc("resumen_rugosidad", {
+    p_regular: UMBRALES.regular,
+    p_mala: UMBRALES.mala,
+  });
 
   return (
     <main className="mx-auto max-w-4xl bg-white px-4 pb-16 pt-6 text-gray-900 sm:my-6 sm:rounded-2xl sm:px-8 sm:shadow">
@@ -65,6 +70,8 @@ export default async function PaginaEstadisticas() {
       ) : (
         <Contenido e={e} secciones={(secciones as FilaSeccion[] | null) ?? null} />
       )}
+
+      <Recorridos r={(rugosidad as ResumenRugosidad | null) ?? null} />
 
       <p className="mt-10 border-t border-gray-200 pt-4 text-xs text-gray-500">
         Datos de percepción ciudadana reportados de forma anónima. “Resuelto” significa que 3 vecinos confirmaron que ya
@@ -228,5 +235,65 @@ function Contenido({ e, secciones }: { e: Estadisticas; secciones: FilaSeccion[]
         )}
       </Seccion>
     </>
+  );
+}
+
+type ResumenRugosidad = {
+  km: number;
+  sesiones: number;
+  dias: number;
+  km_buena: number;
+  km_regular: number;
+  km_mala: number;
+  golpes: number;
+  con_calibracion: number;
+  pruebas: { nota: string; fecha: string; tramos: number; km: number; rms: number; vel_kmh: number; vel_sd: number | null }[];
+};
+
+/** Lo medido con /medir: cuánto, en qué estado y los recorridos de prueba para calibrar */
+function Recorridos({ r }: { r: ResumenRugosidad | null }) {
+  return (
+    <Seccion
+      titulo="🚗 Recorridos medidos"
+      nota="Escala provisional en m/s² (aún no es IRI). El CSV trae todos los tramos con los datos para calibrar."
+    >
+      {!r || r.km === 0 ? (
+        <Vacio texto="Aún no hay recorridos medidos." />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Tarjeta titulo="Medido" valor={`${num(r.km)} km`} nota={`${num(r.sesiones)} recorridos en ${num(r.dias)} días`} />
+            <Tarjeta titulo="Buena" valor={`${num(r.km_buena)} km`} nota={`Menos de ${UMBRALES.regular.toFixed(1)} m/s²`} />
+            <Tarjeta titulo="Regular" valor={`${num(r.km_regular)} km`} nota={`${UMBRALES.regular.toFixed(1)}–${UMBRALES.mala.toFixed(1)} m/s²`} />
+            <Tarjeta titulo="Mala" valor={`${num(r.km_mala)} km`} nota={`${num(r.golpes)} golpes fuertes en total`} />
+          </div>
+          <div className="mt-3 flex h-3 overflow-hidden rounded-full" role="img" aria-label="Kilómetros por estado">
+            {(["buena", "regular", "mala"] as const).map((c) => (
+              <div key={c} style={{ width: `${(r[`km_${c}`] / r.km) * 100}%`, background: COLOR_CLASE[c] }} />
+            ))}
+          </div>
+          {r.pruebas.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-bold">🧪 Recorridos de prueba</h3>
+              <Tabla
+                encabezados={["Nota", "Fecha", "km", "Rugosidad", "Vel. km/h", "± km/h"]}
+                numericas={[2, 3, 4, 5]}
+                filas={r.pruebas.map((p, i) => [
+                  <span key={i}>{p.nota}</span>,
+                  p.fecha,
+                  num(p.km),
+                  p.rms.toFixed(2),
+                  num(p.vel_kmh),
+                  p.vel_sd === null ? "—" : String(p.vel_sd),
+                ])}
+              />
+            </div>
+          )}
+        </>
+      )}
+      <a href="/api/equipo/rugosidad/csv" className="mt-4 inline-block rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold">
+        ⬇️ Descargar tramos (CSV)
+      </a>
+    </Seccion>
   );
 }

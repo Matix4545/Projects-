@@ -206,3 +206,11 @@ create table if not exists public.tramos_rugosidad (
 );
 create index if not exists tramos_rugosidad_geom_idx  on public.tramos_rugosidad using gist (trazo);
 create index if not exists tramos_rugosidad_fecha_idx on public.tramos_rugosidad (fecha desc);
+-- Datos para calibrar a IRI después (los tramos viejos quedan en null)
+alter table public.tramos_rugosidad add column if not exists rms_baja   real;
+alter table public.tramos_rugosidad add column if not exists p95        real;
+alter table public.tramos_rugosidad add column if not exists vel_sd     real;
+alter table public.tramos_rugosidad add column if not exists soporte    text check (soporte in ('rejilla', 'parabrisas', 'tablero', 'portavasos', 'otro'));
+alter table public.tramos_rugosidad add column if not exists plataforma text check (plataforma in ('android', 'ios', 'otro'));
+-- Etiqueta de un recorrido de prueba ("Calle 300 a 40 km/h"); solo la ve el equipo
+alter table public.tramos_rugosidad add column if not exists nota       text check (char_length(nota) <= 60);

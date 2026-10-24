@@ -5,6 +5,8 @@
 //   · rms: aceleración vertical RMS en m/s² (índice de rugosidad; NO es IRI todavía:
 //     se convertirá con la calibración en calles de referencia)
 //   · golpes: picos fuertes (posibles baches o topes) con su ubicación aproximada
+//   · datos extra para la calibración futura (rms_baja, p95, vel_sd): con ellos los tramos
+//     que se midan hoy se podrán convertir a IRI después, sin volver a recorrer las calles
 //
 // Pensado para jornadas largas (repartidores, taxis): los tramos se liberan para enviarse
 // poco a poco, y por privacidad nunca se envía nada cerca de donde el vehículo se detuvo
@@ -19,6 +21,13 @@ export type Tramo = {
   largo_m: number;
   vel_kmh: number;
   rms: number;
+  /** RMS solo de la parte lenta (< 4 Hz): el rebote de la carrocería, lo que más se parece al IRI.
+   *  La parte rápida es vibración del motor y del soporte. */
+  rms_baja: number;
+  /** Percentil 95 de |aceleración vertical| en m/s² (qué tan fuertes son los golpes del tramo) */
+  p95: number;
+  /** Variación de la velocidad en el tramo (km/h): si es alta, el tramo sirve menos para calibrar */
+  vel_sd: number;
   golpes: LatLon[];
   muestras: number;
   /** Distancia recorrida al inicio y al final del tramo (solo para la privacidad; no se envía) */
@@ -86,10 +95,14 @@ type Abierto = {
   fin_m: number;
   puntos: LatLon[];
   sumSq: number;
+  sumSqBaja: number;
+  /** Histograma de |vertical| en pasos de 0.1 m/s² (para el percentil 95) */
+  hist: Uint16Array;
   /** Lecturas del acelerómetro tomadas en movimiento (las de semáforos y tráfico parado no cuentan) */
   n: number;
   /** Velocidades del GPS en movimiento, para la velocidad del tramo */
   sumVel: number;
+  sumVel2: number;
   nVel: number;
   golpes: LatLon[];
   ultimoGolpe: number;
@@ -107,6 +120,11 @@ export class MotorRugosidad {
   private tPrimerMov = 0;
   private ultimaPos: LatLon | null = null;
   private ultimaT = 0;
+  /** Lectura del GPS anterior a la última: da la dirección para ubicar los golpes entre lecturas */
+  private previaPos: LatLon | null = null;
+  private previaT = 0;
+  /** Parte lenta (< 4 Hz) de la aceleración vertical */
+  private vBaja = 0;
   private dist = 0;
   private vel: number | null = null;
   private gpsOk = false;
@@ -157,17 +175,37 @@ export class MotorRugosidad {
     this.gz += alfa * (az - this.gz);
     const gn = Math.hypot(this.gx, this.gy, this.gz) || G;
     const vertical = (ax * this.gx + ay * this.gy + az * this.gz) / gn - gn;
+    const rc = 1 / (2 * Math.PI * 4);
+    this.vBaja += (dt / (rc + dt)) * (vertical - this.vBaja);
 
     const tr = this.actual;
     if (!tr || !this.ultimaPos) return;
     // Solo se mide en movimiento: un semáforo o tráfico parado no tumba el tramo completo
     if (this.vel === null || this.vel * 3.6 < this.o.velMinKmh) return;
     tr.sumSq += vertical * vertical;
+    tr.sumSqBaja += this.vBaja * this.vBaja;
+    tr.hist[Math.min(Math.floor(Math.abs(vertical) * 10), tr.hist.length - 1)]++;
     tr.n++;
     if (Math.abs(vertical) > this.o.golpeG * G && t - tr.ultimoGolpe > 1) {
-      tr.golpes.push(this.ultimaPos);
+      tr.golpes.push(this.ubicarEn(t));
       tr.ultimoGolpe = t;
     }
+  }
+
+  /**
+   * Dónde iba el vehículo en el instante t: la última lectura del GPS más lo que avanzó desde
+   * entonces en la misma dirección (el GPS lee 1 vez por segundo; a 50 km/h son 14 m).
+   */
+  private ubicarEn(t: number): LatLon {
+    const a = this.previaPos;
+    const b = this.ultimaPos!;
+    const dtGps = this.ultimaT - this.previaT;
+    if (!a || dtGps <= 0 || this.vel === null) return b;
+    const d = distanciaM(a, b);
+    if (d < 1) return b;
+    const avance = Math.min(this.vel * Math.max(0, t - this.ultimaT), 3 * this.vel, 40);
+    const f = avance / d;
+    return [b[0] + (b[0] - a[0]) * f, b[1] + (b[1] - a[1]) * f];
   }
 
   /** Lectura del GPS: precisión en metros, velocidad en m/s (o null) y tiempo en segundos. */
@@ -198,6 +236,7 @@ export class MotorRugosidad {
           this.descartes.cortes++;
         }
         this.actual = null;
+        this.previaPos = null;
         this.ultimaPos = pos;
         this.ultimaT = t;
         this.quietoDesde = null;
@@ -206,6 +245,7 @@ export class MotorRugosidad {
       if (dt > 0 && d / dt > 45) return; // salto del GPS (>160 km/h)
       this.dist += d;
       this.vel = velocidad != null && velocidad >= 0 ? velocidad : dt > 0 ? d / dt : null;
+      if (d >= 1) [this.previaPos, this.previaT] = [this.ultimaPos, this.ultimaT];
     }
     this.ultimaPos = pos;
     this.ultimaT = t;
@@ -233,6 +273,7 @@ export class MotorRugosidad {
     tr.fin_m = this.dist;
     if (this.vel !== null && this.vel * 3.6 >= this.o.velMinKmh) {
       tr.sumVel += this.vel;
+      tr.sumVel2 += this.vel * this.vel;
       tr.nVel++;
     }
     if (tr.fin_m - tr.inicio_m >= this.o.tramoM) {
@@ -243,7 +284,7 @@ export class MotorRugosidad {
   }
 
   private nuevo(_t: number, pos: LatLon): Abierto {
-    return { inicio_m: this.dist, fin_m: this.dist, puntos: [pos], sumSq: 0, n: 0, sumVel: 0, nVel: 0, golpes: [], ultimoGolpe: 0 };
+    return { inicio_m: this.dist, fin_m: this.dist, puntos: [pos], sumSq: 0, sumSqBaja: 0, hist: new Uint16Array(200), n: 0, sumVel: 0, sumVel2: 0, nVel: 0, golpes: [], ultimoGolpe: 0 };
   }
 
   private cerrar(tr: Abierto) {
@@ -259,11 +300,26 @@ export class MotorRugosidad {
       return;
     }
     this.medidos++;
+    const media = tr.sumVel / tr.nVel;
+    const sd = Math.sqrt(Math.max(0, tr.sumVel2 / tr.nVel - media * media)) * 3.6;
+    let acum = 0;
+    let p95 = tr.hist.length;
+    for (let i = 0; i < tr.hist.length; i++) {
+      acum += tr.hist[i];
+      if (acum >= 0.95 * tr.n) {
+        p95 = i + 1;
+        break;
+      }
+    }
+    const r3 = (x: number) => Math.round(x * 1000) / 1000;
     this.pendientes.push({
       puntos: tr.puntos.slice(0, 30),
       largo_m: Math.round(largo),
       vel_kmh: Math.round(kmh * 10) / 10,
-      rms: Math.round(Math.sqrt(tr.sumSq / tr.n) * 1000) / 1000,
+      rms: r3(Math.sqrt(tr.sumSq / tr.n)),
+      rms_baja: r3(Math.sqrt(tr.sumSqBaja / tr.n)),
+      p95: p95 / 10,
+      vel_sd: Math.round(sd * 10) / 10,
       golpes: tr.golpes.slice(0, 20),
       muestras: tr.n,
       inicio_m: tr.inicio_m,
@@ -335,6 +391,8 @@ export type MedicionTramo = {
   n_golpes: number;
   largo_m: number;
   distancia_m: number;
+  /** Etiqueta del recorrido de prueba, si la tiene */
+  nota?: string;
 };
 
 /** Distancia en metros de un punto a una línea (aproximación plana, suficiente para ~100 m) */
@@ -375,6 +433,7 @@ export function medicionesCerca(lat: number, lng: number, fc: GeoJSON.FeatureCol
       n_golpes: Number(p.n_golpes ?? 0),
       largo_m: Math.round(largo),
       distancia_m: d,
+      nota: p.nota ? String(p.nota) : undefined,
     });
   }
   salida.sort((a, b) => a.distancia_m - b.distancia_m);

@@ -132,7 +132,8 @@ export default function Acerca() {
         </li>
         <li>
           <strong>Medir mi recorrido:</strong> solo los tramos de calle con su rugosidad, velocidad promedio, golpes, la
-          fecha (sin hora) y el tipo de vehículo. No se guarda nada de 150 a 250 m alrededor de donde empiezas, terminas
+          fecha (sin hora), el tipo de vehículo, dónde va el celular, si es Android o iPhone (no el modelo) y, si la
+          escribes, la nota de un recorrido de prueba. No se guarda nada de 150 a 250 m alrededor de donde empiezas, terminas
           o te detienes más de 2 minutos, para no revelar tu casa ni otros lugares a los que vas.
         </li>
       </ul>

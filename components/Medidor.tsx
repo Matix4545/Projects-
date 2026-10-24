@@ -15,6 +15,19 @@ const VEHICULOS: [Vehiculo, string][] = [
   ["moto", "🏍️ Moto"],
   ["otro", "Otro"],
 ];
+type Soporte = "rejilla" | "parabrisas" | "tablero" | "portavasos" | "otro";
+const SOPORTES: [Soporte, string][] = [
+  ["rejilla", "Rejilla del aire"],
+  ["parabrisas", "Parabrisas"],
+  ["tablero", "Tablero"],
+  ["portavasos", "Portavasos"],
+  ["otro", "Otro"],
+];
+// Android e iPhone leen el acelerómetro distinto: se guarda solo eso, no el modelo
+const plataforma = () => {
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  return /android/i.test(ua) ? "android" : /iphone|ipad|ipod/i.test(ua) ? "ios" : "otro";
+};
 const ENVIO_CADA_MS = 5 * 60_000;
 
 const leer = (k: string) => {
@@ -37,6 +50,9 @@ export function Medidor() {
   const obtenerToken = useTurnstile();
   const [fase, setFase] = useState<Fase>("inicio");
   const [vehiculo, setVehiculo] = useState<Vehiculo>("auto");
+  const [soporte, setSoporte] = useState<Soporte>("rejilla");
+  const [esPrueba, setEsPrueba] = useState(false);
+  const [nota, setNota] = useState("");
   const [estado, setEstado] = useState<EstadoMedicion | null>(null);
   const [tramos, setTramos] = useState<Tramo[]>([]);
   const [kmEnviados, setKmEnviados] = useState(0);
@@ -55,6 +71,8 @@ export function Medidor() {
   useEffect(() => {
     const v = leer("rc_vehiculo") as Vehiculo | null;
     if (v && VEHICULOS.some(([k]) => k === v)) setVehiculo(v);
+    const s = leer("rc_soporte") as Soporte | null;
+    if (s && SOPORTES.some(([k]) => k === s)) setSoporte(s);
     setHistorico(Number(leer("rc_km_medidos")) || 0);
     return () => limpiar.current();
   }, []);
@@ -73,8 +91,20 @@ export function Medidor() {
           sesion: sesion.current,
           fecha: new Date().toLocaleDateString("en-CA", { timeZone: "America/Hermosillo" }), // solo el día
           vehiculo,
+          soporte,
+          plataforma: plataforma(),
+          nota: esPrueba && nota.trim() ? nota.trim() : undefined,
           hz: motor.current?.hz,
-          tramos: lote.map(({ puntos, largo_m, vel_kmh, rms, golpes }) => ({ puntos, largo_m, vel_kmh, rms, golpes })),
+          tramos: lote.map(({ puntos, largo_m, vel_kmh, rms, rms_baja, p95, vel_sd, golpes }) => ({
+            puntos,
+            largo_m,
+            vel_kmh,
+            rms,
+            rms_baja,
+            p95,
+            vel_sd,
+            golpes,
+          })),
           token,
         }),
       });
@@ -121,6 +151,7 @@ export function Medidor() {
     }
 
     guardar("rc_vehiculo", vehiculo);
+    guardar("rc_soporte", soporte);
     motor.current = new MotorRugosidad();
     sesion.current = crypto.randomUUID();
     cola.current = [];
@@ -232,6 +263,21 @@ export function Medidor() {
               ))}
             </div>
           </div>
+          <div>
+            <p className="mb-2 text-sm font-semibold text-gray-500">¿Dónde va el celular?</p>
+            <div className="flex flex-wrap gap-2">
+              {SOPORTES.map(([v, t]) => (
+                <button
+                  key={v}
+                  aria-pressed={soporte === v}
+                  onClick={() => setSoporte(v)}
+                  className={`rounded-full px-3 py-2 text-sm font-semibold ${soporte === v ? "bg-blue-700 text-white" : "bg-gray-100 text-gray-700"}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
           <ol className="list-decimal space-y-1.5 pl-5 text-[15px]">
             <li>
               Pon el celular en un <strong>soporte firme</strong> antes de arrancar (no en el asiento ni en la mano).
@@ -249,6 +295,24 @@ export function Medidor() {
               Al terminar tu día, toca <strong>Terminar</strong> (ya estacionado).
             </li>
           </ol>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input type="checkbox" checked={esPrueba} onChange={(e) => setEsPrueba(e.target.checked)} className="size-4" />
+            Es un recorrido de prueba
+          </label>
+          {esPrueba && (
+            <div>
+              <input
+                value={nota}
+                onChange={(e) => setNota(e.target.value)}
+                maxLength={60}
+                placeholder="Ej. Calle 300 a 40 km/h, carril derecho"
+                className="w-full rounded-xl border border-gray-300 px-3 py-2"
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                Para calibrar: misma calle, mismo carril, velocidad constante. No pongas datos personales.
+              </p>
+            </div>
+          )}
           <button onClick={empezar} className="w-full rounded-2xl bg-blue-700 py-4 text-xl font-extrabold text-white active:scale-95">
             Empezar a medir
           </button>
