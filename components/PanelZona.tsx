@@ -48,36 +48,36 @@ export function PanelZona({
 
   return (
     <HojaInferior titulo={actual?.nombre ?? "Cargando…"} onCerrar={onCerrar}>
-      {error && <p className="text-red-600">No se pudo cargar la información. Revisa tu conexión.</p>}
+      {error && <p className="text-ios-rojo">No se pudo cargar la información. Revisa tu conexión.</p>}
       {actual && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <span className="h-5 w-5 rounded-full" style={{ background: color }} />
+            <span className="h-11 w-11 shrink-0 rounded-full ring-4 ring-white" style={{ background: color, boxShadow: `0 0 0 6px ${color}33` }} />
             <div>
-              <div className="font-semibold">{actual.estado ? `Estado: ${ETIQUETAS[actual.estado]}` : `Sin reportes en ${textoPeriodo(horasDatos)}`}</div>
-              <div className="text-sm text-gray-500">
+              <div className="text-[17px] font-semibold">{actual.estado ? `Estado: ${ETIQUETAS[actual.estado]}` : `Sin reportes en ${textoPeriodo(horasDatos)}`}</div>
+              <div className="text-[15px] text-ios-secundario">
                 Último reporte: {actual.ultimo_reporte ? `${haceCuanto(actual.ultimo_reporte)} (${horaLocal(actual.ultimo_reporte)})` : "nunca"}
               </div>
             </div>
           </div>
 
           {/* Invitar a reportar: el verde solo sale de vecinos que confirman que hay agua */}
-          <div className="rounded-xl bg-blue-50 p-3">
-            <p className="text-sm text-blue-900">
+          <div className="rounded-2xl bg-ios-fondo p-4">
+            <p className="text-[15px] text-ios-secundario">
               {!actual.estado
                 ? "¿Tienes agua hoy? Repórtalo: también sirve saber dónde sí hay."
                 : actual.estado === "con_agua"
                   ? "¿Cómo está el agua en tu casa? Tu reporte mantiene el mapa al día."
                   : "¿Ya volvió el agua? Repórtalo y la colonia se pondrá en verde."}
             </p>
-            <button onClick={onReportarAgua} className="mt-2 w-full rounded-lg bg-blue-700 px-3 py-2.5 font-semibold text-white">
-              💧 Reportar el agua de esta colonia
+            <button onClick={onReportarAgua} className="boton boton-principal mt-3 w-full">
+              Reportar el agua de esta colonia
             </button>
           </div>
 
-          <table className="w-full text-sm">
+          <table className="w-full text-[15px]">
             <thead>
-              <tr className="text-left text-gray-500">
+              <tr className="text-left text-[13px] uppercase tracking-wide text-ios-secundario">
                 <th className="py-1 font-normal">Reportes</th>
                 <th className="py-1 text-right font-normal">{etiquetaPeriodo}</th>
                 {mostrar7d && <th className="py-1 text-right font-normal">7 días</th>}
@@ -85,20 +85,20 @@ export function PanelZona({
             </thead>
             <tbody>
               {ESTADOS_AGUA.map((e) => (
-                <tr key={e} className="border-t border-gray-100">
-                  <td className="py-1.5">
+                <tr key={e} className="border-t-[0.5px] border-ios-separador">
+                  <td className="py-2">
                     <span className="mr-2 inline-block h-3 w-3 rounded-full align-middle" style={{ background: COLOR_ESTADO[e] }} />
                     {ETIQUETAS[e]}
                   </td>
-                  <td className="py-1.5 text-right font-semibold">{conteoPeriodo[e] ?? 0}</td>
-                  {mostrar7d && <td className="py-1.5 text-right">{actual.conteo_7d[e] ?? 0}</td>}
+                  <td className="py-2 text-right font-semibold tabular-nums">{conteoPeriodo[e] ?? 0}</td>
+                  {mostrar7d && <td className="py-2 text-right tabular-nums text-ios-secundario">{actual.conteo_7d[e] ?? 0}</td>}
                 </tr>
               ))}
             </tbody>
           </table>
 
           {Object.keys(detallesSucia).length > 0 && (
-            <p className="text-sm text-gray-600">
+            <p className="text-[15px] text-ios-secundario">
               Agua sucia ({etiquetaPeriodo}):{" "}
               {Object.entries(detallesSucia)
                 .map(([d, n]) => `${ETIQUETAS[d] ?? d} (${n})`)
@@ -107,15 +107,15 @@ export function PanelZona({
           )}
 
           <div>
-            <h3 className="mb-2 font-semibold">Comentarios recientes</h3>
+            <h3 className="mb-2 text-[17px] font-semibold">Comentarios recientes</h3>
             {actual.comentarios.length === 0 ? (
-              <p className="text-sm text-gray-500">No hay comentarios en los últimos 7 días.</p>
+              <p className="text-[15px] text-ios-secundario">No hay comentarios en los últimos 7 días.</p>
             ) : (
               <ul className="space-y-2">
                 {actual.comentarios.map((c) => (
-                  <li key={c.id} className="rounded-lg bg-gray-50 p-2 text-sm">
+                  <li key={c.id} className="rounded-2xl bg-ios-fondo px-4 py-3 text-[15px]">
                     <p className="break-words">“{c.texto}”</p>
-                    <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                    <div className="mt-1 flex items-center justify-between text-xs text-ios-secundario">
                       <span>
                         {ETIQUETAS[c.estado]} · {haceCuanto(c.creado_en)}
                       </span>
@@ -126,7 +126,7 @@ export function PanelZona({
               </ul>
             )}
           </div>
-          <p className="text-xs text-gray-400">Percepción de vecinos; no es un análisis oficial ni de laboratorio.</p>
+          <p className="text-xs text-ios-terciario">Percepción de vecinos; no es un análisis oficial ni de laboratorio.</p>
         </div>
       )}
     </HojaInferior>

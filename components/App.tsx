@@ -22,6 +22,7 @@ import {
   type ZonasGeoJSON,
 } from "@/lib/datos";
 import { BarraResumen } from "./BarraResumen";
+import { Equis } from "./HojaInferior";
 import type { MedicionTramo } from "@/lib/rugosidad";
 import { topSecciones, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
 import { TarjetaTramo } from "./TarjetaTramo";
@@ -35,7 +36,7 @@ import { PanelZona } from "./PanelZona";
 // Leaflet necesita "window", así que el mapa solo se carga en el navegador
 const Mapa = dynamic(() => import("./Mapa"), {
   ssr: false,
-  loading: () => <div className="grid h-full place-items-center bg-gray-100 text-gray-500">Cargando mapa…</div>,
+  loading: () => <div className="grid h-full place-items-center bg-ios-fondo text-ios-secundario">Cargando mapa…</div>,
 });
 
 type Vista =
@@ -318,26 +319,33 @@ export function App() {
 
       {/* Encabezado y filtros de capa */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="pointer-events-auto mx-auto flex max-w-lg items-center justify-between rounded-2xl bg-white/95 px-4 py-2 shadow-lg">
-          <div>
-            <h1 className="text-lg font-extrabold leading-tight text-gray-900">
-              Reporta <span className="text-blue-700">Cajeme</span>
+        <div className="material pointer-events-auto mx-auto flex max-w-lg items-center justify-between gap-3 rounded-[18px] py-2 pl-4 pr-2">
+          <div className="min-w-0">
+            <h1 className="text-[17px] font-semibold leading-tight tracking-tight">
+              Reporta <span className="text-ios-azul">Cajeme</span>
             </h1>
-            <p className="text-xs leading-tight text-gray-500">Proyecto ciudadano · No es del gobierno</p>
+            <p className="truncate text-xs leading-tight text-ios-secundario">Proyecto ciudadano · No es del gobierno</p>
           </div>
-          <div className="flex items-center gap-3 text-sm font-semibold">
+          <div className="flex shrink-0 items-center gap-1.5">
             {equipo && (
-              <Link href="/estadisticas" className="whitespace-nowrap rounded-full bg-gray-900 px-2.5 py-1 text-xs text-white" title="Estadísticas (solo equipo)">
-                🔒 Equipo
+              <Link
+                href="/estadisticas"
+                className="flex h-8 items-center gap-1 rounded-full bg-ios-etiqueta px-3 text-[13px] font-semibold text-white"
+                title="Estadísticas (solo equipo)"
+              >
+                <Candado /> Equipo
               </Link>
             )}
-            <Link href="/acerca" className="whitespace-nowrap text-blue-700 underline">
-              Acerca de
+            <Link href="/acerca" aria-label="Acerca de" className="grid h-8 w-8 place-items-center rounded-full bg-ios-relleno text-ios-azul">
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+                <circle cx="8" cy="4.2" r="1.3" fill="currentColor" />
+                <path d="M8 7v5.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+              </svg>
             </Link>
           </div>
         </div>
         <div
-          className="sin-barra pointer-events-auto -mx-3 mt-2 flex max-w-lg gap-2 overflow-x-auto px-3 pb-1 sm:mx-auto sm:px-0"
+          className="sin-barra pointer-events-auto -mx-3 mt-2 flex max-w-lg gap-1.5 overflow-x-auto px-3 pb-2 pt-0.5 sm:mx-auto sm:px-0"
           role="group"
           aria-label="Capas del mapa"
         >
@@ -349,16 +357,14 @@ export function App() {
               key={capa}
               aria-pressed={capas[capa]}
               onClick={() => setCapas((c) => ({ ...c, [capa]: !c[capa] }))}
-              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold shadow ${
-                capas[capa] ? "bg-blue-700 text-white" : "bg-white/95 text-gray-600"
-              }`}
+              className={`chip ${capas[capa] ? "shadow-md" : "material"}`}
             >
               {texto}
             </button>
           ))}
         </div>
         {errorCarga && (
-          <p className="pointer-events-auto mx-auto mt-2 max-w-lg rounded-xl bg-red-600 px-3 py-2 text-sm text-white shadow">
+          <p className="material pointer-events-auto mx-auto mt-1 max-w-lg rounded-2xl px-4 py-2.5 text-sm font-medium text-ios-rojo">
             No se pudieron cargar los datos. Revisa tu conexión; reintentaremos en un momento.
           </p>
         )}
@@ -394,7 +400,7 @@ export function App() {
           )}
           {equipo && verRugosidad && infoTramo && <TarjetaTramo mediciones={infoTramo} onCerrar={() => setInfoTramo(null)} />}
           {equipo && verSecciones && infoSeccion && !infoTramo && (
-            <div className="fixed inset-x-3 top-32 z-[1002] mx-auto flex max-w-sm items-start justify-between gap-2 rounded-xl bg-violet-900 px-3 py-2 text-sm text-white shadow-xl">
+            <div className="material fixed inset-x-3 top-32 z-[1002] mx-auto flex max-w-sm items-start justify-between gap-3 rounded-2xl px-4 py-3 text-sm">
               {infoSeccion === "fuera" ? (
                 <span>Ese punto no está en ninguna sección de Cajeme.</span>
               ) : (
@@ -406,16 +412,19 @@ export function App() {
                   {infoSeccion.puntos} con ubicación · {infoSeccion.agua} de agua)
                 </span>
               )}
-              <button onClick={() => setInfoSeccion(null)} aria-label="Cerrar" className="px-1 text-lg leading-none text-violet-200">
-                ×
+              <button onClick={() => setInfoSeccion(null)} aria-label="Cerrar" className="cerrar">
+                <Equis />
               </button>
             </div>
           )}
           <button
             onClick={abrirReporte}
-            className="fixed bottom-12 left-1/2 z-[1000] -translate-x-1/2 whitespace-nowrap rounded-full bg-red-600 px-10 py-4 text-xl font-extrabold text-white shadow-xl active:scale-95"
+            className="boton boton-principal fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom))] left-1/2 z-[1000] h-14 -translate-x-1/2 whitespace-nowrap rounded-full px-8 text-[18px] shadow-[0_8px_24px_rgba(0,122,255,0.4)]"
           >
-            + Reportar
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+              <path d="M9 2v14M2 9h14" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+            </svg>
+            Reportar
           </button>
         </>
       )}
@@ -474,11 +483,20 @@ export function App() {
       {aviso && (
         <div
           role="status"
-          className="fixed inset-x-4 top-28 z-[2000] mx-auto max-w-md rounded-xl bg-gray-900 px-4 py-3 text-center text-sm font-semibold text-white shadow-xl"
+          className="material-oscuro velo fixed inset-x-4 top-[calc(7rem+env(safe-area-inset-top))] z-[2000] mx-auto max-w-md rounded-2xl px-4 py-3 text-center text-[15px] font-medium shadow-2xl"
         >
           {aviso}
         </div>
       )}
     </main>
+  );
+}
+
+function Candado() {
+  return (
+    <svg width="11" height="13" viewBox="0 0 11 13" aria-hidden>
+      <rect x="0.5" y="5.5" width="10" height="7" rx="2" fill="currentColor" />
+      <path d="M2.8 5.5V4a2.7 2.7 0 0 1 5.4 0v1.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    </svg>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { COLOR_CLASE, MotorRugosidad, clasificar, resumir, type EstadoMedicion, type Tramo } from "@/lib/rugosidad";
+import { Interruptor } from "./Interruptor";
+import { Bloque, Pagina } from "./Pagina";
 import { useTurnstile } from "./Turnstile";
 
 type Fase = "inicio" | "midiendo" | "terminado";
@@ -233,166 +234,169 @@ export function Medidor() {
   const kmMedidos = (estado?.distancia_m ?? 0) / 1000;
 
   return (
-    <main className="mx-auto min-h-dvh max-w-md bg-white px-5 pb-10 pt-6 text-gray-900">
-      <div className="flex items-center justify-between text-sm">
-        <Link href="/" className="font-semibold text-blue-700 underline">
-          ← Mapa
-        </Link>
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">En prueba</span>
-      </div>
-      <h1 className="mt-3 text-2xl font-extrabold">Medir mi recorrido</h1>
-      <p className="mt-1 text-gray-600">
-        Tu celular mide qué tan maltratadas están las calles mientras manejas. Es anónimo: no guardamos dónde empieza ni
-        dónde termina tu viaje, ni dónde te detienes.
-      </p>
-
+    <Pagina
+      titulo="Medir recorrido"
+      ancho="max-w-md"
+      accion={<span className="rounded-full bg-ios-naranja/15 px-2.5 py-1 text-xs font-semibold text-[#c93400]">En prueba</span>}
+      subtitulo="Tu celular mide qué tan maltratadas están las calles mientras manejas. Es anónimo: no guardamos dónde empieza ni dónde termina tu viaje, ni dónde te detienes."
+    >
       {fase === "inicio" && (
-        <section className="mt-5 space-y-5">
-          <div>
-            <p className="mb-2 text-sm font-semibold text-gray-500">¿En qué vas a manejar?</p>
-            <div className="flex flex-wrap gap-2">
-              {VEHICULOS.map(([v, t]) => (
-                <button
-                  key={v}
-                  aria-pressed={vehiculo === v}
-                  onClick={() => setVehiculo(v)}
-                  className={`rounded-full px-3 py-2 text-sm font-semibold ${vehiculo === v ? "bg-blue-700 text-white" : "bg-gray-100 text-gray-700"}`}
-                >
-                  {t}
-                </button>
-              ))}
+        <>
+          <Bloque titulo="¿En qué vas a manejar?">
+            <Opciones opciones={VEHICULOS} valor={vehiculo} onCambio={setVehiculo} />
+          </Bloque>
+          <Bloque titulo="¿Dónde va el celular?">
+            <Opciones opciones={SOPORTES} valor={soporte} onCambio={setSoporte} />
+          </Bloque>
+          <Bloque titulo="Antes de empezar" sinRelleno>
+            {[
+              <>Pon el celular en un <strong className="font-semibold">soporte firme</strong> (no en el asiento ni en la mano).</>,
+              <>Conéctalo al <strong className="font-semibold">cargador</strong>: medir con GPS gasta batería.</>,
+              <>Toca <strong className="font-semibold">Empezar a medir</strong> y acepta ubicación y movimiento.</>,
+              <>Maneja normal y <strong className="font-semibold">deja esta página abierta</strong>. Se envía sola cada 5 minutos.</>,
+              <>Al terminar tu día, ya estacionado, toca <strong className="font-semibold">Terminar</strong>.</>,
+            ].map((texto, n) => (
+              <div key={n} className="flex gap-3 px-4 py-3 text-[15px] leading-snug">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ios-azul text-[13px] font-semibold text-white">{n + 1}</span>
+                <span>{texto}</span>
+              </div>
+            ))}
+          </Bloque>
+          <Bloque
+            sinRelleno
+            nota={esPrueba ? "Para calibrar: misma calle, mismo carril, velocidad constante. No pongas datos personales." : undefined}
+          >
+            <div className="flex items-center justify-between px-4 py-2.5 text-[16px]">
+              Recorrido de prueba
+              <Interruptor etiqueta="Recorrido de prueba" activo={esPrueba} onCambio={setEsPrueba} />
             </div>
-          </div>
-          <div>
-            <p className="mb-2 text-sm font-semibold text-gray-500">¿Dónde va el celular?</p>
-            <div className="flex flex-wrap gap-2">
-              {SOPORTES.map(([v, t]) => (
-                <button
-                  key={v}
-                  aria-pressed={soporte === v}
-                  onClick={() => setSoporte(v)}
-                  className={`rounded-full px-3 py-2 text-sm font-semibold ${soporte === v ? "bg-blue-700 text-white" : "bg-gray-100 text-gray-700"}`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-          <ol className="list-decimal space-y-1.5 pl-5 text-[15px]">
-            <li>
-              Pon el celular en un <strong>soporte firme</strong> antes de arrancar (no en el asiento ni en la mano).
-            </li>
-            <li>
-              Conéctalo al <strong>cargador</strong>: medir con GPS gasta batería.
-            </li>
-            <li>
-              Toca <strong>Empezar a medir</strong> y acepta ubicación y movimiento.
-            </li>
-            <li>
-              Maneja normal y <strong>deja esta página abierta</strong>. Se envía sola cada 5 minutos.
-            </li>
-            <li>
-              Al terminar tu día, toca <strong>Terminar</strong> (ya estacionado).
-            </li>
-          </ol>
-          <label className="flex items-center gap-2 text-sm text-gray-600">
-            <input type="checkbox" checked={esPrueba} onChange={(e) => setEsPrueba(e.target.checked)} className="size-4" />
-            Es un recorrido de prueba
-          </label>
-          {esPrueba && (
-            <div>
-              <input
-                value={nota}
-                onChange={(e) => setNota(e.target.value)}
-                maxLength={60}
-                placeholder="Ej. Calle 300 a 40 km/h, carril derecho"
-                className="w-full rounded-xl border border-gray-300 px-3 py-2"
-              />
-              <p className="mt-1 text-xs text-gray-400">
-                Para calibrar: misma calle, mismo carril, velocidad constante. No pongas datos personales.
+            {esPrueba && (
+              <div className="px-4 py-2.5">
+                <input
+                  value={nota}
+                  onChange={(e) => setNota(e.target.value)}
+                  maxLength={60}
+                  placeholder="Ej. Calle 300 a 40 km/h, carril derecho"
+                  className="w-full bg-transparent text-[16px] outline-none placeholder:text-ios-terciario"
+                />
+              </div>
+            )}
+          </Bloque>
+          <div className="space-y-3">
+            <button onClick={empezar} className="boton boton-principal h-14 w-full text-[18px]">
+              Empezar a medir
+            </button>
+            {historico > 0 && (
+              <p className="text-center text-[15px] text-ios-secundario">
+                Con este teléfono llevas <strong className="font-semibold text-ios-etiqueta">{historico.toFixed(1)} km</strong> medidos. ¡Gracias!
               </p>
-            </div>
-          )}
-          <button onClick={empezar} className="w-full rounded-2xl bg-blue-700 py-4 text-xl font-extrabold text-white active:scale-95">
-            Empezar a medir
-          </button>
-          {historico > 0 && (
-            <p className="text-center text-sm text-gray-500">
-              Con este teléfono llevas <strong>{historico.toFixed(1)} km</strong> medidos. ¡Gracias!
+            )}
+            <p className="px-4 text-center text-[13px] text-ios-secundario">
+              Si cambias a otra app (WhatsApp, Uber, Maps) o se apaga la pantalla, la medición se pausa y sigue al volver.
             </p>
-          )}
-          <p className="text-xs text-gray-400">
-            Si cambias a otra app (WhatsApp, Uber, Maps) o se apaga la pantalla, la medición se pausa y sigue al volver.
-          </p>
-        </section>
+          </div>
+        </>
       )}
 
       {fase === "midiendo" && (
-        <section className="mt-5 space-y-4">
-          <div className="rounded-2xl bg-blue-700 p-5 text-center text-white">
-            <p className="text-sm opacity-80">Midiendo</p>
-            <p className="text-5xl font-extrabold tabular-nums">{kmMedidos.toFixed(1)} km</p>
-            <p className="mt-1 text-sm opacity-90">Puedes seguir manejando. No necesitas tocar nada.</p>
+        <>
+          <div className="rounded-3xl bg-white px-5 py-6 text-center">
+            <p className="flex items-center justify-center gap-2 text-[15px] font-medium text-ios-verde">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ios-verde opacity-60 motion-reduce:hidden" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-ios-verde" />
+              </span>
+              Midiendo
+            </p>
+            <p className="mt-1 text-[64px] font-bold leading-none tracking-tight tabular-nums">
+              {kmMedidos.toFixed(1)}
+              <span className="ml-1 text-[28px] font-semibold text-ios-secundario">km</span>
+            </p>
+            <p className="mt-2 text-[15px] text-ios-secundario">Puedes seguir manejando. No necesitas tocar nada.</p>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center text-sm">
+          <div className="grid grid-cols-3 gap-2.5">
             <Dato titulo="Velocidad" valor={estado?.vel_kmh != null ? `${estado.vel_kmh} km/h` : "—"} />
             <Dato titulo="Enviado" valor={`${kmEnviados.toFixed(1)} km`} />
-            <Dato titulo="GPS" valor={estado?.gps_ok ? "✓ Bien" : "Buscando…"} />
+            <Dato titulo="GPS" valor={estado?.gps_ok ? "Bien" : "Buscando…"} color={estado?.gps_ok ? "#34c759" : "#ff9500"} />
           </div>
           {estado && estado.hz > 0 && estado.hz < 30 && (
-            <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900">
-              Tu celular lee pocos datos por segundo ({estado.hz}); los resultados serán menos precisos.
-            </p>
+            <Aviso>Tu celular lee pocos datos por segundo ({estado.hz}); los resultados serán menos precisos.</Aviso>
           )}
-          {pausa && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900">{pausa}</p>}
-          <MiniMapa tramos={tramos} />
-          <p className="text-xs text-gray-400">
-            Los tramos aparecen unos minutos después: por privacidad se esperan unos 250 m antes de guardarlos.
-          </p>
-          <button onClick={terminar} className="w-full rounded-2xl bg-red-600 py-4 text-lg font-extrabold text-white active:scale-95">
+          {pausa && <Aviso>{pausa}</Aviso>}
+          <Bloque sinRelleno nota="Los tramos aparecen unos minutos después: por privacidad se esperan unos 250 m antes de guardarlos.">
+            <MiniMapa tramos={tramos} />
+          </Bloque>
+          <button onClick={terminar} className="boton boton-peligro h-14 w-full text-[18px]">
             Terminar (ya estacionado)
           </button>
-        </section>
+        </>
       )}
 
       {fase === "terminado" && (
-        <section className="mt-5 space-y-4">
-          <p className="text-xl font-bold">¡Gracias! Mediste {resumen.km.toFixed(1)} km de calles de Cajeme.</p>
+        <>
+          <div className="rounded-3xl bg-white px-5 py-6 text-center">
+            <p className="text-[15px] font-medium text-ios-verde">¡Gracias!</p>
+            <p className="mt-1 text-[22px] font-bold leading-tight">Mediste {resumen.km.toFixed(1)} km de calles de Cajeme</p>
+          </div>
           {tramos.length > 0 ? (
             <>
-              <MiniMapa tramos={tramos} />
-              <div className="grid grid-cols-3 gap-2 text-center text-sm">
+              <Bloque sinRelleno>
+                <MiniMapa tramos={tramos} />
+              </Bloque>
+              <div className="grid grid-cols-3 gap-2.5">
                 <Dato titulo="Buena" valor={pct(resumen.buena, resumen.km)} color={COLOR_CLASE.buena} />
                 <Dato titulo="Regular" valor={pct(resumen.regular, resumen.km)} color={COLOR_CLASE.regular} />
                 <Dato titulo="Mala" valor={pct(resumen.mala, resumen.km)} color={COLOR_CLASE.mala} />
               </div>
-              <p className="text-sm text-gray-600">{resumen.golpes} golpes fuertes detectados (baches, topes o vados).</p>
+              <p className="px-4 text-[15px] text-ios-secundario">{resumen.golpes} golpes fuertes detectados (baches, topes o vados).</p>
               {estado && <NoMedido estado={estado} medidoKm={resumen.km} />}
             </>
           ) : (
             <>
-              <p className="text-gray-600">
+              <p className="px-4 text-[15px] text-ios-secundario">
                 No quedaron tramos para guardar. Pasa con recorridos de más de 1 km, a más de 15 km/h y sin muchas paradas.
               </p>
               {estado && <NoMedido estado={estado} medidoKm={0} />}
             </>
           )}
-          <p className="text-sm text-gray-500">
+          <p className="px-4 text-[15px] text-ios-secundario">
             {pendientesEnvio > 0 ? `Enviando ${pendientesEnvio} tramos… deja la página abierta un momento.` : "✓ Todo enviado."}
           </p>
-          <button onClick={() => setFase("inicio")} className="w-full rounded-2xl bg-gray-100 py-3 font-bold text-gray-800">
+          <button onClick={() => setFase("inicio")} className="boton boton-tenue w-full">
             Medir otro recorrido
           </button>
-        </section>
+        </>
       )}
 
       {error && (
-        <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">
+        <p role="alert" className="rounded-2xl bg-ios-rojo/10 px-4 py-3 text-[15px] text-ios-rojo">
           {error}
         </p>
       )}
-    </main>
+    </Pagina>
   );
+}
+
+/** Selección de una opción con píldoras */
+function Opciones<T extends string>({ opciones, valor, onCambio }: { opciones: [T, string][]; valor: T; onCambio: (v: T) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {opciones.map(([v, t]) => (
+        <button
+          key={v}
+          aria-pressed={valor === v}
+          onClick={() => onCambio(v)}
+          className={`rounded-full px-3.5 py-2 text-[15px] transition ${valor === v ? "bg-ios-azul font-semibold text-white" : "bg-ios-relleno"}`}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Aviso({ children }: { children: React.ReactNode }) {
+  return <p className="rounded-2xl bg-ios-naranja/12 px-4 py-3 text-[15px] text-[#c93400]">{children}</p>;
 }
 
 /** Por qué una parte del recorrido no quedó medida */
@@ -408,8 +412,8 @@ function NoMedido({ estado, medidoKm }: { estado: EstadoMedicion; medidoKm: numb
   ].filter(Boolean);
   if (filas.length === 0) return null;
   return (
-    <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-600">
-      <p className="font-semibold text-gray-700">
+    <div className="rounded-2xl bg-white px-4 py-3.5 text-[15px] text-ios-secundario">
+      <p className="font-semibold text-ios-etiqueta">
         Recorriste {km(estado.distancia_m)} y se midieron {medidoKm.toFixed(1)} km. Lo que no se midió:
       </p>
       <ul className="mt-1 list-disc space-y-0.5 pl-5">
@@ -425,9 +429,12 @@ const pct = (a: number, t: number) => (t > 0 ? `${Math.round((a / t) * 100)}%` :
 
 function Dato({ titulo, valor, color }: { titulo: string; valor: string; color?: string }) {
   return (
-    <div className="rounded-xl bg-gray-100 px-2 py-2" style={color ? { borderTop: `4px solid ${color}` } : undefined}>
-      <div className="text-xs text-gray-500">{titulo}</div>
-      <div className="font-bold tabular-nums">{valor}</div>
+    <div className="rounded-2xl bg-white px-3 py-3">
+      <div className="flex items-center gap-1.5 text-[13px] text-ios-secundario">
+        {color && <span className="h-2 w-2 rounded-full" style={{ background: color }} />}
+        {titulo}
+      </div>
+      <div className="mt-0.5 text-[20px] font-semibold tabular-nums">{valor}</div>
     </div>
   );
 }
@@ -436,7 +443,7 @@ function Dato({ titulo, valor, color }: { titulo: string; valor: string; color?:
 function MiniMapa({ tramos }: { tramos: Tramo[] }) {
   const pts = tramos.flatMap((t) => t.puntos);
   if (pts.length < 2) {
-    return <div className="grid h-48 place-items-center rounded-xl bg-gray-100 text-sm text-gray-500">El recorrido aparecerá aquí</div>;
+    return <div className="grid h-48 place-items-center text-[15px] text-ios-terciario">El recorrido aparecerá aquí</div>;
   }
   const lats = pts.map((p) => p[0]);
   const lngs = pts.map((p) => p[1]);
@@ -445,7 +452,7 @@ function MiniMapa({ tramos }: { tramos: Tramo[] }) {
   const s = Math.min(300 / Math.max((lo1 - lo0) * k, 1e-6), 180 / Math.max(la1 - la0, 1e-6));
   const xy = ([lat, lng]: [number, number]) => [10 + (lng - lo0) * k * s, 190 - (lat - la0) * s] as const;
   return (
-    <svg viewBox="0 0 320 200" role="img" aria-label="Recorrido coloreado por estado de la calle" className="w-full rounded-xl bg-gray-100">
+    <svg viewBox="0 0 320 200" role="img" aria-label="Recorrido coloreado por estado de la calle" className="w-full bg-white">
       {tramos.map((t, i) => (
         <polyline
           key={i}

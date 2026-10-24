@@ -190,9 +190,11 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
             <button
               onClick={() => irA("tipo")}
               aria-label="Regresar"
-              className="-ml-2 grid h-9 w-9 place-items-center rounded-full text-xl hover:bg-gray-100"
+              className="-ml-1 grid h-8 w-6 place-items-center text-ios-azul"
             >
-              ‹
+              <svg width="12" height="20" viewBox="0 0 12 20" aria-hidden>
+                <path d="M10 2L2 10l8 8" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           )}
           {TITULOS[paso]}
@@ -200,8 +202,8 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
       }
     >
       {paso === "tipo" ? (
-        <div className="grid grid-cols-3 gap-2">
-          <BotonTipo emoji="💧" texto="Agua" color="#2563eb" onClick={() => irA("agua")} />
+        <div className="grid grid-cols-3 gap-2.5">
+          <BotonTipo emoji="💧" texto="Agua" color="#007aff" onClick={() => irA("agua")} />
           {TIPOS_PIN.map((t) => (
             <BotonTipo key={t} emoji={INFO_PIN[t].emoji} texto={INFO_PIN[t].nombre} color={INFO_PIN[t].color} onClick={() => irA(t)} />
           ))}
@@ -209,8 +211,10 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
       ) : (
         <div className="space-y-3">
           <p
-            className={`rounded-lg px-3 py-2 text-sm ${
-              sinUbicacion || (paso === "agua" && colonia === null) || (linea && tramo.error) ? "bg-amber-50 text-amber-900" : "bg-blue-50 text-blue-900"
+            className={`rounded-xl px-3.5 py-2.5 text-[15px] ${
+              sinUbicacion || (paso === "agua" && colonia === null) || (linea && tramo.error)
+                ? "bg-ios-naranja/12 text-[#c93400]"
+                : "bg-ios-azul/10 text-ios-azul"
             }`}
           >
             {linea ? "🛣️" : "📍"} {textoUbicacion}
@@ -228,8 +232,8 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
               {vistaPrevia ? (
                 <div className="flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={vistaPrevia} alt="Vista previa" className="h-14 w-14 rounded-lg object-cover" />
-                  <button onClick={quitarFoto} className="text-sm text-red-600 underline">
+                  <img src={vistaPrevia} alt="Vista previa" className="h-14 w-14 rounded-xl object-cover" />
+                  <button onClick={quitarFoto} className="text-[15px] text-ios-rojo">
                     Quitar foto
                   </button>
                 </div>
@@ -237,9 +241,9 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
                 <button
                   onClick={() => entradaFoto.current?.click()}
                   disabled={comprimiendo}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  className="boton boton-tenue min-h-[44px] rounded-xl px-4 text-[15px]"
                 >
-                  {comprimiendo ? "Procesando foto…" : "📷 Agregar foto (opcional)"}
+                  {comprimiendo ? "Procesando foto…" : "📷 Agregar foto"}
                 </button>
               )}
             </div>
@@ -253,21 +257,21 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
                 rows={2}
                 maxLength={MAX_COMENTARIO}
                 placeholder="Comentario opcional (sin nombres, teléfonos ni direcciones exactas)"
-                className="w-full rounded-lg border border-gray-300 p-2 text-base"
+                className="campo resize-none"
               />
-              <div className="text-right text-xs text-gray-400">
+              <div className="mt-1 text-right text-xs text-ios-terciario">
                 {comentario.length}/{MAX_COMENTARIO}
               </div>
             </div>
           ) : (
-            <button onClick={() => setVerComentario(true)} className="text-sm text-blue-700 underline">
-              + Agregar comentario (opcional)
+            <button onClick={() => setVerComentario(true)} className="text-[15px] text-ios-azul">
+              Agregar comentario
             </button>
           )}
 
           {paso === "agua" && !eligiendoSucia && (
             <>
-              <p className="text-xs text-gray-500">Toca una opción para enviar:</p>
+              <p className="titulo-grupo !px-1 !pb-0">Toca una opción para enviar</p>
               <div className="grid grid-cols-2 gap-2">
                 {(["sin_agua", "baja_presion", "sucia", "con_agua"] as EstadoAgua[]).map((e) => (
                   <BotonOpcion
@@ -284,7 +288,7 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
 
           {paso === "agua" && eligiendoSucia && (
             <>
-              <p className="text-sm text-gray-700">¿Qué notas en el agua? (opcional, puedes elegir varias)</p>
+              <p className="text-[15px] text-ios-secundario">¿Qué notas en el agua? (opcional, puedes elegir varias)</p>
               <div className="flex flex-wrap gap-2">
                 {DETALLES_SUCIA.map((d) => {
                   const activo = detalles.includes(d);
@@ -293,9 +297,7 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
                       key={d}
                       onClick={() => setDetalles(activo ? detalles.filter((x) => x !== d) : [...detalles, d])}
                       aria-pressed={activo}
-                      className={`rounded-full border px-3 py-2 text-sm ${
-                        activo ? "border-purple-700 bg-purple-700 text-white" : "border-gray-300 bg-white"
-                      }`}
+                      className={`rounded-full px-3.5 py-2 text-[15px] ${activo ? "bg-ios-etiqueta text-white" : "bg-ios-relleno"}`}
                     >
                       {ETIQUETAS[d]}
                     </button>
@@ -308,13 +310,13 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
 
           {paso !== "agua" && (
             <>
-              <p className="text-xs text-gray-500">Toca una opción para enviar:</p>
+              <p className="titulo-grupo !px-1 !pb-0">Toca una opción para enviar</p>
               <div className={`grid gap-2 ${paso === "bache" || paso === "calle_cerrada" ? "grid-cols-2" : "grid-cols-1"}`}>
                 {SUBTIPOS[paso].map((t) => (
                   <BotonOpcion
                     key={t}
                     texto={SUBTIPOS_PELIGROSOS.has(t) ? `⚠️ ${ETIQUETAS[t]}` : ETIQUETAS[t]}
-                    color={SUBTIPOS_PELIGROSOS.has(t) ? "#dc2626" : "#374151"}
+                    color={SUBTIPOS_PELIGROSOS.has(t) ? "peligro" : null}
                     disabled={bloqueado}
                     onClick={() => enviarReporte(t)}
                   />
@@ -323,9 +325,9 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
             </>
           )}
 
-          {enviando && <p className="text-center text-sm font-semibold text-gray-700">Enviando…</p>}
+          {enviando && <p className="text-center text-[15px] text-ios-secundario">Enviando…</p>}
           {error && (
-            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+            <p role="alert" className="rounded-xl bg-ios-rojo/10 px-3.5 py-2.5 text-[15px] text-ios-rojo">
               {error}
             </p>
           )}
@@ -361,10 +363,9 @@ function BotonTipo({ emoji, texto, color, onClick }: { emoji: string; texto: str
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center gap-1 rounded-2xl border-2 bg-white py-4 text-base font-bold text-gray-900 active:scale-95"
-      style={{ borderColor: color }}
+      className="flex flex-col items-center gap-2 rounded-2xl bg-ios-fondo px-1 pb-3 pt-3.5 text-[13px] font-medium leading-tight transition active:scale-95 active:opacity-70"
     >
-      <span className="text-3xl" aria-hidden>
+      <span className="grid h-[52px] w-[52px] place-items-center rounded-[14px] text-[28px]" style={{ background: `${color}26` }} aria-hidden>
         {emoji}
       </span>
       {texto}
@@ -372,13 +373,30 @@ function BotonTipo({ emoji, texto, color, onClick }: { emoji: string; texto: str
   );
 }
 
-function BotonOpcion({ texto, color, disabled, onClick }: { texto: string; color: string; disabled: boolean; onClick: () => void }) {
+/** Opción que envía el reporte. Con color: el del mapa (agua); "peligro": rojo; null: neutra. */
+function BotonOpcion({
+  texto,
+  color,
+  disabled,
+  onClick,
+}: {
+  texto: string;
+  color: string | null;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const estilo =
+    color === "peligro"
+      ? "bg-ios-rojo/10 text-ios-rojo"
+      : color === null
+        ? "bg-ios-fondo text-ios-etiqueta"
+        : "text-white";
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className="min-h-14 rounded-xl px-3 py-3 text-base font-bold text-white shadow active:scale-95 disabled:opacity-50"
-      style={{ background: color }}
+      className={`boton min-h-[54px] rounded-[14px] px-3 text-[16px] leading-tight ${estilo}`}
+      style={color && color !== "peligro" ? { background: color } : undefined}
     >
       {texto}
     </button>

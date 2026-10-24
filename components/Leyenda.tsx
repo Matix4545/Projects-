@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Equis } from "./HojaInferior";
 import { COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, TIPOS_PIN, esLinea, textoPeriodo } from "@/lib/constantes";
 
 const FILAS: [string, string, "zona" | "pin" | "linea"][] = [
@@ -20,16 +21,16 @@ const FILAS: [string, string, "zona" | "pin" | "linea"][] = [
 export function Leyenda({ horas }: { horas: number }) {
   const [abierta, setAbierta] = useState(false);
   return (
-    <div className="fixed bottom-[7.5rem] left-3 z-[1001]">
+    <div className="fixed bottom-[calc(4.875rem+env(safe-area-inset-bottom))] left-3 z-[1001]">
       {abierta ? (
-        <div className="w-56 rounded-xl bg-white/95 p-3 text-sm shadow-lg">
-          <div className="mb-1 flex items-center justify-between">
-            <strong>¿Qué significan los colores?</strong>
-            <button onClick={() => setAbierta(false)} aria-label="Cerrar leyenda" className="px-2 text-lg text-gray-500">
-              ×
+        <div className="material w-64 rounded-[20px] bg-white/95 p-4 text-[14px]">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <strong className="text-[17px] font-semibold leading-tight">Colores</strong>
+            <button onClick={() => setAbierta(false)} aria-label="Cerrar leyenda" className="cerrar">
+              <Equis />
             </button>
           </div>
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {FILAS.map(([color, texto, forma]) => (
               <li key={texto} className="flex items-center gap-2">
                 <span
@@ -47,16 +48,16 @@ export function Leyenda({ horas }: { horas: number }) {
                 {forma === "zona" && color === COLOR_ESTADO.ninguno ? `Sin reportes en ${textoPeriodo(horas)}` : texto}
               </li>
             ))}
-            <li className="pt-1 text-xs text-gray-500">
+            <li className="pt-1 text-xs text-ios-secundario">
               Colonias: lo más reportado en {textoPeriodo(horas)}. Un reporte de “con agua” la pone en verde.
             </li>
-            <li className="text-xs text-gray-500">Borde rojo: peligro (bache peligroso, alcantarilla sin tapa, cables expuestos o quema).</li>
+            <li className="text-xs text-ios-secundario">Borde rojo: peligro (bache peligroso, alcantarilla sin tapa, cables expuestos o quema).</li>
           </ul>
         </div>
       ) : (
         <button
           onClick={() => setAbierta(true)}
-          className="rounded-full bg-white/95 px-3 py-2 text-sm font-semibold text-gray-700 shadow-lg"
+          className="material h-9 rounded-full px-3.5 text-[15px] font-medium text-ios-azul"
         >
           Colores
         </button>

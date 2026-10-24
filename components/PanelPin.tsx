@@ -71,7 +71,7 @@ export function PanelPin({
           <BadgeDias
             pin={{ ...pin, estado: conteos.estado, arreglado_en: pin.arreglado_en ?? (arreglado ? new Date().toISOString() : null) }}
           />
-          <p className="text-sm text-gray-500">
+          <p className="text-[15px] text-ios-secundario">
             {[pin.colonia, horaLocal(pin.creado_en), conteos.confirmaciones > 0 ? `+${conteos.confirmaciones} lo confirman` : null]
               .filter(Boolean)
               .join(" · ")}
@@ -79,11 +79,11 @@ export function PanelPin({
         </div>
         ) : (
           <>
-            <p className="text-sm text-gray-600">
+            <p className="text-[15px] text-ios-secundario">
               {pin.colonia ? `${pin.colonia} · ` : ""}Reportado {haceCuanto(pin.creado_en)} ({horaLocal(pin.creado_en)})
             </p>
             {arreglado && (
-              <p className="rounded-lg bg-green-50 p-2 text-sm font-semibold text-green-800">
+              <p className="rounded-xl bg-ios-verde/12 px-3 py-2.5 text-[15px] font-medium text-[#248a3d]">
                 ✔ Vecinos confirmaron: {textoArreglo.toLowerCase()}
                 {pin.arreglado_en ? ` (${haceCuanto(pin.arreglado_en)})` : ""}.
               </p>
@@ -93,7 +93,7 @@ export function PanelPin({
 
         {pin.foto && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={urlFoto(pin.foto)} alt={`Foto del reporte: ${titulo}`} loading="lazy" className="max-h-72 w-full rounded-lg bg-gray-100 object-cover" />
+          <img src={urlFoto(pin.foto)} alt={`Foto del reporte: ${titulo}`} loading="lazy" className="max-h-72 w-full rounded-2xl bg-ios-relleno object-cover" />
         )}
         {pin.foto && (
           <div className="-mt-2 text-right">
@@ -102,7 +102,7 @@ export function PanelPin({
         )}
 
         {pin.comentario && (
-          <div className="rounded-lg bg-gray-50 p-2 text-sm">
+          <div className="rounded-2xl bg-ios-fondo px-4 py-3 text-[15px]">
             <p className="break-words">“{pin.comentario}”</p>
             <div className="mt-1 text-right">
               <BotonDenunciar tipo="pin" id={pin.id} onAviso={onAviso} />
@@ -111,8 +111,8 @@ export function PanelPin({
         )}
 
         {!equipo && (
-          <p className="text-sm">
-            <strong>{conteos.confirmaciones}</strong>{" "}
+          <p className="text-[15px] text-ios-secundario">
+            <strong className="font-semibold text-ios-etiqueta">{conteos.confirmaciones}</strong>{" "}
             {conteos.confirmaciones === 1 ? "vecino más lo confirmó" : "vecinos más lo confirmaron"}
           </p>
         )}
@@ -122,21 +122,21 @@ export function PanelPin({
             <button
               onClick={() => votar("confirmo")}
               disabled={enviando !== null}
-              className="rounded-xl bg-blue-600 px-3 py-3 font-semibold text-white disabled:opacity-60"
+              className="boton boton-principal px-3 text-[16px]"
             >
-              {enviando === "confirmo" ? "Enviando…" : "+1 Yo también lo vi"}
+              {enviando === "confirmo" ? "Enviando…" : "Yo también lo vi"}
             </button>
             <button
               onClick={() => votar("arreglado")}
               disabled={enviando !== null}
-              className="rounded-xl bg-green-600 px-3 py-3 font-semibold text-white disabled:opacity-60"
+              className="boton bg-ios-verde/15 px-3 text-[16px] text-[#248a3d]"
             >
               {enviando === "arreglado" ? "Enviando…" : `${textoArreglo} (${conteos.votos_arreglado}/3)`}
             </button>
           </div>
         )}
         {equipo && <NotasEquipo pinId={pin.id} />}
-        {equipo && <p className="text-center font-mono text-xs text-gray-400">Folio {folio(pin.id)}</p>}
+        {equipo && <p className="text-center font-mono text-xs text-ios-terciario">Folio {folio(pin.id)}</p>}
       </div>
     </HojaInferior>
   );

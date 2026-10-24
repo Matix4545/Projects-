@@ -5,6 +5,7 @@ import { BadgeDias } from "@/components/BadgeDias";
 import { Barras, Seccion, Tabla, Tarjeta, Vacio, num } from "@/components/graficas";
 import { DEPENDENCIAS, INFO_PIN, tituloReporte, type TipoPin } from "@/lib/constantes";
 import type { Pin } from "@/lib/datos";
+import { Pagina } from "@/components/Pagina";
 import { sesionPanelValida } from "@/lib/panel";
 import { SUPUESTOS, estimar, type Estimacion, type GrupoMedido } from "@/lib/economia";
 import { COLOR_CLASE, UMBRALES } from "@/lib/rugosidad";
@@ -54,20 +55,18 @@ export default async function PaginaEstadisticas() {
   const estimacion = estimar(((distribucion as GrupoMedido[] | null) ?? []).map((g) => ({ ...g, m: Number(g.m) })));
 
   return (
-    <main className="mx-auto max-w-4xl bg-white px-4 pb-16 pt-6 text-gray-900 sm:my-6 sm:rounded-2xl sm:px-8 sm:shadow">
-      <nav className="flex gap-4 text-sm font-semibold text-blue-700">
-        <Link href="/" className="underline">
-          ← Mapa
+    <Pagina
+      ancho="max-w-4xl"
+      titulo="Estadísticas"
+      subtitulo="¿Qué tan rápido se atienden los reportes? · Solo equipo"
+      accion={
+        <Link href="/panel" className="text-[17px] text-ios-azul">
+          Reporte
         </Link>
-        <Link href="/panel" className="underline">
-          Reporte ejecutivo
-        </Link>
-      </nav>
-      <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-400">🔒 Solo equipo</p>
-      <h1 className="text-2xl font-extrabold">¿Qué tan rápido se atienden los reportes?</h1>
-
+      }
+    >
       {!e ? (
-        <p className="mt-8 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+        <p className="rounded-2xl bg-ios-naranja/12 p-4 text-[15px] text-[#c93400]">
           No se pudieron calcular las estadísticas. ¿Ya corriste <code>02_funciones.sql</code> en Supabase?
         </p>
       ) : (
@@ -77,11 +76,11 @@ export default async function PaginaEstadisticas() {
       <Recorridos r={(rugosidad as ResumenRugosidad | null) ?? null} />
       <Economia e={estimacion} />
 
-      <p className="mt-10 border-t border-gray-200 pt-4 text-xs text-gray-500">
+      <p className="mt-10 px-4 text-xs text-ios-secundario">
         Datos de percepción ciudadana reportados de forma anónima. “Resuelto” significa que 3 vecinos confirmaron que ya
         lo arreglaron; no son cifras oficiales. La dependencia responsable es una guía aproximada.
       </p>
-    </main>
+    </Pagina>
   );
 }
 
@@ -108,7 +107,7 @@ function Contenido({ e, secciones }: { e: Estadisticas; secciones: FilaSeccion[]
 
   return (
     <>
-      <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Tarjeta titulo="Reportes activos" valor={num(e.pendientes)} nota="Pendientes en el mapa" />
         <Tarjeta
           titulo="Resueltos"
@@ -126,34 +125,34 @@ function Contenido({ e, secciones }: { e: Estadisticas; secciones: FilaSeccion[]
       <Seccion titulo="Desempeño por dependencia" nota="A quién le toca, de forma aproximada. Resueltos: últimos 90 días.">
         <div className="grid gap-3 sm:grid-cols-2">
           {dependencias.map((d) => (
-            <article key={d.clave} className="rounded-xl border border-gray-200 p-4">
+            <article key={d.clave} className="rounded-xl bg-ios-fondo p-4">
               <h3 className="text-lg font-extrabold">{d.nombre}</h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-ios-secundario">
                 {d.descripcion} · {d.tipos.map((t) => INFO_PIN[t].emoji).join(" ")}
               </p>
               <div className="mt-3 flex items-baseline justify-between text-sm">
                 <span className="font-semibold">Resuelto</span>
                 <strong className="text-2xl tabular-nums">{d.pct === null ? "—" : `${d.pct}%`}</strong>
               </div>
-              <div className="mt-1 h-2 rounded-full bg-gray-100" role="img" aria-label={`${d.pct ?? 0}% resuelto`}>
-                <div className="h-2 rounded-full bg-green-600" style={{ width: `${d.pct ?? 0}%` }} />
+              <div className="mt-1 h-2 rounded-full bg-ios-relleno" role="img" aria-label={`${d.pct ?? 0}% resuelto`}>
+                <div className="h-2 rounded-full bg-ios-verde" style={{ width: `${d.pct ?? 0}%` }} />
               </div>
               <dl className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
                 <div>
-                  <dt className="text-xs text-gray-500">Pendientes</dt>
+                  <dt className="text-xs text-ios-secundario">Pendientes</dt>
                   <dd className="font-bold tabular-nums">{num(d.pendientes)}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-gray-500">+30 días</dt>
-                  <dd className={`font-bold tabular-nums ${d.criticos > 0 ? "text-red-600" : ""}`}>{num(d.criticos)}</dd>
+                  <dt className="text-xs text-ios-secundario">+30 días</dt>
+                  <dd className={`font-bold tabular-nums ${d.criticos > 0 ? "text-ios-rojo" : ""}`}>{num(d.criticos)}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-gray-500">Tarda</dt>
+                  <dt className="text-xs text-ios-secundario">Tarda</dt>
                   <dd className="font-bold tabular-nums">{dias(d.promedio)}</dd>
                 </div>
               </dl>
               {d.clave === "oomapasc" && (
-                <p className="mt-3 rounded-lg bg-blue-50 p-2 text-xs text-blue-900">
+                <p className="mt-3 rounded-lg bg-ios-azul/10 p-2 text-xs text-ios-azul">
                   💧 Agua: {num(e.agua_problemas_7d)} reportes de falta de agua, baja presión o agua sucia en 7 días ·{" "}
                   {num(e.colonias_agua_afectadas)} colonias afectadas ahora (7 días).
                 </p>
@@ -225,7 +224,7 @@ function Contenido({ e, secciones }: { e: Estadisticas; secciones: FilaSeccion[]
                     <span className="block truncate font-semibold">
                       {INFO_PIN[o.tipo]?.emoji} {tituloReporte(o)}
                     </span>
-                    <span className="block truncate text-xs text-gray-500">
+                    <span className="block truncate text-xs text-ios-secundario">
                       {o.colonia ?? "Cajeme"} · {folio(o.id)} · +{num(o.confirmaciones)}
                     </span>
                   </span>
@@ -295,7 +294,7 @@ function Recorridos({ r }: { r: ResumenRugosidad | null }) {
           )}
         </>
       )}
-      <a href="/api/equipo/rugosidad/csv" className="mt-4 inline-block rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold">
+      <a href="/api/equipo/rugosidad/csv" className="boton boton-tenue mt-4 min-h-9 rounded-full px-4 text-[15px]">
         ⬇️ Descargar tramos (CSV)
       </a>
     </Seccion>
@@ -318,10 +317,10 @@ function Economia({ e }: { e: Estimacion | null }) {
         <Vacio texto="Se calcula cuando haya recorridos medidos (sin contar los de prueba)." />
       ) : (
         <>
-          <div className="rounded-xl bg-amber-50 p-4">
-            <p className="text-sm text-amber-900">Costo extra al año para los {num(s.vehiculos)} vehículos de Cajeme</p>
+          <div className="rounded-xl bg-ios-naranja/10 p-4">
+            <p className="text-sm text-[#c93400]">Costo extra al año para los {num(s.vehiculos)} vehículos de Cajeme</p>
             <p className="text-3xl font-extrabold tabular-nums">{millones(e.porEscenario.medio.totalAnio)}</p>
-            <p className="text-sm text-amber-900">
+            <p className="text-sm text-[#c93400]">
               Rango: {millones(e.porEscenario.bajo.totalAnio)} a {millones(e.porEscenario.alto.totalAnio)}
             </p>
           </div>
@@ -373,7 +372,7 @@ function Economia({ e }: { e: Estimacion | null }) {
             </div>
           </div>
 
-          <details className="mt-4 rounded-xl border border-gray-200 p-3 text-sm">
+          <details className="mt-4 rounded-xl bg-ios-fondo p-3 text-sm">
             <summary className="cursor-pointer font-semibold">Supuestos (se reemplazan cuando haya datos reales)</summary>
             <Tabla
               encabezados={["Supuesto", "Rango (bajo – alto)", "Se reemplaza con"]}
@@ -389,7 +388,7 @@ function Economia({ e }: { e: Estimacion | null }) {
                 ["Vehículos particulares (sin motos)", num(s.vehiculos), "Ya es dato real: INEGI, VMRC 2025"],
               ]}
             />
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-ios-secundario">
               Supone que los km medidos representan por dónde circula la gente (los recorridos son de choferes y
               repartidores en su día normal). Sin calles en buen estado (IRI ≤ {s.iriBase}) no hay costo extra.
             </p>

@@ -27,9 +27,9 @@ export function BotonDenunciar({ tipo, id, onAviso }: { tipo: "agua" | "pin" | "
     onAviso(r.ok ? `Gracias. Con 3 denuncias ${tipo === "foto" ? "la foto" : "el comentario"} se oculta.` : r.error);
   }
 
-  if (estado === "hecho") return <span className="text-xs text-gray-400">Denunciado</span>;
+  if (estado === "hecho") return <span className="text-xs text-ios-terciario">Denunciado</span>;
   return (
-    <button onClick={denunciar} disabled={estado === "enviando"} className="text-xs text-gray-500 underline disabled:opacity-50">
+    <button onClick={denunciar} disabled={estado === "enviando"} className="text-xs text-ios-azul disabled:opacity-50">
       {tipo === "foto" ? "Denunciar foto" : "Denunciar"}
     </button>
   );

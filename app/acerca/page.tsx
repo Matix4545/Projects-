@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Bloque, Pagina } from "@/components/Pagina";
 import { version } from "@/package.json";
 
 export const metadata: Metadata = {
@@ -11,22 +12,18 @@ const contacto = process.env.NEXT_PUBLIC_CONTACTO;
 
 export default function Acerca() {
   return (
-    <main className="mx-auto max-w-2xl bg-white px-5 pb-16 pt-6 leading-relaxed text-gray-800 sm:my-6 sm:rounded-2xl sm:shadow">
-      <Link href="/" className="font-semibold text-blue-700 underline">
-        ← Volver al mapa
-      </Link>
-
-      <h1 className="mt-4 text-2xl font-extrabold text-gray-900">Acerca de Reporta Cajeme</h1>
-
-      <p className="mt-3">
+    <Pagina titulo="Acerca de" subtitulo="Reporta Cajeme · Proyecto ciudadano">
+      <Bloque>
+      <div className="space-y-3 text-[16px] leading-relaxed">
+      <p>
         Reporta Cajeme es un mapa ciudadano donde los vecinos de Ciudad Obregón y el municipio de Cajeme, Sonora,
         comparten lo que viven con los servicios públicos: falta de agua, baja presión, agua sucia, baches,
         problemas de drenaje, alumbrado público, banquetas en mal estado, baldíos con basura y calles cerradas o llenas de baches.
       </p>
 
-      <div className="mt-4 rounded-xl border-l-4 border-amber-500 bg-amber-50 p-4">
-        <p className="font-bold">Importante</p>
-        <ul className="mt-1 list-disc space-y-1 pl-5">
+      <div className="rounded-xl bg-ios-naranja/10 p-4">
+        <p className="font-semibold text-[#c93400]">Importante</p>
+        <ul className="list-disc space-y-1.5 pl-5">
           <li>
             <strong>No tenemos ninguna afiliación</strong> con el Ayuntamiento de Cajeme, OOMAPASC, el Gobierno de
             Sonora ni ningún partido político.
@@ -42,8 +39,11 @@ export default function Acerca() {
         </ul>
       </div>
 
-      <h2 className="mt-8 text-xl font-bold text-gray-900">¿Cómo funciona?</h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5">
+      </div>
+      </Bloque>
+
+      <Bloque titulo="¿Cómo funciona?">
+      <ul className="list-disc space-y-2 pl-5 text-[16px] leading-relaxed">
         <li>
           <strong>Agua:</strong> se reporta por colonia. El color de cada colonia es el estado que más se reportó en
           los últimos 7 días (abajo en el mapa también puedes ver solo 24 o 72 horas). En empate gana el más grave. Si
@@ -66,14 +66,15 @@ export default function Acerca() {
         </li>
       </ul>
 
-      <h2 id="rugosidad" className="mt-8 text-xl font-bold text-gray-900">
-        Cómo medimos el estado de las calles <span className="text-sm font-normal text-gray-500">(en prueba)</span>
-      </h2>
-      <p className="mt-2">
-        Con <Link href="/medir" className="text-blue-700 underline">Medir mi recorrido</Link>, el celular en un soporte firme mide qué tanto se
+      </Bloque>
+
+      <Bloque id="rugosidad" titulo="Cómo medimos el estado de las calles (en prueba)">
+      <div className="space-y-2 text-[16px] leading-relaxed">
+      <p>
+        Con <Link href="/medir" className="text-ios-azul">Medir mi recorrido</Link>, el celular en un soporte firme mide qué tanto se
         sacude el vehículo mientras manejas:
       </p>
-      <ul className="mt-2 list-disc space-y-1 pl-5">
+      <ul className="list-disc space-y-1.5 pl-5">
         <li>
           El acelerómetro separa la sacudida vertical de la gravedad (así no importa si el celular va inclinado) y solo
           se usan las lecturas a más de 15 km/h.
@@ -90,30 +91,32 @@ export default function Acerca() {
           comparar calles entre sí.
         </li>
       </ul>
-      <p className="mt-2 text-sm text-gray-600">
+      <p className="text-[13px] text-ios-secundario">
         Fuentes: Sayers, Gillespie y Queiroz, <em>Guidelines for Conducting and Calibrating Road Roughness
         Measurements</em> (Banco Mundial, Technical Paper 46, 1986) y norma ASTM E1926 (definición del IRI);{" "}
-        <a className="text-blue-700 underline" href="https://softteco.com/projects/roadlab" target="_blank" rel="noreferrer">RoadLab Pro</a> (app del
+        <a className="text-ios-azul" href="https://softteco.com/projects/roadlab" target="_blank" rel="noreferrer">RoadLab Pro</a> (app del
         Banco Mundial que estima el IRI con celulares); estudios de calibración con celulares de la{" "}
-        <a className="text-blue-700 underline" href="https://www.ideals.illinois.edu/items/98616" target="_blank" rel="noreferrer">Universidad de Illinois</a>{" "}
+        <a className="text-ios-azul" href="https://www.ideals.illinois.edu/items/98616" target="_blank" rel="noreferrer">Universidad de Illinois</a>{" "}
         y la{" "}
-        <a className="text-blue-700 underline" href="https://repositorio.ufc.br/handle/riufc/52918?mode=full" target="_blank" rel="noreferrer">Universidad Federal de Ceará</a>; y, para el costo que la rugosidad causa a los vehículos, el modelo HDM-4 del Banco Mundial y el{" "}
-        <a className="text-blue-700 underline" href="https://www.nap.edu/read/22808/chapter/8" target="_blank" rel="noreferrer">NCHRP (National Academies)</a>.
+        <a className="text-ios-azul" href="https://repositorio.ufc.br/handle/riufc/52918?mode=full" target="_blank" rel="noreferrer">Universidad Federal de Ceará</a>; y, para el costo que la rugosidad causa a los vehículos, el modelo HDM-4 del Banco Mundial y el{" "}
+        <a className="text-ios-azul" href="https://www.nap.edu/read/22808/chapter/8" target="_blank" rel="noreferrer">NCHRP (National Academies)</a>.
       </p>
 
-      <h2 id="privacidad" className="mt-8 text-xl font-bold text-gray-900">
-        Aviso de privacidad
-      </h2>
-      <p className="mt-2">
+      </div>
+      </Bloque>
+
+      <Bloque id="privacidad" titulo="Aviso de privacidad">
+      <div className="space-y-2 text-[16px] leading-relaxed">
+      <p>
         Este aviso explica qué datos se recaban y para qué, en apego a la Ley Federal de Protección de Datos Personales
         en Posesión de los Particulares.
       </p>
 
-      <h3 className="mt-4 font-bold">Lo que NO pedimos</h3>
+      <h3 className="pt-2 text-[17px] font-semibold">Lo que NO pedimos</h3>
       <p>No pedimos nombre, teléfono, correo electrónico ni ninguna cuenta. Los reportes son anónimos.</p>
 
-      <h3 className="mt-4 font-bold">Lo que sí guardamos</h3>
-      <ul className="mt-1 list-disc space-y-1 pl-5">
+      <h3 className="pt-2 text-[17px] font-semibold">Lo que sí guardamos</h3>
+      <ul className="list-disc space-y-1.5 pl-5">
         <li>
           <strong>El reporte:</strong> tipo de problema, fecha y hora, y comentario si lo escribiste.
         </li>
@@ -138,8 +141,8 @@ export default function Acerca() {
         </li>
       </ul>
 
-      <h3 className="mt-4 font-bold">Servicios de terceros</h3>
-      <ul className="mt-1 list-disc space-y-1 pl-5">
+      <h3 className="pt-2 text-[17px] font-semibold">Servicios de terceros</h3>
+      <ul className="list-disc space-y-1.5 pl-5">
         <li>
           <strong>Cloudflare Turnstile</strong> verifica que quien envía sea una persona y no un robot. Cloudflare
           procesa datos técnicos de tu navegador según su propia política de privacidad.
@@ -150,44 +153,47 @@ export default function Acerca() {
         </li>
       </ul>
 
-      <h3 className="mt-4 font-bold">Para qué se usan</h3>
+      <h3 className="pt-2 text-[17px] font-semibold">Para qué se usan</h3>
       <p>
         Únicamente para mostrar en el mapa el estado de los servicios públicos y para evitar abusos. No vendemos ni
         compartimos datos. La información agregada (conteos por colonia) es pública.
       </p>
 
-      <h3 className="mt-4 font-bold">Comentarios</h3>
+      <h3 className="pt-2 text-[17px] font-semibold">Comentarios</h3>
       <p>
         No escribas datos personales tuyos ni de otras personas. Los comentarios con groserías, teléfonos, correos o
         enlaces se rechazan. Cualquier vecino puede denunciar un comentario o una foto: con 3 denuncias se oculta
         automáticamente.
       </p>
 
-      <h3 className="mt-4 font-bold">Tus derechos</h3>
+      <h3 className="pt-2 text-[17px] font-semibold">Tus derechos</h3>
       <p>
         Como no pedimos datos de identificación, no podemos asociar un reporte a una persona. Si crees que un reporte o
         foto expone datos personales, escríbenos para retirarlo
         {contacto ? (
           <>
             {" "}
-            a <a className="text-blue-700 underline" href={`mailto:${contacto}`}>{contacto}</a>
+            a <a className="text-ios-azul" href={`mailto:${contacto}`}>{contacto}</a>
           </>
         ) : null}
         .
       </p>
 
-      <p className="mt-8 text-sm text-gray-500">
+      </div>
+      </Bloque>
+
+      <p className="px-4 text-[13px] text-ios-secundario">
         Mapa © colaboradores de{" "}
-        <a className="underline" href="https://www.openstreetmap.org/copyright">
+        <a className="text-ios-azul" href="https://www.openstreetmap.org/copyright">
           OpenStreetMap
         </a>
         . Límites de colonias: mapa público de colonias del municipio de Cajeme publicado por el{" "}
-        <a className="underline" href="https://imipcajeme.org">
+        <a className="text-ios-azul" href="https://imipcajeme.org">
           IMIP Cajeme
         </a>
         . Proyecto ciudadano sin fines de lucro.
       </p>
-      <p className="mt-2 text-xs text-gray-400">Versión {version.split(".").slice(0, 2).join(".")}</p>
-    </main>
+      <p className="px-4 text-xs text-ios-terciario">Versión {version.split(".").slice(0, 2).join(".")}</p>
+    </Pagina>
   );
 }

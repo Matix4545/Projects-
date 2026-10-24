@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { Pin } from "@/lib/datos";
 import type { PropsSeccion } from "@/lib/secciones";
+import { Equis } from "./HojaInferior";
+import { Interruptor } from "./Interruptor";
 
 /** Capa de secciones electorales dentro del panel de filtros */
 /** Capa de rugosidad medida con celulares */
@@ -72,16 +74,9 @@ function Segmentos<T extends string | number>({
   onCambio: (v: T) => void;
 }) {
   return (
-    <div role="group" aria-label={etiqueta} className="flex rounded-full bg-gray-100 p-1">
+    <div role="group" aria-label={etiqueta} className="segmentado">
       {opciones.map(([v, texto]) => (
-        <button
-          key={String(v)}
-          aria-pressed={v === valor}
-          onClick={() => onCambio(v)}
-          className={`flex-1 whitespace-nowrap rounded-full px-2 py-1.5 text-sm font-semibold ${
-            v === valor ? "bg-white text-gray-900 shadow" : "text-gray-500"
-          }`}
-        >
+        <button key={String(v)} aria-pressed={v === valor} onClick={() => onCambio(v)}>
           {texto}
         </button>
       ))}
@@ -108,39 +103,34 @@ export function Filtros({
   const cambiar = (parcial: Partial<FiltrosMapa>) => onCambio({ ...filtros, ...parcial });
 
   return (
-    <div className="fixed bottom-[7.5rem] right-3 z-[1001]">
+    <div className="fixed bottom-[calc(4.875rem+env(safe-area-inset-bottom))] right-3 z-[1001]">
       {abierto ? (
-        <div className="w-[calc(100vw-1.5rem)] max-w-xs space-y-2.5 rounded-2xl bg-white p-3 text-sm shadow-xl">
+        <div className="material w-[calc(100vw-1.5rem)] max-w-xs space-y-3 rounded-[20px] bg-ios-fondo/95 p-4 text-sm">
           <div className="flex items-center justify-between">
-            <strong>Filtros</strong>
-            <button onClick={() => setAbierto(false)} aria-label="Cerrar filtros" className="-mr-1 px-2 text-xl leading-none text-gray-400">
-              ×
+            <strong className="text-[17px] font-semibold">Filtros</strong>
+            <button onClick={() => setAbierto(false)} aria-label="Cerrar filtros" className="cerrar">
+              <Equis />
             </button>
           </div>
           <Segmentos
             etiqueta="Ver como"
             opciones={[
-              ["pines", "📍 Puntos"],
-              ["calor", "🔥 Calor"],
+              ["pines", "Puntos"],
+              ["calor", "Calor"],
             ]}
             valor={filtros.vista}
             onCambio={(vista) => cambiar({ vista })}
           />
           <Segmentos etiqueta="Estado" opciones={OPCIONES_ESTADO} valor={filtros.estado} onCambio={(estado) => cambiar({ estado })} />
           <Segmentos etiqueta="Reportados en los últimos" opciones={OPCIONES_DIAS} valor={filtros.dias} onCambio={(dias) => cambiar({ dias })} />
-          <label className="flex items-center justify-between rounded-xl bg-gray-100 px-3 py-2 font-semibold">
+          <div className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-[15px]">
             🚗 Rugosidad medida
-            <input
-              type="checkbox"
-              checked={rugosidad.activa}
-              onChange={(e) => rugosidad.onCambio(e.target.checked)}
-              className="h-4 w-4 accent-green-700"
-            />
-          </label>
+            <Interruptor etiqueta="Rugosidad medida" activo={rugosidad.activa} onCambio={rugosidad.onCambio} />
+          </div>
           {rugosidad.activa && (
-            <div className="text-xs text-gray-600">
+            <div className="text-xs text-ios-secundario">
               {rugosidad.error ? (
-                <p className="text-red-700">{rugosidad.error}</p>
+                <p className="text-ios-rojo">{rugosidad.error}</p>
               ) : (
                 <>
                   <p className="flex flex-wrap gap-x-3 gap-y-1">
@@ -150,7 +140,7 @@ export function Filtros({
                     <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-gray-900 align-middle" />Golpe</span>
                   </p>
                   {rugosidad.resumen && (
-                    <p className="mt-1 text-gray-500">
+                    <p className="mt-1 text-ios-secundario">
                       {rugosidad.resumen.km.toLocaleString("es-MX")} km medidos en {rugosidad.resumen.sesiones}{" "}
                       {rugosidad.resumen.sesiones === 1 ? "recorrido" : "recorridos"}
                       {filtros.dias ? ` (últimos ${filtros.dias} días)` : " (siempre)"}.
@@ -160,24 +150,19 @@ export function Filtros({
               )}
             </div>
           )}
-          <label className="flex items-center justify-between rounded-xl bg-gray-100 px-3 py-2 font-semibold">
+          <div className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-[15px]">
             🗳️ Secciones electorales
-            <input
-              type="checkbox"
-              checked={secciones.activas}
-              onChange={(e) => secciones.onCambio(e.target.checked)}
-              className="h-4 w-4 accent-violet-700"
-            />
-          </label>
+            <Interruptor etiqueta="Secciones electorales" activo={secciones.activas} onCambio={secciones.onCambio} />
+          </div>
           {secciones.activas && (
-            <div className="text-xs text-gray-600">
+            <div className="text-xs text-ios-secundario">
               {secciones.error ? (
-                <p className="text-red-700">{secciones.error}</p>
+                <p className="text-ios-rojo">{secciones.error}</p>
               ) : secciones.top.length === 0 ? (
                 <p>Sin reportes en secciones en este periodo.</p>
               ) : (
                 <>
-                  <p className="mb-1 font-semibold text-gray-500">
+                  <p className="mb-1 font-semibold text-ios-secundario">
                     Más reportes{filtros.dias ? ` (últimos ${filtros.dias} días)` : " (siempre)"}:
                   </p>
                   <ol className="space-y-0.5">
@@ -185,23 +170,23 @@ export function Filtros({
                       <li key={s.seccion} className="flex justify-between tabular-nums">
                         <span>
                           {i + 1}. Sección <strong>{s.seccion}</strong>
-                          {s.distrito_local ? <span className="text-gray-400"> · DL {s.distrito_local}</span> : null}
+                          {s.distrito_local ? <span className="text-ios-terciario"> · DL {s.distrito_local}</span> : null}
                         </span>
                         <strong>{s.total.toLocaleString("es-MX")}</strong>
                       </li>
                     ))}
                   </ol>
-                  <p className="mt-1 text-gray-400">Toca el mapa para ver la sección de cualquier punto.</p>
+                  <p className="mt-1 text-ios-terciario">Toca el mapa para ver la sección de cualquier punto.</p>
                 </>
               )}
             </div>
           )}
-          <div className="flex items-center justify-between pt-0.5 text-xs text-gray-500">
+          <div className="flex items-center justify-between pt-0.5 text-xs text-ios-secundario">
             <span>
               {total.toLocaleString("es-MX")} {total === 1 ? "reporte" : "reportes"}
             </span>
             {activos > 0 && (
-              <button onClick={() => onCambio(FILTROS_INICIALES)} className="font-semibold text-blue-700">
+              <button onClick={() => onCambio(FILTROS_INICIALES)} className="text-[15px] text-ios-azul">
                 Quitar filtros
               </button>
             )}
@@ -210,7 +195,7 @@ export function Filtros({
       ) : (
         <button
           onClick={() => setAbierto(true)}
-          className={`rounded-full px-3 py-2 text-sm font-semibold shadow-lg ${activos ? "bg-blue-700 text-white" : "bg-white/95 text-gray-700"}`}
+          className={`h-9 rounded-full px-3.5 text-[15px] font-medium ${activos ? "bg-ios-etiqueta text-white shadow-lg" : "material text-ios-azul"}`}
         >
           {filtros.vista === "calor" ? "🔥 " : ""}Filtros{activos ? ` · ${activos}` : ""}
         </button>

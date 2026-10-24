@@ -2,10 +2,10 @@ import type { Pin } from "@/lib/datos";
 import { urgencia, type NivelUrgencia } from "@/lib/urgencia";
 
 const CLASES: Record<NivelUrgencia, string> = {
-  reciente: "bg-amber-400 text-gray-900",
-  rezago: "bg-orange-600 text-white",
-  critico: "bg-red-600 text-white",
-  resuelto: "bg-green-600 text-white",
+  reciente: "bg-ios-amarillo/25 text-[#8a6100]",
+  rezago: "bg-ios-naranja/15 text-[#c93400]",
+  critico: "bg-ios-rojo text-white",
+  resuelto: "bg-ios-verde/15 text-[#248a3d]",
 };
 
 const ICONO: Partial<Record<NivelUrgencia, string>> = { reciente: "⏳", rezago: "⚠️", resuelto: "✅" };
@@ -14,7 +14,7 @@ const ICONO: Partial<Record<NivelUrgencia, string>> = { reciente: "⏳", rezago:
 export function BadgeDias({ pin }: { pin: Pick<Pin, "estado" | "creado_en" | "arreglado_en"> }) {
   const u = urgencia(pin);
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${CLASES[u.nivel]}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-semibold ${CLASES[u.nivel]}`}>
       {u.nivel === "critico" ? (
         // Punto que late: llama la atención sin hacer ilegible el texto
         <span className="relative flex h-2.5 w-2.5" aria-hidden>

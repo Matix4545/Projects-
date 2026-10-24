@@ -110,7 +110,7 @@ export default function Mapa(props: Props) {
       const seleccionada = id === props.zonaSeleccionada;
       if (seleccionada) {
         return {
-          color: "#111827",
+          color: "#007aff",
           weight: 3,
           opacity: 1,
           fillColor: estado ? COLOR_ESTADO[estado] : COLOR_ESTADO.ninguno,
@@ -287,8 +287,8 @@ export default function Mapa(props: Props) {
             center={[pin.lat, pin.lng]}
             radius={(pin.tipo === "bache" ? (RADIO_BACHE[pin.subtipo] ?? 8) : 8) * (seleccionado ? 1.2 : escalaPunto(zoom))}
             pathOptions={{
-              color: seleccionado ? "#111827" : SUBTIPOS_PELIGROSOS.has(pin.subtipo) ? "#dc2626" : "#1f2937",
-              weight: seleccionado ? 4 : zoom <= 13 && !SUBTIPOS_PELIGROSOS.has(pin.subtipo) ? 1 : 2,
+              color: seleccionado ? "#007aff" : SUBTIPOS_PELIGROSOS.has(pin.subtipo) ? "#ff3b30" : "#ffffff",
+              weight: seleccionado ? 4 : zoom <= 13 && !SUBTIPOS_PELIGROSOS.has(pin.subtipo) ? 1.5 : 2.5,
               fillColor: arreglado ? COLOR_ARREGLADO : (INFO_PIN[pin.tipo]?.color ?? "#6b7280"),
               fillOpacity: arreglado ? 0.6 : 0.95,
             }}
@@ -301,7 +301,7 @@ export default function Mapa(props: Props) {
         <Polyline
           positions={props.tramoReporte.puntos}
           interactive={false}
-          pathOptions={{ color: "#1d4ed8", weight: 7, opacity: 0.9, dashArray: "10 8", lineCap: "round" }}
+          pathOptions={{ color: "#007aff", weight: 7, opacity: 0.9, dashArray: "10 8", lineCap: "round" }}
         />
       )}
       {props.tramoReporte?.extremos.map((punto, i) => (
@@ -310,7 +310,7 @@ export default function Mapa(props: Props) {
           center={punto}
           radius={9}
           interactive={false}
-          pathOptions={{ color: "#ffffff", weight: 3, fillColor: i === 0 ? "#16a34a" : "#dc2626", fillOpacity: 1 }}
+          pathOptions={{ color: "#ffffff", weight: 3, fillColor: i === 0 ? "#34c759" : "#ff3b30", fillOpacity: 1 }}
         />
       ))}
 
@@ -319,7 +319,7 @@ export default function Mapa(props: Props) {
           center={props.miUbicacion}
           radius={7}
           interactive={false}
-          pathOptions={{ color: "#ffffff", weight: 3, fillColor: "#2563eb", fillOpacity: 1 }}
+          pathOptions={{ color: "#ffffff", weight: 3, fillColor: "#007aff", fillOpacity: 1 }}
         />
       )}
 

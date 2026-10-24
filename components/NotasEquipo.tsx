@@ -67,21 +67,21 @@ export function NotasEquipo({ pinId }: { pinId: number }) {
   }
 
   return (
-    <section className="rounded-xl border border-dashed border-gray-300 p-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">🔒 Notas del equipo</h3>
-      {notas === null && !error && <p className="mt-2 text-sm text-gray-400">Cargando…</p>}
-      {notas?.length === 0 && <p className="mt-2 text-sm text-gray-400">Sin notas todavía.</p>}
+    <section className="rounded-2xl bg-ios-fondo p-4">
+      <h3 className="text-[13px] uppercase tracking-wide text-ios-secundario">Notas del equipo</h3>
+      {notas === null && !error && <p className="mt-2 text-[15px] text-ios-terciario">Cargando…</p>}
+      {notas?.length === 0 && <p className="mt-2 text-[15px] text-ios-terciario">Sin notas todavía.</p>}
       {notas && notas.length > 0 && (
         <ul className="mt-2 space-y-2">
           {notas.map((n) => (
-            <li key={n.id} className="text-sm">
+            <li key={n.id} className="rounded-xl bg-white px-3 py-2.5 text-[15px]">
               <p className="whitespace-pre-line break-words">{n.texto}</p>
-              <p className="flex justify-between text-xs text-gray-400">
+              <p className="mt-1 flex justify-between text-xs text-ios-secundario">
                 <span>
                   {n.autor ? `${n.autor} · ` : ""}
                   {horaLocal(n.creado_en)}
                 </span>
-                <button onClick={() => borrar(n.id)} className="underline">
+                <button onClick={() => borrar(n.id)} className="text-ios-rojo">
                   Borrar
                 </button>
               </p>
@@ -95,24 +95,24 @@ export function NotasEquipo({ pinId }: { pinId: number }) {
         rows={2}
         maxLength={MAX_NOTA}
         placeholder="Ej.: Se reportó a OOMAPASC el 20 oct, folio 1234"
-        className="mt-2 w-full rounded-lg border border-gray-300 p-2 text-base"
+        className="campo mt-3 resize-none bg-white"
       />
-      <div className="mt-1 flex gap-2">
+      <div className="mt-2 flex gap-2">
         <input
           value={autor}
           onChange={(e) => setAutor(e.target.value.slice(0, 40))}
           placeholder="Tu nombre (opcional)"
-          className="min-w-0 flex-1 rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+          className="campo min-w-0 flex-1 bg-white py-2 text-[15px]"
         />
         <button
           onClick={guardar}
           disabled={!texto.trim() || guardando}
-          className="rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+          className="boton boton-principal min-h-10 rounded-xl px-4 text-[15px]"
         >
           {guardando ? "Guardando…" : "Guardar nota"}
         </button>
       </div>
-      {error && <p className="mt-1 text-sm text-red-700">{error}</p>}
+      {error && <p className="mt-1 text-[15px] text-ios-rojo">{error}</p>}
     </section>
   );
 }

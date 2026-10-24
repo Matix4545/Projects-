@@ -3,6 +3,7 @@ import Link from "next/link";
 import { COLOR_ESTADO, ESTADOS_AGUA, ETIQUETAS, INFO_PIN, type EstadoAgua, type TipoPin } from "@/lib/constantes";
 import { diasValidos, panelConfigurado, sesionPanelValida } from "@/lib/panel";
 import { supabaseServidor } from "@/lib/supabase/servidor";
+import { Pagina } from "@/components/Pagina";
 import { Barras, Caja, Seccion, Tabla, Tarjeta, Vacio, num } from "@/components/graficas";
 import { BotonImprimir } from "./BotonImprimir";
 
@@ -47,9 +48,9 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
   if (!panelConfigurado()) {
     return (
       <Caja>
-        <h1 className="text-xl font-bold">Panel no activado</h1>
-        <p className="mt-2 text-gray-600">
-          Para activarlo, agrega la variable <code className="rounded bg-gray-100 px-1">PANEL_CLAVE</code> en Vercel
+        <h1 className="text-[22px] font-bold">Panel no activado</h1>
+        <p className="mt-2 text-[15px] text-ios-secundario">
+          Para activarlo, agrega la variable <code className="rounded bg-ios-relleno px-1">PANEL_CLAVE</code> en Vercel
           (mínimo 10 caracteres) y vuelve a publicar.
         </p>
       </Caja>
@@ -59,16 +60,25 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
   if (!(await sesionPanelValida())) {
     return (
       <Caja>
-        <h1 className="text-xl font-bold">Reporte ejecutivo</h1>
-        <p className="mt-1 text-sm text-gray-500">Acceso solo para la administración de Reporta Cajeme.</p>
-        <form action="/api/panel/entrar" method="post" className="mt-5 space-y-3">
-          <label className="block text-sm font-semibold" htmlFor="clave">
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-ios-azul text-white">
+          <svg width="22" height="26" viewBox="0 0 11 13" aria-hidden>
+            <rect x="0.5" y="5.5" width="10" height="7" rx="2" fill="currentColor" />
+            <path d="M2.8 5.5V4a2.7 2.7 0 0 1 5.4 0v1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+          </svg>
+        </div>
+        <h1 className="mt-4 text-center text-[22px] font-bold">Equipo</h1>
+        <p className="mt-1 text-center text-[15px] text-ios-secundario">Acceso solo para la administración de Reporta Cajeme.</p>
+        <form action="/api/panel/entrar" method="post" className="mt-6 space-y-3">
+          <label className="sr-only" htmlFor="clave">
             Contraseña
           </label>
-          <input id="clave" name="clave" type="password" required autoComplete="current-password" className="w-full rounded-lg border border-gray-300 p-3 text-base" />
-          {error && <p className="text-sm text-red-700">{ERRORES[error] ?? "No se pudo entrar."}</p>}
-          <button className="w-full rounded-lg bg-blue-700 p-3 font-semibold text-white">Entrar</button>
+          <input id="clave" name="clave" type="password" required autoComplete="current-password" placeholder="Contraseña" className="campo" />
+          {error && <p className="text-[15px] text-ios-rojo">{ERRORES[error] ?? "No se pudo entrar."}</p>}
+          <button className="boton boton-principal w-full">Entrar</button>
         </form>
+        <Link href="/" className="mt-4 block text-center text-[15px] text-ios-azul">
+          Volver al mapa
+        </Link>
       </Caja>
     );
   }
@@ -78,8 +88,8 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
   if (errorDatos || !data) {
     return (
       <Caja>
-        <h1 className="text-xl font-bold">No se pudo generar el reporte</h1>
-        <p className="mt-2 text-gray-600">
+        <h1 className="text-[22px] font-bold">No se pudo generar el reporte</h1>
+        <p className="mt-2 text-[15px] text-ios-secundario">
           ¿Ya corriste <code>02_funciones.sql</code> y <code>03_seguridad.sql</code> en Supabase? Detalle: {errorDatos?.message}
         </p>
       </Caja>
@@ -93,43 +103,34 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
   const generado = new Date(r.generado).toLocaleString("es-MX", { timeZone: "America/Hermosillo", dateStyle: "long", timeStyle: "short" });
 
   return (
-    <main className="mx-auto max-w-4xl bg-white px-4 pb-16 pt-6 text-gray-900 print:max-w-none print:px-0 print:pt-0 sm:my-6 sm:rounded-2xl sm:px-8 sm:shadow print:shadow-none">
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 pb-4">
-        <div>
-          <p className="text-sm font-semibold text-blue-700">Reporta Cajeme</p>
-          <h1 className="text-2xl font-extrabold">Reporte ejecutivo · últimos {dias} días</h1>
-          <p className="text-sm text-gray-500">Generado el {generado} (hora de Sonora)</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <Link href="/" className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white">
-            🔒 Mapa del equipo
-          </Link>
-          <Link href="/estadisticas" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold">
-            Estadísticas
-          </Link>
-          <Link href="/medir" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold">
-            🚗 Medir recorrido
-          </Link>
-          <nav className="flex overflow-hidden rounded-lg border border-gray-300 text-sm" aria-label="Periodo">
-            {[7, 30, 90].map((d) => (
-              <Link key={d} href={`/panel?dias=${d}`} aria-current={d === dias ? "page" : undefined}
-                className={`px-3 py-2 font-semibold ${d === dias ? "bg-gray-900 text-white" : "bg-white text-gray-700"}`}>
-                {d} días
-              </Link>
-            ))}
-          </nav>
-          <BotonImprimir />
-          <a href={`/api/panel/csv?dias=${dias}`} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold">
-            Descargar Excel
-          </a>
-          <form action="/api/panel/salir" method="post">
-            <button className="px-2 py-2 text-sm text-gray-500 underline">Salir</button>
-          </form>
-        </div>
-      </header>
+    <Pagina
+      ancho="max-w-4xl"
+      titulo="Reporte ejecutivo"
+      subtitulo={`Últimos ${dias} días · Generado el ${generado} (hora de Sonora)`}
+      accion={
+        <form action="/api/panel/salir" method="post">
+          <button className="text-[17px] text-ios-azul">Salir</button>
+        </form>
+      }
+    >
+      <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <nav className="segmentado w-full sm:w-64" aria-label="Periodo">
+          {[7, 30, 90].map((d) => (
+            <Link key={d} href={`/panel?dias=${d}`} aria-current={d === dias ? "page" : undefined}
+              className={`flex-1 rounded-[7px] py-1.5 text-center text-[13px] ${d === dias ? "bg-white font-semibold shadow-[0_3px_8px_rgba(0,0,0,0.12)]" : "font-medium"}`}>
+              {d} días
+            </Link>
+          ))}
+        </nav>
+        <Link href="/" className="boton boton-principal min-h-9 rounded-full px-4 text-[15px]">Mapa del equipo</Link>
+        <Link href="/estadisticas" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">Estadísticas</Link>
+        <Link href="/medir" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">Medir recorrido</Link>
+        <a href={`/api/panel/csv?dias=${dias}`} className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">Descargar Excel</a>
+        <BotonImprimir />
+      </div>
 
       {/* Números clave */}
-      <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Tarjeta titulo="Reportes en el periodo" valor={num(r.total)}
           nota={cambio === null ? `${num(r.total_historico)} desde el inicio` : `${cambio >= 0 ? "▲" : "▼"} ${Math.abs(cambio)}% vs. ${dias} días anteriores`} />
         <Tarjeta titulo="Colonias afectadas ahora" valor={num(r.colonias_afectadas_ahora)} nota="Mayoría sin agua, baja presión o sucia (24 h)" />
@@ -141,12 +142,12 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
       {/* Reportes por día */}
       <Seccion titulo="Reportes por día">
         <div className="relative">
-          <p className="mb-1 text-xs text-gray-500">Máximo: {num(maxDia)} en un día</p>
-          <div className="flex h-40 items-end gap-[2px] border-b border-gray-300" role="img"
+          <p className="mb-1 text-xs text-ios-secundario">Máximo: {num(maxDia)} en un día</p>
+          <div className="flex h-40 items-end gap-[2px] border-b border-ios-separador" role="img"
             aria-label={`Reportes por día en los últimos ${dias} días, máximo ${maxDia}`}>
             {r.por_dia.map((d) => (
               <div key={d.dia} className="group relative flex h-full flex-1 items-end">
-                <div className="w-full rounded-t bg-blue-600 group-hover:bg-blue-800"
+                <div className="w-full rounded-t bg-ios-azul group-hover:opacity-80"
                   style={{ height: `${(d.n / maxDia) * 100}%`, minHeight: d.n > 0 ? 2 : 0 }} />
                 <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white group-hover:block">
                   {fechaCorta(d.dia)}: {num(d.n)}
@@ -154,7 +155,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
               </div>
             ))}
           </div>
-          <div className="mt-1 flex justify-between text-xs text-gray-500">
+          <div className="mt-1 flex justify-between text-xs text-ios-secundario">
             <span>{fechaCorta(r.por_dia[0].dia)}</span>
             <span>{fechaCorta(r.por_dia[Math.floor(r.por_dia.length / 2)].dia)}</span>
             <span>{fechaCorta(r.por_dia[r.por_dia.length - 1].dia)}</span>
@@ -202,22 +203,22 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
               u.colonia,
               num(u.confirmaciones),
               new Date(u.creado_en).toLocaleDateString("es-MX", { timeZone: "America/Hermosillo", day: "numeric", month: "short" }),
-              <a key={u.id} className="text-blue-700 underline" href={`https://www.google.com/maps?q=${u.lat},${u.lng}`} target="_blank" rel="noreferrer">Ver</a>,
+              <a key={u.id} className="text-ios-azul" href={`https://www.google.com/maps?q=${u.lat},${u.lng}`} target="_blank" rel="noreferrer">Ver</a>,
             ])} />
         )}
       </Seccion>
 
       <Seccion titulo="Moderación" className="print:hidden">
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-ios-etiqueta">
           {num(r.moderacion.comentarios_ocultos)} comentarios y {num(r.moderacion.fotos_ocultas)} fotos ocultos por denuncias ·{" "}
           <strong>{num(r.moderacion.en_revision)}</strong> con 1 o 2 denuncias (revísalos con la consulta "Moderar" del README).
         </p>
       </Seccion>
 
-      <p className="mt-10 border-t border-gray-200 pt-4 text-xs text-gray-500">
+      <p className="mt-10 px-4 text-xs text-ios-secundario">
         Datos de percepción ciudadana reportados de forma anónima en Reporta Cajeme. No son cifras oficiales ni análisis de
         laboratorio. Proyecto ciudadano sin afiliación al gobierno.
       </p>
-    </main>
+    </Pagina>
   );
 }
