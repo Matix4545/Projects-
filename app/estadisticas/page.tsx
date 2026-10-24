@@ -386,7 +386,7 @@ function Economia({ e }: { e: Estimacion | null }) {
                 ["Gasolina extra por punto de IRI", r(s.gasolinaPctPorIri, (n) => `${n}%`), "HDM-4"],
                 ["Llantas extra por punto de IRI", r(s.llantasPctPorIri, (n) => `${n}%`), "HDM-4"],
                 ["Reparaciones extra", "+10% en IRI 4, +40% en IRI 5", "NCHRP 720"],
-                ["Vehículos", num(s.vehiculos), "Padrón vehicular de Sonora"],
+                ["Vehículos particulares (sin motos)", num(s.vehiculos), "Ya es dato real: INEGI, VMRC 2025"],
               ]}
             />
             <p className="mt-2 text-xs text-gray-500">

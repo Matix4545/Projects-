@@ -39,8 +39,8 @@ export const SUPUESTOS = {
   ] as [number, number][],
   reparacionesTope: 150,
   reparacionesEscala: { bajo: 0.5, medio: 1.0, alto: 1.5 } as Rango,
-  /** Vehículos en Cajeme */
-  vehiculos: 250_000,
+  /** Vehículos particulares en Cajeme: INEGI, VMRC 2025 (190,859 automóviles + 80,708 camionetas y pickups; sin motos) */
+  vehiculos: 271_567,
   /** km que maneja un vehículo al año dentro de Cajeme */
   kmAnioPorVehiculo: { bajo: 7_000, medio: 9_000, alto: 11_000 } as Rango,
   /** Escala de la DGST para red básica libre y secundaria (m/km) */
