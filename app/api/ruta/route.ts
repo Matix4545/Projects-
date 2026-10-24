@@ -1,4 +1,6 @@
 import { LARGO_MAX_TRAMO, dentroDeCajeme } from "@/lib/constantes";
+import { obtenerIdentidad } from "@/lib/identidad";
+import { supabaseServidor } from "@/lib/supabase/servidor";
 import { distanciaM, largoM, limpiarTrazo, type Punto } from "@/lib/tramos";
 
 // GET /api/ruta?de=lat,lng&a=lat,lng → tramo de calle entre dos puntos, siguiendo las calles.
@@ -6,6 +8,9 @@ import { distanciaM, largoM, limpiarTrazo, type Punto } from "@/lib/tramos";
 // Si el servicio falla o da un rodeo raro, devuelve la línea recta para que siempre se pueda reportar.
 
 const TIEMPO_MAX_MS = 5000;
+// Rutas al día por conexión: un vecino marca pocas calles; esto evita que alguien agote
+// la cuota del servicio de rutas (las rutas repetidas salen de la caché y no cuentan)
+const RUTAS_DIA_IP = 200;
 const AGENTE = `ReportaCajeme/1.0 (${process.env.NEXT_PUBLIC_CONTACTO ?? "proyecto ciudadano"})`;
 
 function leerPunto(texto: string | null): Punto | null {
@@ -50,6 +55,14 @@ export async function GET(req: Request) {
   if (recta > LARGO_MAX_TRAMO) {
     return Response.json({ error: "El tramo es muy largo (máximo 3 km). Márcalo por partes." }, { status: 400 });
   }
+
+  const { ipHash } = await obtenerIdentidad();
+  const { data: hayCupo, error: errCupo } = await supabaseServidor().rpc("consumir_cupo_ip", {
+    p_ip_hash: `${ipHash}:ruta`,
+    p_max: RUTAS_DIA_IP,
+  });
+  // Sin cupo (o sin base de datos) se devuelve la línea recta: se puede reportar igual
+  if (errCupo || !hayCupo) return Response.json({ puntos: [de, a], ajustada: false }, { headers: { "Cache-Control": "no-store" } });
 
   let puntos: Punto[] = [de, a];
   let ajustada = false;
