@@ -66,6 +66,41 @@ export default function Acerca() {
         </li>
       </ul>
 
+      <h2 id="rugosidad" className="mt-8 text-xl font-bold text-gray-900">
+        Cómo medimos el estado de las calles <span className="text-sm font-normal text-gray-500">(en prueba)</span>
+      </h2>
+      <p className="mt-2">
+        Con <Link href="/medir" className="text-blue-700 underline">Medir mi recorrido</Link>, el celular en un soporte firme mide qué tanto se
+        sacude el vehículo mientras manejas:
+      </p>
+      <ul className="mt-2 list-disc space-y-1 pl-5">
+        <li>
+          El acelerómetro separa la sacudida vertical de la gravedad (así no importa si el celular va inclinado) y solo
+          se usan las lecturas a más de 15 km/h.
+        </li>
+        <li>
+          Cada tramo de unos 100 m recibe un valor de <strong>rugosidad</strong>: la sacudida vertical promedio (RMS, en
+          m/s²), la misma forma de resumir vibraciones que usa la norma ISO 2631. Las sacudidas muy fuertes se marcan
+          como golpes (baches, topes o vados).
+        </li>
+        <li>
+          Es un método “tipo respuesta”, como los que describe el Banco Mundial: el número depende del vehículo y de la
+          velocidad, así que <strong>todavía no es el IRI oficial</strong> (Índice de Rugosidad Internacional, en m/km).
+          Para convertirlo hay que calibrarlo con calles cuyo IRI esté medido con perfilómetro. Por ahora sirve para
+          comparar calles entre sí.
+        </li>
+      </ul>
+      <p className="mt-2 text-sm text-gray-600">
+        Fuentes: Sayers, Gillespie y Queiroz, <em>Guidelines for Conducting and Calibrating Road Roughness
+        Measurements</em> (Banco Mundial, Technical Paper 46, 1986) y norma ASTM E1926 (definición del IRI);{" "}
+        <a className="text-blue-700 underline" href="https://softteco.com/projects/roadlab" target="_blank" rel="noreferrer">RoadLab Pro</a> (app del
+        Banco Mundial que estima el IRI con celulares); estudios de calibración con celulares de la{" "}
+        <a className="text-blue-700 underline" href="https://www.ideals.illinois.edu/items/98616" target="_blank" rel="noreferrer">Universidad de Illinois</a>{" "}
+        y la{" "}
+        <a className="text-blue-700 underline" href="https://repositorio.ufc.br/handle/riufc/52918?mode=full" target="_blank" rel="noreferrer">Universidad Federal de Ceará</a>; y, para el costo que la rugosidad causa a los vehículos, el modelo HDM-4 del Banco Mundial y el{" "}
+        <a className="text-blue-700 underline" href="https://www.nap.edu/read/22808/chapter/8" target="_blank" rel="noreferrer">NCHRP (National Academies)</a>.
+      </p>
+
       <h2 id="privacidad" className="mt-8 text-xl font-bold text-gray-900">
         Aviso de privacidad
       </h2>
@@ -94,6 +129,11 @@ export default function Acerca() {
           <strong>Datos técnicos anónimos:</strong> para frenar el spam guardamos una “huella” cifrada e irreversible
           (hash) de tu dirección IP y de un identificador aleatorio que se guarda en una cookie de tu navegador. No
           guardamos tu IP real y estas huellas nunca se muestran públicamente.
+        </li>
+        <li>
+          <strong>Medir mi recorrido:</strong> solo los tramos de calle con su rugosidad, velocidad promedio, golpes, la
+          fecha (sin hora) y el tipo de vehículo. No se guarda nada de 150 a 250 m alrededor de donde empiezas, terminas
+          o te detienes más de 2 minutos, para no revelar tu casa ni otros lugares a los que vas.
         </li>
       </ul>
 
