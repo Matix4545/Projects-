@@ -23,6 +23,8 @@ import {
 } from "@/lib/datos";
 import { BarraResumen } from "./BarraResumen";
 import { Equis } from "./HojaInferior";
+import { SelectorFondo } from "./SelectorFondo";
+import { esFondo, type Fondo } from "@/lib/fondos";
 import type { MedicionTramo } from "@/lib/rugosidad";
 import { topSecciones, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
 import { TarjetaTramo } from "./TarjetaTramo";
@@ -102,10 +104,23 @@ export function App() {
     }
   }, []);
 
+  // Fondo del mapa elegido (se recuerda en este teléfono)
+  const [fondo, setFondo] = useState<Fondo>("mapa");
+  const cambiarFondo = (f: Fondo) => {
+    setFondo(f);
+    try {
+      localStorage.setItem("rc_fondo", f);
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
+
   useEffect(() => {
     // Ya no se recuerda el periodo entre visitas: todos entran viendo 7 días
     try {
       localStorage.removeItem("rc_periodo");
+      const guardado = localStorage.getItem("rc_fondo");
+      if (esFondo(guardado)) setFondo(guardado);
     } catch {
       /* sin almacenamiento */
     }
@@ -283,6 +298,7 @@ export function App() {
           estados={mapaEstados}
           pins={pinsFiltrados}
           capas={capas}
+          fondo={fondo}
           vistaCalor={equipo && filtros.vista === "calor" && !reportando}
           puntosFinos={equipo}
           secciones={equipo && verSecciones && !reportando ? secciones : null}
@@ -362,6 +378,11 @@ export function App() {
               {texto}
             </button>
           ))}
+        </div>
+        <div className="pointer-events-none mx-auto flex max-w-lg justify-end">
+          <div className="pointer-events-auto">
+            <SelectorFondo fondo={fondo} onCambio={cambiarFondo} />
+          </div>
         </div>
         {errorCarga && (
           <p className="material pointer-events-auto mx-auto mt-1 max-w-lg rounded-2xl px-4 py-2.5 text-sm font-medium text-ios-rojo">

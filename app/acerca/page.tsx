@@ -149,7 +149,7 @@ export default function Acerca() {
         </li>
         <li>
           <strong>Supabase</strong> (base de datos y fotos), <strong>Vercel</strong> (hospedaje) y los mapas de{" "}
-          <strong>OpenStreetMap</strong>.
+          <strong>OpenStreetMap</strong>, <strong>CARTO</strong> (mapa claro) y <strong>Esri</strong> (satélite).
         </li>
       </ul>
 

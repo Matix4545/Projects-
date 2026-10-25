@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { CENTRO_OBREGON, COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, SUBTIPOS_PELIGROSOS, type EstadoAgua, type TipoPin } from "@/lib/constantes";
 import type { Pin, ZonasGeoJSON } from "@/lib/datos";
+import { FONDOS, type Fondo } from "@/lib/fondos";
 import { COLOR_CLASE, clasificar, medicionesCerca, type MedicionTramo } from "@/lib/rugosidad";
 import { seccionEn, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
 import { CapaCalor } from "./CapaCalor";
@@ -41,9 +42,9 @@ type Props = {
   onPin: (pin: Pin) => void;
   onElegirPunto: (lat: number, lng: number) => void;
   onFondo: () => void;
+  /** Fondo del mapa: normal, claro o satélite */
+  fondo: Fondo;
 };
-
-const URL_MOSAICOS = process.env.NEXT_PUBLIC_TILES_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
 const iconoReporte = L.divIcon({
   className: "",
@@ -193,10 +194,20 @@ export default function Mapa(props: Props) {
       className="h-full w-full"
     >
       <TileLayer
-        url={URL_MOSAICOS}
+        key={props.fondo}
+        url={FONDOS[props.fondo].base.url}
         maxZoom={19}
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        maxNativeZoom={FONDOS[props.fondo].base.maxNativo}
+        attribution={FONDOS[props.fondo].base.atribucion}
       />
+      {FONDOS[props.fondo].etiquetas && (
+        <TileLayer
+          key={`${props.fondo}-etiquetas`}
+          url={FONDOS[props.fondo].etiquetas!.url}
+          maxZoom={19}
+          maxNativeZoom={FONDOS[props.fondo].etiquetas!.maxNativo}
+        />
+      )}
       <Centrador centrarEn={props.centrarEn} />
       <ObservarZoom
         onZoom={(z) => {
