@@ -40,7 +40,13 @@ export type DetalleZona = {
   comentarios: { id: number; estado: EstadoAgua; texto: string; creado_en: string }[];
 };
 
-export type Resumen = { reportes: number; colonias_afectadas: number; horas?: number };
+export type Resumen = {
+  reportes: number;
+  colonias_afectadas: number;
+  horas?: number;
+  /** Reportes desde el inicio (sin el SQL nuevo no viene) */
+  total?: number;
+};
 
 async function rpc<T>(nombre: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabaseNavegador().rpc(nombre, args);

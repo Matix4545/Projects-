@@ -1,4 +1,6 @@
 import { PERIODOS, type HorasPeriodo } from "@/lib/constantes";
+
+const num = (n: number) => n.toLocaleString("es-MX");
 import type { Resumen } from "@/lib/datos";
 
 export function BarraResumen({
@@ -23,9 +25,16 @@ export function BarraResumen({
         <p className="min-w-0 flex-1 text-right text-[13px] leading-tight text-ios-secundario">
           {resumen ? (
             <>
-              <strong className="font-semibold text-ios-etiqueta">{resumen.reportes}</strong> {resumen.reportes === 1 ? "reporte" : "reportes"} ·{" "}
-              <strong className="font-semibold text-ios-etiqueta">{resumen.colonias_afectadas}</strong>{" "}
-              {resumen.colonias_afectadas === 1 ? "colonia" : "colonias"}
+              <span className="block">
+                <strong className="font-semibold text-ios-etiqueta">{num(resumen.reportes)}</strong> en {PERIODOS.find((p) => p.horas === horas)?.corto} ·{" "}
+                <strong className="font-semibold text-ios-etiqueta">{num(resumen.colonias_afectadas)}</strong>{" "}
+                {resumen.colonias_afectadas === 1 ? "colonia" : "colonias"}
+              </span>
+              {resumen.total != null && (
+                <span className="block">
+                  <strong className="font-semibold text-ios-etiqueta">{num(resumen.total)}</strong> reportes en total
+                </span>
+              )}
             </>
           ) : (
             "Cargando…"

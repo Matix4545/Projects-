@@ -455,6 +455,8 @@ as $$
     'reportes',
       (select count(*) from reportes_agua where creado_en > now() - make_interval(hours => v.horas)) +
       (select count(*) from reportes_pin  where creado_en > now() - make_interval(hours => v.horas)),
+    -- Todos los reportes desde el inicio (nunca baja; los del periodo sí)
+    'total', (select count(*) from reportes_agua) + (select count(*) from reportes_pin),
     'colonias_afectadas',
       (select count(*) from _estado_mayoria(v.horas) m where m.estado <> 'con_agua')
   )
