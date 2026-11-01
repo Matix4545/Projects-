@@ -26,6 +26,7 @@ import {
 import { BarraResumen } from "./BarraResumen";
 import { Equis } from "./HojaInferior";
 import { SelectorFondo } from "./SelectorFondo";
+import { Bienvenida } from "./Bienvenida";
 import { esFondo, type Fondo } from "@/lib/fondos";
 import type { MedicionTramo } from "@/lib/rugosidad";
 import { topSecciones, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
@@ -68,6 +69,16 @@ export function App() {
   const [equipo, setEquipo] = useState(false);
   // Enlace "/?pin=123" (desde estadísticas): se abre cuando llegan los reportes
   const pinEnlace = useRef<number | null>(null);
+  // Bienvenida: solo la primera vez en este teléfono (y no si llega por la liga de un reporte)
+  const [bienvenida, setBienvenida] = useState(false);
+  const cerrarBienvenida = () => {
+    setBienvenida(false);
+    try {
+      localStorage.setItem("rc_bienvenida", "1");
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
   // Secciones electorales (solo equipo)
   const [verSecciones, setVerSecciones] = useState(false);
   const [secciones, setSecciones] = useState<SeccionesGeoJSON | null>(null);
@@ -158,6 +169,12 @@ export function App() {
     if (Number.isSafeInteger(pedido) && pedido > 0) {
       pinEnlace.current = pedido;
       window.history.replaceState(null, "", window.location.pathname);
+    } else {
+      try {
+        if (!localStorage.getItem("rc_bienvenida")) setBienvenida(true);
+      } catch {
+        /* sin almacenamiento: no se muestra */
+      }
     }
     // La cookie "rc_equipo" solo es un aviso; quien decide es el servidor
     if (document.cookie.split("; ").includes("rc_equipo=1")) {
@@ -532,6 +549,8 @@ export function App() {
           }}
         />
       )}
+
+      {bienvenida && <Bienvenida onCerrar={cerrarBienvenida} />}
 
       {aviso && (
         <div
