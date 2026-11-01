@@ -1,11 +1,23 @@
 {
   "name": "Reporta Cajeme",
-  "short_name": "Reporta Cajeme",
-  "description": "Reportes vecinales de agua, baches y drenaje en Ciudad Obregón.",
+  "short_name": "Reporta",
+  "description": "Mapa ciudadano de Cajeme: reporta falta de agua, baches, drenaje, alumbrado y más.",
   "lang": "es-MX",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f3f4f6",
-  "theme_color": "#1d4ed8",
-  "icons": [{ "src": "/icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "orientation": "portrait",
+  "background_color": "#f2f2f7",
+  "theme_color": "#f2f2f7",
+  "categories": ["utilities", "social"],
+  "icons": [
+    { "src": "/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Reportar", "short_name": "Reportar", "url": "/?reportar=1", "icons": [{ "src": "/icono-192.png", "sizes": "192x192" }] },
+    { "name": "Datos", "short_name": "Datos", "url": "/datos", "icons": [{ "src": "/icono-192.png", "sizes": "192x192" }] }
+  ]
 }

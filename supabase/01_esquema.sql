@@ -204,6 +204,8 @@ create table if not exists public.tramos_rugosidad (
   hz         real,
   creado_en  timestamptz not null default now()
 );
+-- Para contar reportes por colonia (lo recomienda el revisor de rendimiento de Supabase)
+create index if not exists reportes_pin_zona_idx on public.reportes_pin (zona_id);
 create index if not exists tramos_rugosidad_geom_idx  on public.tramos_rugosidad using gist (trazo);
 create index if not exists tramos_rugosidad_fecha_idx on public.tramos_rugosidad (fecha desc);
 -- Datos para calibrar a IRI después (los tramos viejos quedan en null)

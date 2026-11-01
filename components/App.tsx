@@ -27,6 +27,7 @@ import { BarraResumen } from "./BarraResumen";
 import { Equis } from "./HojaInferior";
 import { SelectorFondo } from "./SelectorFondo";
 import { Bienvenida } from "./Bienvenida";
+import { BannerInstalar } from "./BannerInstalar";
 import { esFondo, type Fondo } from "@/lib/fondos";
 import type { MedicionTramo } from "@/lib/rugosidad";
 import { topSecciones, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
@@ -169,7 +170,7 @@ export function App() {
     if (Number.isSafeInteger(pedido) && pedido > 0) {
       pinEnlace.current = pedido;
       window.history.replaceState(null, "", window.location.pathname);
-    } else {
+    } else if (!new URLSearchParams(window.location.search).has("reportar")) {
       try {
         if (!localStorage.getItem("rc_bienvenida")) setBienvenida(true);
       } catch {
@@ -278,6 +279,14 @@ export function App() {
   }
 
   const centrar = (punto: [number, number], zoom: number) => setCentrarEn((c) => ({ punto, zoom, n: (c?.n ?? 0) + 1 }));
+
+  // Acceso directo "Reportar" del ícono instalado (/?reportar=1): abre el formulario al entrar
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("reportar")) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    abrirReporte();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function abrirReporte() {
     setVista({ tipo: "reporte" });
@@ -551,6 +560,7 @@ export function App() {
       )}
 
       {bienvenida && <Bienvenida onCerrar={cerrarBienvenida} />}
+      <BannerInstalar oculto={bienvenida || vista.tipo !== "nada"} />
 
       {aviso && (
         <div

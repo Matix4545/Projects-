@@ -22,7 +22,9 @@ export const metadata: Metadata = {
   },
   twitter: { card: "summary_large_image", title: "Reporta Cajeme", description: descripcion },
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icono.svg", apple: "/icono.svg" },
+  icons: { icon: [{ url: "/icono.svg", type: "image/svg+xml" }, { url: "/icono-192.png", sizes: "192x192" }], apple: "/apple-touch-icon.png" },
+  // Al instalarla en iPhone: abre como app, con el nombre corto bajo el ícono
+  appleWebApp: { capable: true, title: "Reporta", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
