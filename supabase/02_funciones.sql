@@ -443,6 +443,25 @@ as $$
   ) x
 $$;
 
+-- Todos los reportes desde el inicio, para las burbujas del mapa (vista "Agrupados").
+-- Solo tipo y ubicación: puntos en su lugar, y el agua contada por colonia en el centro de la colonia.
+create or replace function public.historico_mapa()
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  select json_build_object(
+    'pins', coalesce((
+      select json_agg(json_build_array(p.id, p.tipo, round(st_y(p.ubicacion)::numeric, 5), round(st_x(p.ubicacion)::numeric, 5)))
+      from reportes_pin p), '[]'::json),
+    'agua', coalesce((
+      select json_agg(json_build_array(z.id, round(st_y(c.punto)::numeric, 5), round(st_x(c.punto)::numeric, 5), a.n))
+      from (select zona_id, count(*) as n from reportes_agua group by zona_id) a
+      join zonas z on z.id = a.zona_id
+      cross join lateral (select st_pointonsurface(z.geom) as punto) c), '[]'::json)
+  )
+$$;
+
 -- Resumen para la barra inferior: reportes y colonias afectadas en las últimas p_horas horas
 create or replace function public.resumen(p_horas int default 168)
 returns json

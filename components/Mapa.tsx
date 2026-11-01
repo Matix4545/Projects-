@@ -4,10 +4,19 @@ import "leaflet/dist/leaflet.css";
 import L, { type LeafletMouseEvent, type PathOptions } from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
-import { CENTRO_OBREGON, COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, SUBTIPOS_PELIGROSOS, type EstadoAgua, type TipoPin } from "@/lib/constantes";
-import type { Pin, ZonasGeoJSON } from "@/lib/datos";
+import {
+  CENTRO_OBREGON,
+  COLOR_ARREGLADO,
+  COLOR_ESTADO,
+  INFO_PIN,
+  SUBTIPOS_PELIGROSOS,
+  esLinea,
+  type EstadoAgua,
+  type TipoPin,
+} from "@/lib/constantes";
+import type { Historico, Pin, ZonasGeoJSON } from "@/lib/datos";
 import { FONDOS, type Fondo } from "@/lib/fondos";
-import { agrupar, masComun, type Grupo } from "@/lib/agrupar";
+import { ZOOM_SIN_GRUPOS, agrupar, masComun, type Grupo } from "@/lib/agrupar";
 import { COLOR_CLASE, clasificar, medicionesCerca, type MedicionTramo } from "@/lib/rugosidad";
 import { seccionEn, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
 import { CapaCalor } from "./CapaCalor";
@@ -47,6 +56,8 @@ type Props = {
   fondo: Fondo;
   /** true: reportes cercanos en burbujas con número; false: todos los puntos sueltos (como antes) */
   agrupar: boolean;
+  /** Todos los reportes desde el inicio: con él, las burbujas cuentan el historial completo y el agua */
+  historico: Historico | null;
 };
 
 const iconoReporte = L.divIcon({
@@ -84,13 +95,18 @@ function textoSobre(hex: string) {
   return 0.299 * r + 0.587 * g + 0.114 * b > 170 ? "#1c1c1e" : "#ffffff";
 }
 
+/** Lo que se agrupa: un reporte con punto (pin si sigue en el mapa) o el agua de una colonia (peso = reportes) */
+type Item = { id: number; tipo: string; lat: number; lng: number; peso?: number; pin?: Pin };
+const itemDe = (p: Pin): Item => ({ id: p.id, tipo: p.tipo, lat: p.lat, lng: p.lng, pin: p });
+const COLOR_AGUA = "#007aff";
+
 /** Burbujas de reportes agrupados; al tocar una, el mapa se acerca a sus reportes */
-function Grupos({ grupos }: { grupos: Grupo<Pin>[] }) {
+function Grupos({ grupos }: { grupos: Grupo<Item>[] }) {
   const mapa = useMap();
   return grupos.map((g) => {
-    const n = g.miembros.length;
-    const tipo = masComun(g.miembros, (p) => p.tipo) as TipoPin;
-    const color = INFO_PIN[tipo]?.color ?? "#8e8e93";
+    const n = g.total;
+    const tipo = masComun(g.miembros, (p) => p.tipo, (p) => p.peso ?? 1);
+    const color = tipo === "agua" ? COLOR_AGUA : (INFO_PIN[tipo as TipoPin]?.color ?? "#8e8e93");
     const lado = Math.round(30 + Math.min(20, Math.log2(n) * 4));
     const icono = L.divIcon({
       className: "",
@@ -216,10 +232,29 @@ export default function Mapa(props: Props) {
   );
   const todosPuntos = useMemo(() => (props.vistaCalor ? [] : pinsVisibles.filter((p) => !p.trazo)), [pinsVisibles, props.vistaCalor]);
   // Alejado, los reportes cercanos se juntan en burbujas con número
-  const { sueltos: puntos, grupos } = useMemo(
-    () => (props.agrupar ? agrupar(todosPuntos, zoomReal, props.pinSeleccionado) : { sueltos: todosPuntos, grupos: [] }),
-    [todosPuntos, zoomReal, props.pinSeleccionado, props.agrupar],
-  );
+  const { puntos, grupos, pasados } = useMemo(() => {
+    if (!props.agrupar) return { puntos: todosPuntos, grupos: [] as Grupo<Item>[], pasados: [] as Item[] };
+    const h = props.historico;
+    if (!h || props.vistaCalor || zoomReal >= ZOOM_SIN_GRUPOS) {
+      const r = agrupar(todosPuntos.map(itemDe), zoomReal, props.pinSeleccionado);
+      return { puntos: r.sueltos.map((x) => x.pin!), grupos: r.grupos, pasados: [] as Item[] };
+    }
+    // Historial completo: los vigentes, los ya arreglados o archivados y el agua de cada colonia
+    const vigentes = new Map(todosPuntos.map((p) => [p.id, p]));
+    const items: Item[] = [
+      ...h.pins
+        .filter(([, tipo]) => capas[tipo as TipoPin] ?? true)
+        .map(([id, tipo, lat, lng]): Item => ({ id, tipo, lat, lng, pin: vigentes.get(id) })),
+      ...(capas.agua ? h.agua.map(([zona, lat, lng, n]): Item => ({ id: -zona, tipo: "agua", lat, lng, peso: n })) : []),
+    ];
+    const r = agrupar(items, zoomReal, props.pinSeleccionado);
+    return {
+      puntos: r.sueltos.flatMap((x) => (x.pin ? [x.pin] : [])),
+      grupos: r.grupos,
+      // Sueltos que ya no están en el mapa (arreglados hace tiempo, archivados) o agua de una colonia con 1 reporte
+      pasados: r.sueltos.filter((x) => !x.pin && !esLinea(x.tipo as TipoPin)),
+    };
+  }, [todosPuntos, zoomReal, props.pinSeleccionado, props.agrupar, props.historico, props.vistaCalor, capas]);
 
   const alClickPin = (pin: Pin) => (e: LeafletMouseEvent) => {
     L.DomEvent.stopPropagation(e);
@@ -355,6 +390,15 @@ export default function Mapa(props: Props) {
       })}
 
       <Grupos grupos={grupos} />
+      {pasados.map((x) => (
+        <CircleMarker
+          key={`pasado-${x.id}`}
+          center={[x.lat, x.lng]}
+          radius={4}
+          interactive={false}
+          pathOptions={{ color: "#ffffff", weight: 1.5, fillColor: x.tipo === "agua" ? COLOR_AGUA : COLOR_ARREGLADO, fillOpacity: 0.9 }}
+        />
+      ))}
 
       {props.tramoReporte?.puntos && (
         <Polyline

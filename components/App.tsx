@@ -13,10 +13,12 @@ import {
   type TipoPin,
 } from "@/lib/constantes";
 import {
+  cargarHistoricoCache,
   cargarMapa,
   cargarRuta,
   cargarZonasCache,
   type EstadoZona,
+  type Historico,
   type Pin,
   type Resumen,
   type ZonasGeoJSON,
@@ -90,7 +92,16 @@ export function App() {
   const [errorTramo, setErrorTramo] = useState<string | null>(null);
   const [centrarEn, setCentrarEn] = useState<{ punto: [number, number]; zoom: number; n: number } | null>(null);
 
+  // Todos los reportes desde el inicio, para las burbujas (sin el SQL nuevo queda en null)
+  const [historico, setHistorico] = useState<Historico | null>(null);
+  const cargarHistorial = useCallback(() => {
+    cargarHistoricoCache()
+      .then((h) => setHistorico(h && Array.isArray(h.pins) ? h : null))
+      .catch(() => setHistorico(null));
+  }, []);
+
   const recargar = useCallback(async (fresco = false) => {
+    if (fresco) cargarHistorial();
     try {
       const { estados: e, pins: p, resumen: r } = await cargarMapa(horasRef.current, fresco);
       setEstados(e);
@@ -142,6 +153,7 @@ export function App() {
         setErrorCarga(true);
       });
     recargar();
+    cargarHistorial();
     const pedido = Number(new URLSearchParams(window.location.search).get("pin"));
     if (Number.isSafeInteger(pedido) && pedido > 0) {
       pinEnlace.current = pedido;
@@ -311,6 +323,7 @@ export function App() {
           capas={capas}
           fondo={fondo}
           agrupar={agruparPuntos}
+          historico={filtros.estado === "normal" && !filtros.dias ? historico : null}
           vistaCalor={equipo && filtros.vista === "calor" && !reportando}
           puntosFinos={equipo}
           secciones={equipo && verSecciones && !reportando ? secciones : null}

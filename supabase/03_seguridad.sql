@@ -38,6 +38,7 @@ grant execute on function public.pins_publicos()                               t
 grant execute on function public.resumen_24h()                                 to anon, authenticated;
 grant execute on function public.resumen(integer)                              to anon, authenticated;
 grant execute on function public.zona_de_punto(double precision, double precision) to anon, authenticated;
+grant execute on function public.historico_mapa()                               to anon, authenticated;
 
 -- 4) El servidor (service_role) puede todo.
 --    (Supabase ya da acceso al esquema "extensions"; se repite por si acaso.)

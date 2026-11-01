@@ -99,6 +99,11 @@ export const cargarMapa = (horas: number, fresco = false) =>
   desdeCache(`/api/publico/mapa?horas=${horas}${fresco ? `&t=${Date.now()}` : ""}`, () => leerMapa(horas));
 export const cargarZonasCache = () => desdeCache("/api/publico/zonas", cargarZonas);
 
+/** Historial completo para las burbujas: [id, tipo, lat, lng] y agua por colonia [zona, lat, lng, reportes] */
+export type Historico = { pins: [number, string, number, number][]; agua: [number, number, number, number][] };
+export const cargarHistorico = () => rpc<Historico>("historico_mapa");
+export const cargarHistoricoCache = () => desdeCache("/api/publico/historico", cargarHistorico);
+
 /** Tramo de calle entre dos puntos, siguiendo las calles (o recto si el servicio de rutas falló). */
 export async function cargarRuta(
   de: [number, number],

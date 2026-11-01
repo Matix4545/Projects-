@@ -39,3 +39,15 @@ test("proyección: al subir un zoom las distancias en píxeles se duplican", () 
 test("tipo dominante", () => {
   assert.equal(masComun(["bache", "drenaje", "bache"], (x) => x), "bache");
 });
+
+test("el agua de una colonia cuenta todos sus reportes", () => {
+  const colonia = { id: -7, lat: 27.4864, lng: -109.9404, peso: 5 };
+  const { grupos, sueltos } = agrupar([colonia, lejos], 13);
+  assert.equal(grupos.length, 1, "una colonia con 5 reportes de agua es una burbuja aunque esté sola");
+  assert.equal(grupos[0].total, 5);
+  assert.equal(sueltos.length, 1);
+  const juntos = agrupar([...cerca, colonia], 13).grupos;
+  assert.equal(juntos[0].total, 35);
+  const lista: { id: number; peso?: number }[] = [colonia, cerca[0]];
+  assert.equal(masComun(lista, (x) => (x.peso ? "agua" : "bache"), (x) => x.peso ?? 1), "agua");
+});
