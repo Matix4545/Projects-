@@ -182,6 +182,10 @@ export default function Acerca() {
       </div>
       </Bloque>
 
+      <Link href="/datos" className="boton boton-tenue w-full">
+        Ver los datos del mapa
+      </Link>
+
       <p className="px-4 text-[13px] text-ios-secundario">
         Mapa © colaboradores de{" "}
         <a className="text-ios-azul" href="https://www.openstreetmap.org/copyright">

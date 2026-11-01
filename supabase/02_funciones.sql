@@ -462,6 +462,70 @@ as $$
   )
 $$;
 
+-- Datos públicos para /datos: solo cifras agregadas desde el inicio (nada de huellas, notas,
+-- comentarios ni secciones electorales)
+create or replace function public.datos_publicos()
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  with
+  hoy as (select (now() at time zone 'America/Hermosillo')::date as dia),
+  inicio as (select least(
+      coalesce((select min(creado_en) from reportes_pin), now()),
+      coalesce((select min(creado_en) from reportes_agua), now())) as t),
+  todos as (
+    select creado_en, zona_id, 'agua'::text as tipo from reportes_agua
+    union all
+    select creado_en, zona_id, tipo from reportes_pin)
+  select json_build_object(
+    'generado', now(),
+    'desde', (select (t at time zone 'America/Hermosillo')::date from inicio),
+    'total', (select count(*) from todos),
+    'total_agua', (select count(*) from reportes_agua),
+    'total_puntos', (select count(*) from reportes_pin),
+    'colonias_con_reportes', (select count(distinct zona_id) from todos where zona_id is not null),
+    'colonias_afectadas_7d', (select count(*) from _estado_mayoria(168) m where m.estado <> 'con_agua'),
+    'activos', (select count(*) from reportes_pin where estado = 'activo'),
+    'arreglados', (select count(*) from reportes_pin where estado = 'arreglado'),
+    'dias_promedio_arreglo', (select round(avg(extract(epoch from arreglado_en - creado_en) / 86400)::numeric, 1)
+                              from reportes_pin where arreglado_en is not null),
+    'dias_promedio_pendientes', (select round(avg(extract(epoch from now() - creado_en) / 86400)::numeric, 1)
+                                 from reportes_pin where estado = 'activo'),
+    -- Reportes por día desde el inicio (máximo 90 días)
+    'por_dia', (
+      select json_agg(json_build_object('dia', g.d::date, 'n', coalesce(c.n, 0)) order by g.d)
+      from hoy, inicio,
+           generate_series(greatest((inicio.t at time zone 'America/Hermosillo')::date, hoy.dia - 89), hoy.dia, interval '1 day') as g(d)
+      left join (select (creado_en at time zone 'America/Hermosillo')::date as dia, count(*) as n from todos group by 1) c
+        on c.dia = g.d::date),
+    'por_tipo', (
+      select coalesce(json_agg(json_build_object('tipo', tipo, 'n', n, 'activos', activos, 'arreglados', arreglados) order by n desc), '[]'::json)
+      from (select 'agua' as tipo, count(*) as n, 0::bigint as activos, 0::bigint as arreglados from reportes_agua
+            union all
+            select tipo, count(*), count(*) filter (where estado = 'activo'), count(*) filter (where estado = 'arreglado')
+            from reportes_pin group by tipo) t
+      where n > 0),
+    'agua_por_estado', (select coalesce(json_object_agg(estado, n), '{}'::json)
+                        from (select estado, count(*) as n from reportes_agua group by estado) x),
+    'top_colonias', (
+      select coalesce(json_agg(t order by t.total desc), '[]'::json)
+      from (select z.nombre as colonia, count(*) as total,
+                   count(*) filter (where todos.tipo = 'agua') as agua,
+                   count(*) filter (where todos.tipo <> 'agua') as otros
+            from todos join zonas z on z.id = todos.zona_id
+            group by z.nombre order by total desc limit 10) t),
+    -- Los reportes que más vecinos han confirmado (siguen pendientes)
+    'mas_confirmados', (
+      select coalesce(json_agg(m), '[]'::json)
+      from (select p.id, p.tipo, p.subtipo, coalesce(z.nombre, 'Cajeme') as colonia, p.confirmaciones, p.creado_en
+            from reportes_pin p left join zonas z on z.id = p.zona_id
+            where p.estado = 'activo' and p.confirmaciones > 0
+            order by p.confirmaciones desc, p.creado_en
+            limit 5) m)
+  )
+$$;
+
 -- Resumen para la barra inferior: reportes y colonias afectadas en las últimas p_horas horas
 create or replace function public.resumen(p_horas int default 168)
 returns json

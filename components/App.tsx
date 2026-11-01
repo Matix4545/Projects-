@@ -377,6 +377,13 @@ export function App() {
                 <Candado /> Equipo
               </Link>
             )}
+            <Link href="/datos" aria-label="Datos" className="grid h-8 w-8 place-items-center rounded-full bg-ios-relleno text-ios-azul">
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+                <rect x="1.5" y="8.5" width="3" height="6" rx="1" fill="currentColor" />
+                <rect x="6.5" y="4.5" width="3" height="10" rx="1" fill="currentColor" />
+                <rect x="11.5" y="1.5" width="3" height="13" rx="1" fill="currentColor" />
+              </svg>
+            </Link>
             <Link href="/acerca" aria-label="Acerca de" className="grid h-8 w-8 place-items-center rounded-full bg-ios-relleno text-ios-azul">
               <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
                 <circle cx="8" cy="4.2" r="1.3" fill="currentColor" />

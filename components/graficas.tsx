@@ -59,7 +59,7 @@ export function Barras({
             </span>
           </div>
           <div className="mt-1.5 h-1.5 rounded-full bg-ios-relleno">
-            <div className="h-1.5 rounded-full" style={{ width: `${(f.valor / max) * 100}%`, background: colorBarra }} />
+            <div className="h-1.5 rounded-full" style={{ width: `${(f.valor / max) * 100}%`, background: f.muestra ?? colorBarra }} />
           </div>
         </li>
       ))}
