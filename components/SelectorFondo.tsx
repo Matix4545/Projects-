@@ -5,13 +5,24 @@ import { FONDOS, miniatura, type Fondo } from "@/lib/fondos";
 import { Equis } from "./HojaInferior";
 
 /** Botón de capas (como en Apple Maps): elige entre mapa, claro y satélite. */
-export function SelectorFondo({ fondo, onCambio }: { fondo: Fondo; onCambio: (f: Fondo) => void }) {
+export function SelectorFondo({
+  fondo,
+  onCambio,
+  agrupar,
+  onAgrupar,
+}: {
+  fondo: Fondo;
+  onCambio: (f: Fondo) => void;
+  /** Reportes en burbujas (true) o todos los puntos sueltos (false) */
+  agrupar: boolean;
+  onAgrupar: (agrupar: boolean) => void;
+}) {
   const [abierto, setAbierto] = useState(false);
   return (
     <div className="relative">
       <button
         onClick={() => setAbierto((a) => !a)}
-        aria-label="Tipo de mapa"
+        aria-label="Tipo de mapa y reportes"
         aria-expanded={abierto}
         className="material grid h-10 w-10 place-items-center rounded-full text-ios-azul"
       >
@@ -49,6 +60,15 @@ export function SelectorFondo({ fondo, onCambio }: { fondo: Fondo; onCambio: (f:
                 <span className={fondo === f ? "font-semibold text-ios-azul" : ""}>{FONDOS[f].nombre}</span>
               </button>
             ))}
+          </div>
+          <p className="mb-2 mt-4 text-[13px] text-ios-secundario">Ver reportes</p>
+          <div className="segmentado" role="group" aria-label="Ver reportes">
+            <button aria-pressed={agrupar} onClick={() => onAgrupar(true)}>
+              Agrupados
+            </button>
+            <button aria-pressed={!agrupar} onClick={() => onAgrupar(false)}>
+              Todos los puntos
+            </button>
           </div>
         </div>
       )}

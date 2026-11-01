@@ -106,6 +106,16 @@ export function App() {
 
   // Fondo del mapa elegido (se recuerda en este teléfono)
   const [fondo, setFondo] = useState<Fondo>("mapa");
+  // Reportes agrupados en burbujas o todos los puntos sueltos (se recuerda en este teléfono)
+  const [agruparPuntos, setAgruparPuntos] = useState(true);
+  const cambiarAgrupar = (v: boolean) => {
+    setAgruparPuntos(v);
+    try {
+      localStorage.setItem("rc_agrupar", v ? "1" : "0");
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
   const cambiarFondo = (f: Fondo) => {
     setFondo(f);
     try {
@@ -121,6 +131,7 @@ export function App() {
       localStorage.removeItem("rc_periodo");
       const guardado = localStorage.getItem("rc_fondo");
       if (esFondo(guardado)) setFondo(guardado);
+      if (localStorage.getItem("rc_agrupar") === "0") setAgruparPuntos(false);
     } catch {
       /* sin almacenamiento */
     }
@@ -299,6 +310,7 @@ export function App() {
           pins={pinsFiltrados}
           capas={capas}
           fondo={fondo}
+          agrupar={agruparPuntos}
           vistaCalor={equipo && filtros.vista === "calor" && !reportando}
           puntosFinos={equipo}
           secciones={equipo && verSecciones && !reportando ? secciones : null}
@@ -381,7 +393,7 @@ export function App() {
         </div>
         <div className="pointer-events-none mx-auto flex max-w-lg justify-end">
           <div className="pointer-events-auto">
-            <SelectorFondo fondo={fondo} onCambio={cambiarFondo} />
+            <SelectorFondo fondo={fondo} onCambio={cambiarFondo} agrupar={agruparPuntos} onAgrupar={cambiarAgrupar} />
           </div>
         </div>
         {errorCarga && (

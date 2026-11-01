@@ -45,6 +45,8 @@ type Props = {
   onFondo: () => void;
   /** Fondo del mapa: normal, claro o satélite */
   fondo: Fondo;
+  /** true: reportes cercanos en burbujas con número; false: todos los puntos sueltos (como antes) */
+  agrupar: boolean;
 };
 
 const iconoReporte = L.divIcon({
@@ -138,7 +140,8 @@ export default function Mapa(props: Props) {
   // Las funciones de Leaflet se crean una sola vez; con refs siempre ven los props actuales.
   const [zoomReal, setZoom] = useState(13);
   const zoomRef = useRef(13);
-  const zoom = zoomReal;
+  // Agrupados: el tamaño sigue al zoom. Todos los puntos: como antes (finos solo para el equipo)
+  const zoom = props.agrupar || props.puntosFinos ? zoomReal : 99;
   const refProps = useRef(props);
   refProps.current = props;
 
@@ -214,8 +217,8 @@ export default function Mapa(props: Props) {
   const todosPuntos = useMemo(() => (props.vistaCalor ? [] : pinsVisibles.filter((p) => !p.trazo)), [pinsVisibles, props.vistaCalor]);
   // Alejado, los reportes cercanos se juntan en burbujas con número
   const { sueltos: puntos, grupos } = useMemo(
-    () => agrupar(todosPuntos, zoomReal, props.pinSeleccionado),
-    [todosPuntos, zoomReal, props.pinSeleccionado],
+    () => (props.agrupar ? agrupar(todosPuntos, zoomReal, props.pinSeleccionado) : { sueltos: todosPuntos, grupos: [] }),
+    [todosPuntos, zoomReal, props.pinSeleccionado, props.agrupar],
   );
 
   const alClickPin = (pin: Pin) => (e: LeafletMouseEvent) => {
