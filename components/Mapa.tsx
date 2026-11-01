@@ -7,6 +7,7 @@ import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMa
 import { CENTRO_OBREGON, COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, SUBTIPOS_PELIGROSOS, type EstadoAgua, type TipoPin } from "@/lib/constantes";
 import type { Pin, ZonasGeoJSON } from "@/lib/datos";
 import { FONDOS, type Fondo } from "@/lib/fondos";
+import { agrupar, masComun, type Grupo } from "@/lib/agrupar";
 import { COLOR_CLASE, clasificar, medicionesCerca, type MedicionTramo } from "@/lib/rugosidad";
 import { seccionEn, type PropsSeccion, type SeccionesGeoJSON } from "@/lib/secciones";
 import { CapaCalor } from "./CapaCalor";
@@ -75,6 +76,43 @@ function ObservarZoom({ onZoom }: { onZoom: (z: number) => void }) {
   return null;
 }
 
+/** Texto oscuro sobre colores claros (amarillo), blanco sobre los demás */
+function textoSobre(hex: string) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return 0.299 * r + 0.587 * g + 0.114 * b > 170 ? "#1c1c1e" : "#ffffff";
+}
+
+/** Burbujas de reportes agrupados; al tocar una, el mapa se acerca a sus reportes */
+function Grupos({ grupos }: { grupos: Grupo<Pin>[] }) {
+  const mapa = useMap();
+  return grupos.map((g) => {
+    const n = g.miembros.length;
+    const tipo = masComun(g.miembros, (p) => p.tipo) as TipoPin;
+    const color = INFO_PIN[tipo]?.color ?? "#8e8e93";
+    const lado = Math.round(30 + Math.min(20, Math.log2(n) * 4));
+    const icono = L.divIcon({
+      className: "",
+      html: `<div class="grupo-mapa" style="width:${lado}px;height:${lado}px;background:${color};color:${textoSobre(color)};font-size:${n >= 100 ? 13 : 15}px">${n}</div>`,
+      iconSize: [lado, lado],
+      iconAnchor: [lado / 2, lado / 2],
+    });
+    return (
+      <Marker
+        key={`${g.clave}-${n}-${tipo}`}
+        position={[g.lat, g.lng]}
+        icon={icono}
+        title={`${n} reportes aquí. Toca para acercar.`}
+        eventHandlers={{
+          click: () => {
+            const limites = L.latLngBounds(g.miembros.map((p) => [p.lat, p.lng] as [number, number]));
+            mapa.flyToBounds(limites, { padding: [70, 70], maxZoom: 17, duration: 0.6 });
+          },
+        }}
+      />
+    );
+  });
+}
+
 // Alejado los puntos se amontonan: se dibujan más chicos y con borde fino
 const escalaPunto = (zoom: number) => (zoom <= 13 ? 0.65 : zoom === 14 ? 0.8 : 1);
 
@@ -100,7 +138,7 @@ export default function Mapa(props: Props) {
   // Las funciones de Leaflet se crean una sola vez; con refs siempre ven los props actuales.
   const [zoomReal, setZoom] = useState(13);
   const zoomRef = useRef(13);
-  const zoom = props.puntosFinos ? zoomReal : 99;
+  const zoom = zoomReal;
   const refProps = useRef(props);
   refProps.current = props;
 
@@ -173,7 +211,12 @@ export default function Mapa(props: Props) {
     () => (props.vistaCalor ? [] : pinsVisibles.filter((p) => p.trazo && p.trazo.length >= 2)),
     [pinsVisibles, props.vistaCalor],
   );
-  const puntos = useMemo(() => (props.vistaCalor ? [] : pinsVisibles.filter((p) => !p.trazo)), [pinsVisibles, props.vistaCalor]);
+  const todosPuntos = useMemo(() => (props.vistaCalor ? [] : pinsVisibles.filter((p) => !p.trazo)), [pinsVisibles, props.vistaCalor]);
+  // Alejado, los reportes cercanos se juntan en burbujas con número
+  const { sueltos: puntos, grupos } = useMemo(
+    () => agrupar(todosPuntos, zoomReal, props.pinSeleccionado),
+    [todosPuntos, zoomReal, props.pinSeleccionado],
+  );
 
   const alClickPin = (pin: Pin) => (e: LeafletMouseEvent) => {
     L.DomEvent.stopPropagation(e);
@@ -271,7 +314,7 @@ export default function Mapa(props: Props) {
           <Polyline
             key={`${pin.id}-${pin.estado}-borde`}
             positions={trazo}
-            pathOptions={{ color: "#111827", weight: seleccionado ? 13 : 10, opacity: arreglado ? 0.25 : 0.7, lineCap: "round" }}
+            pathOptions={{ color: "#111827", weight: seleccionado ? 13 : zoom <= 14 ? 7 : 10, opacity: arreglado ? 0.25 : 0.6, lineCap: "round" }}
             eventHandlers={{ click: alClickPin(pin) }}
           />,
           <Polyline
@@ -279,7 +322,7 @@ export default function Mapa(props: Props) {
             positions={trazo}
             pathOptions={{
               color: arreglado ? COLOR_ARREGLADO : (INFO_PIN[pin.tipo]?.color ?? "#6b7280"),
-              weight: seleccionado ? 8 : 6,
+              weight: seleccionado ? 8 : zoom <= 14 ? 4 : 6,
               opacity: arreglado ? 0.7 : 1,
               dashArray: arreglado ? "8 10" : undefined,
               lineCap: "round",
@@ -307,6 +350,8 @@ export default function Mapa(props: Props) {
           />
         );
       })}
+
+      <Grupos grupos={grupos} />
 
       {props.tramoReporte?.puntos && (
         <Polyline

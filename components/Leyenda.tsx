@@ -51,6 +51,7 @@ export function Leyenda({ horas }: { horas: number }) {
             <li className="pt-1 text-xs text-ios-secundario">
               Colonias: lo más reportado en {textoPeriodo(horas)}. Un reporte de “con agua” la pone en verde.
             </li>
+            <li className="text-xs text-ios-secundario">Círculos con número: varios reportes juntos. Tócalos para acercar.</li>
             <li className="text-xs text-ios-secundario">Borde rojo: peligro (bache peligroso, alcantarilla sin tapa, cables expuestos o quema).</li>
           </ul>
         </div>

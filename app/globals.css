@@ -233,6 +233,18 @@ body {
   background: #fff;
 }
 
+/* Burbuja de reportes agrupados (mapa alejado) */
+.grupo-mapa {
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  border: 2.5px solid #fff;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+  cursor: pointer;
+}
+
 /* Leaflet: atribución más discreta y arriba de la barra inferior */
 .leaflet-control-attribution {
   font-size: 10px;
