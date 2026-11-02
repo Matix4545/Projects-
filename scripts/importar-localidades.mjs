@@ -9,6 +9,8 @@
 // Uso:
 //   npm run importar-localidades                  → descarga de OpenStreetMap y sube a Supabase
 //   npm run importar-localidades -- --sin-subir   → solo genera data/localidades.geojson y muestra la lista
+//   npm run importar-localidades -- --sin-subir --buscar "Campo 77"
+//        → además muestra dónde está en OpenStreetMap todo lo que se llame así (aunque quede fuera del municipio)
 //
 // Cómo funciona:
 //   1. Descarga de OpenStreetMap (Overpass) el límite del municipio, sus localidades
@@ -32,6 +34,8 @@ cargarEnv({ path: join(RAIZ, ".env.local") });
 cargarEnv({ path: join(RAIZ, ".env") });
 
 const SIN_SUBIR = process.argv.includes("--sin-subir");
+const iBuscar = process.argv.indexOf("--buscar");
+const BUSCAR = iBuscar >= 0 ? (process.argv[iBuscar + 1] ?? "").trim() : "";
 const RES = 9;
 /** Calles a más de esto de cualquier localidad no se asignan (son de otra cosa: ranchos, carreteras) */
 const MAX_DISTANCIA_M = 2000;
@@ -49,8 +53,10 @@ const CONSULTA = `[out:json][timeout:240];
 rel["boundary"="administrative"]["admin_level"="6"]["name"="Cajeme"];
 out geom;
 map_to_area->.m;
-node(area.m)["place"~"^(town|village|hamlet|suburb|neighbourhood|quarter|locality|isolated_dwelling)$"]["name"];
-out body;
+nwr(area.m)["place"~"^(town|village|hamlet|suburb|neighbourhood|quarter|locality|isolated_dwelling)$"]["name"];
+out center;
+way(area.m)["landuse"="residential"]["name"];
+out center;
 way(area.m)["highway"~"^(residential|living_street)$"];
 out geom;`;
 
@@ -109,9 +115,21 @@ async function zonasExistentes(db) {
  */
 export function armarLocalidades(datos, existentes) {
   const dentroDeColonia = (lat, lng) => existentes.some((f) => booleanPointInPolygon([lng, lat], f));
-  const lugares = datos.elements
-    .filter((e) => e.type === "node" && e.tags?.place && e.tags?.name)
-    .map((e) => ({ id: e.id, nombre: e.tags.name.trim(), tipo: e.tags.place, pos: [e.lat, e.lon] }));
+  // Localidades como punto, o como área (se usa su centro); también colonias rurales (landuse=residential con nombre)
+  const posicion = (e) => (e.type === "node" ? [e.lat, e.lon] : e.center ? [e.center.lat, e.center.lon] : null);
+  const porNombre = new Map();
+  for (const e of datos.elements) {
+    if (e.type === "relation" && e.tags?.boundary) continue;
+    const nombre = e.tags?.name?.trim();
+    const pos = posicion(e);
+    if (!nombre || !pos || !(e.tags.place || e.tags.landuse === "residential")) continue;
+    const l = { id: `${e.type}/${e.id}`, nombre, tipo: e.tags.place ?? "residencial", pos };
+    // La misma localidad como punto y como área: se queda una (el punto, que suele estar en el centro)
+    const previa = porNombre.get(nombre)?.find((p) => distanciaM(p.pos, pos) < 1500);
+    if (previa) continue;
+    porNombre.set(nombre, [...(porNombre.get(nombre) ?? []), l]);
+  }
+  const lugares = [...porNombre.values()].flat();
   const nuevos = lugares.filter((l) => !dentroDeColonia(...l.pos));
   log(`${lugares.length} localidades en OpenStreetMap; ${lugares.length - nuevos.length} ya están dentro de una colonia.`);
 
@@ -157,13 +175,30 @@ export function armarLocalidades(datos, existentes) {
     zonas.push({
       nombre,
       fuente: "osm",
-      osm_id: `node/${l.id}`,
+      osm_id: l.id,
       tipo: l.tipo,
       celdas: propias.size,
       geometria: { type: "MultiPolygon", coordinates: cellsToMultiPolygon([...propias], true) },
     });
   }
   return zonas.sort((a, b) => b.celdas - a.celdas);
+}
+
+/** Muestra todo lo que se llame como el texto, en la región (para revisar por qué falta una localidad) */
+async function buscar(texto) {
+  const seguro = texto.replace(/[\\"]/g, "");
+  const r = await overpass(`[out:json][timeout:120];
+nwr["name"~"${seguro}",i](26.9,-110.5,28.5,-109.3);
+out center tags;
+is_in;
+area._["boundary"="administrative"]["admin_level"~"^[468]$"];
+out tags;`);
+  log(`Búsqueda de "${texto}":`);
+  for (const e of r.elements) {
+    const pos = e.type === "node" ? `${e.lat},${e.lon}` : e.center ? `${e.center.lat},${e.center.lon}` : "";
+    const t = e.tags ?? {};
+    console.log(`   ${e.type}/${e.id} · ${t.name} · place=${t.place ?? "-"} landuse=${t.landuse ?? "-"} admin_level=${t.admin_level ?? "-"} · ${pos}`);
+  }
 }
 
 /** Caja del municipio (para ajustar LIMITES_CAJEME en lib/constantes.ts) */
@@ -185,6 +220,7 @@ async function main() {
 
   log("Descargando de OpenStreetMap el municipio de Cajeme, sus localidades y calles…");
   const datos = await overpass(CONSULTA);
+  if (BUSCAR) await buscar(BUSCAR).catch((e) => log(`No se pudo buscar: ${e.message}`));
   const caja = cajaMunicipio(datos);
   log(caja ? `Límite del municipio: ${JSON.stringify(caja)}` : "No se encontró el límite del municipio en OpenStreetMap.");
 

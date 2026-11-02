@@ -12,6 +12,10 @@ on:
         type: boolean
         required: false
         default: true
+      buscar:
+        description: "Opcional: nombre a buscar en OpenStreetMap para ver dónde está (p. ej. Campo 77)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -35,9 +39,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SOLO_REVISAR: ${{ inputs.solo_revisar }}
+          BUSCAR: ${{ inputs.buscar }}
         run: |
           if [ "$SOLO_REVISAR" = "true" ]; then
-            npm run importar-localidades -- --sin-subir
+            npm run importar-localidades -- --sin-subir --buscar "$BUSCAR"
           else
             npm run importar-localidades
           fi
