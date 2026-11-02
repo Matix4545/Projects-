@@ -46,11 +46,11 @@ begin
   select count(*) into total from vacantes
    where activa and acepta_latam and empresa_slug = base.empresa_slug and id <> base.id;
 
-  select coalesce(jsonb_agg(vacante_json(v, acceso, sal) order by v.publicada desc), '[]'::jsonb) into lista
-    from (select * from vacantes
-           where activa and acepta_latam and empresa_slug = base.empresa_slug and id <> base.id
-           order by publicada desc
-           limit least(greatest(coalesce(p_limite, 10), 1), 20)) v;
+  select coalesce(jsonb_agg(vacante_json(x.fila, acceso, sal) order by x.publicada desc), '[]'::jsonb) into lista
+    from (select v as fila, v.publicada from vacantes v
+           where v.activa and v.acepta_latam and v.empresa_slug = base.empresa_slug and v.id <> base.id
+           order by v.publicada desc
+           limit least(greatest(coalesce(p_limite, 10), 1), 20)) x;
 
   return jsonb_build_object('total', total, 'vacantes', lista);
 end $$;

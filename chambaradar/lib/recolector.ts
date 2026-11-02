@@ -3,7 +3,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { leerVacantes } from "./fuentes/index.ts";
-import { normalizar } from "./normalizar.ts";
+import { esRelevanteObregon, normalizar } from "./normalizar.ts";
 import type { Empresa, Vacante } from "./tipos.ts";
 
 export interface ResultadoRecoleccion {
@@ -23,10 +23,26 @@ async function enParalelo<T>(items: T[], n: number, fn: (x: T) => Promise<void>)
   );
 }
 
+/**
+ * Qué vacantes se guardan. "obregon" (lanzamiento): solo Sonora y remotas
+ * abiertas a México. "latam": todo lo que sirve desde LATAM.
+ * Se cambia con la variable CHAMBARADAR_ENFOQUE.
+ */
+export type Enfoque = "obregon" | "latam";
+export function enfoqueActual(): Enfoque {
+  return process.env.CHAMBARADAR_ENFOQUE === "latam" ? "latam" : "obregon";
+}
+
 export async function recolectar(
   empresas: Empresa[],
-  { paralelo = 6, ahora = new Date(), alAvanzar }: { paralelo?: number; ahora?: Date; alAvanzar?: (texto: string) => void } = {},
+  {
+    paralelo = 6,
+    ahora = new Date(),
+    alAvanzar,
+    enfoque = enfoqueActual(),
+  }: { paralelo?: number; ahora?: Date; alAvanzar?: (texto: string) => void; enfoque?: Enfoque } = {},
 ): Promise<ResultadoRecoleccion> {
+  const sirve = (v: Vacante) => v.acepta_latam && (enfoque === "latam" || esRelevanteObregon(v));
   const mapa = new Map<string, Vacante>();
   const respondieron: string[] = [];
   const fallidas: ResultadoRecoleccion["fallidas"] = [];
@@ -34,10 +50,10 @@ export async function recolectar(
   await enParalelo(empresas, paralelo, async (empresa) => {
     try {
       const crudas = await leerVacantes(empresa);
-      const utiles = crudas.map((c) => normalizar(c, empresa, ahora)).filter((v) => v.acepta_latam);
+      const utiles = crudas.map((c) => normalizar(c, empresa, ahora)).filter(sirve);
       for (const v of utiles) mapa.set(v.id, v);
       respondieron.push(empresa.slug);
-      alAvanzar?.(`✓ ${empresa.nombre.padEnd(26)} ${String(utiles.length).padStart(4)} de ${crudas.length} sirven desde LATAM`);
+      alAvanzar?.(`✓ ${empresa.nombre.padEnd(26)} ${String(utiles.length).padStart(4)} de ${crudas.length} sirven${enfoque === "obregon" ? " en Obregón/remoto MX" : " desde LATAM"}`);
     } catch (e) {
       const error = String(e instanceof Error ? e.message : e).slice(0, 160);
       fallidas.push({ slug: empresa.slug, error });

@@ -7,15 +7,15 @@ import { usuarioActual } from "@/lib/supabase/servidor";
 import { empresasConVacantes } from "@/lib/vacantes";
 
 export const metadata: Metadata = {
-  title: "Empresas que contratan en México y LATAM",
-  description: "Empresas con vacantes abiertas para México y LATAM, incluidas empresas extranjeras que contratan remoto desde la región.",
+  title: "Empresas que contratan en Cd. Obregón y home office",
+  description: "Empresas con vacantes en Cd. Obregón y Sonora, y empresas que contratan home office desde México.",
 };
 
 export default async function Empresas() {
   const [usuario, empresas] = await Promise.all([usuarioActual(), empresasConVacantes()]);
   const grupos = [
-    { titulo: "Empresas de México y LATAM", lista: empresas.filter((e) => e.tipo === "local") },
-    { titulo: "Empresas extranjeras que contratan desde LATAM", lista: empresas.filter((e) => e.tipo === "remoto") },
+    { titulo: "Empresas mexicanas y de LATAM", lista: empresas.filter((e) => e.tipo === "local") },
+    { titulo: "Empresas extranjeras", lista: empresas.filter((e) => e.tipo === "remoto") },
   ];
 
   return (
@@ -25,7 +25,7 @@ export default async function Empresas() {
         <div className="max-w-2xl">
           <h1 className="text-3xl font-extrabold tracking-tight">Empresas que están contratando</h1>
           <p className="mt-2 text-gris">
-            {numero(empresas.length)} empresas con vacantes abiertas para México y LATAM hoy. Para ver qué vacante es de cuál empresa y aplicar,{" "}
+            {numero(empresas.length)} empresas con vacantes en Obregón, Sonora o home office desde México hoy. Para ver qué vacante es de cuál empresa y aplicar,{" "}
             <Link href="/precios" className="font-semibold text-radar-oscuro hover:underline">
               desbloquea tu acceso
             </Link>

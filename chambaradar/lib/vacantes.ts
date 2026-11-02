@@ -34,7 +34,7 @@ export function leerFiltros(p: Params): Filtros {
   // "donde" viene del paso de bienvenida (/empezar): remoto o en México
   const donde = uno(p.donde);
   const pais = (uno(p.pais) || (donde === "mx" || donde === "cajeme" ? "MX" : "")).toUpperCase();
-  const zona = uno(p.zona) || (donde === "cajeme" ? "cajeme" : "");
+  const zona = uno(p.zona) || (donde === "cajeme" || donde === "sonora" ? donde : "");
   const dias = Number(uno(p.dias));
   return {
     q: uno(p.q).trim().slice(0, 80),
@@ -91,7 +91,9 @@ async function todasLocales(): Promise<Vacante[]> {
   if (cache && Date.now() - cache.leido < 60_000) return cache.vacantes;
   try {
     const texto = await readFile(join(process.cwd(), "data/vacantes.json"), "utf8");
-    const vacantes = (JSON.parse(texto) as Vacante[]).sort((a, b) => b.publicada.localeCompare(a.publicada));
+    // Igual que en la base: primero Cd. Obregón, luego Sonora, luego lo demás; dentro, lo más nuevo
+    const cercania = (v: Vacante) => (v.zonas?.includes("cajeme") ? 2 : 0) + (v.zonas?.includes("sonora") ? 1 : 0);
+    const vacantes = (JSON.parse(texto) as Vacante[]).sort((a, b) => cercania(b) - cercania(a) || b.publicada.localeCompare(a.publicada));
     cache = { vacantes, leido: Date.now() };
   } catch {
     cache = { vacantes: [], leido: Date.now() };
@@ -130,6 +132,8 @@ export interface Resumen {
   empresas: number;
   remotas: number;
   enMexico: number;
+  enCajeme: number;
+  enSonora: number;
 }
 
 export interface EmpresaConVacantes {
@@ -141,7 +145,7 @@ export interface EmpresaConVacantes {
   paises: string[];
 }
 
-type FilaLigera = Pick<Vacante, "empresa_slug" | "empresa_nombre" | "empresa_tipo" | "modalidad" | "paises" | "acepta_latam">;
+type FilaLigera = Pick<Vacante, "empresa_slug" | "empresa_nombre" | "empresa_tipo" | "modalidad" | "paises" | "acepta_latam" | "zonas">;
 
 export async function resumen(): Promise<Resumen> {
   if (supabaseConfigurado()) {
@@ -155,6 +159,8 @@ export async function resumen(): Promise<Resumen> {
     empresas: new Set(filas.map((f) => f.empresa_slug)).size,
     remotas: filas.filter((f) => f.modalidad === "remoto").length,
     enMexico: filas.filter((f) => f.paises.includes("MX")).length,
+    enCajeme: filas.filter((f) => f.zonas?.includes("cajeme")).length,
+    enSonora: filas.filter((f) => f.zonas?.includes("sonora")).length,
   };
 }
 

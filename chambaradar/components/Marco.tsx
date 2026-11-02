@@ -82,14 +82,14 @@ export function Pie() {
       <div className="contenedor grid gap-8 py-12 sm:grid-cols-3">
         <div className="space-y-3">
           <Logo claro />
-          <p className="text-sm">Vacantes de México y LATAM sacadas directo de las páginas de empleo de las empresas.</p>
+          <p className="text-sm">Empleos en Cd. Obregón y home office para todo México, sacados directo de las páginas de empleo de las empresas.</p>
         </div>
         <div className="space-y-2 text-sm">
           <p className="font-semibold text-white">Explora</p>
           <Link href="/vacantes" className="block hover:text-white">Todas las vacantes</Link>
-          <Link href="/vacantes?tipo=remoto&modalidad=remoto" className="block hover:text-white">Remoto en dólares</Link>
-          <Link href="/vacantes?pais=MX" className="block hover:text-white">Vacantes en México</Link>
-          <Link href="/obregon" className="block hover:text-white">Empleos en Cd. Obregón</Link>
+          <Link href="/vacantes?donde=cajeme" className="block hover:text-white">Empleos en Cd. Obregón</Link>
+          <Link href="/vacantes?donde=sonora" className="block hover:text-white">Empleos en Sonora</Link>
+          <Link href="/vacantes?donde=remoto" className="block hover:text-white">Home office</Link>
           <Link href="/empresas" className="block hover:text-white">Empresas que contratan</Link>
         </div>
         <div className="space-y-2 text-sm">
@@ -100,7 +100,7 @@ export function Pie() {
           <a href={`mailto:${CORREO_CONTACTO}`} className="block break-all hover:text-white">Contacto</a>
         </div>
       </div>
-      <p className="contenedor border-t border-white/10 py-6 text-xs">© {new Date().getFullYear()} ChambaRadar. Hecho en México.</p>
+      <p className="contenedor border-t border-white/10 py-6 text-xs">© {new Date().getFullYear()} ChambaRadar. Hecho en Cd. Obregón, Sonora.</p>
     </footer>
   );
 }

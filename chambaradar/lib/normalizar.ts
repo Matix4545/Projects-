@@ -118,6 +118,18 @@ export function detectarZonas(texto: string): Zona[] {
   return zonas;
 }
 
+/**
+ * Enfoque de lanzamiento (Cd. Obregón): ¿la vacante le sirve a alguien que vive ahí?
+ * - Sí, si es en Sonora (Cajeme primero, pero también Hermosillo, Navojoa…), en cualquier modalidad.
+ * - Sí, si es 100 % remota y acepta gente en México (dice México o es abierta a
+ *   LATAM/cualquier país sin limitarse a otros países).
+ * - No, si es presencial/híbrida en otra ciudad, o remota solo para otros países.
+ */
+export function esRelevanteObregon(v: Pick<Vacante, "zonas" | "modalidad" | "paises" | "acepta_latam">): boolean {
+  if (v.zonas.includes("sonora")) return true;
+  return v.modalidad === "remoto" && v.acepta_latam && (v.paises.length === 0 || v.paises.includes("MX"));
+}
+
 export function detectarModalidad(ubicaciones: string[], titulo: string, pista?: string): Modalidad {
   const p = plano(pista ?? "");
   const t = plano([...ubicaciones, titulo].join(" | "));

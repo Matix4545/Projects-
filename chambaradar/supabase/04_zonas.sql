@@ -23,8 +23,9 @@ declare
   total int;
   filas jsonb;
 begin
+  -- "fila" es la vacante completa (tipo vacantes), para pasarla a vacante_json()
   with f as (
-    select v.* from vacantes v
+    select v as fila, v.zonas, v.publicada, v.id from vacantes v
      where v.activa and v.acepta_latam
        and (q is null or v.titulo ilike '%' || q || '%' or (acceso and v.empresa_nombre ilike '%' || q || '%'))
        and (coalesce(p_categoria, '') = '' or v.categoria = p_categoria)
@@ -36,8 +37,15 @@ begin
        and (coalesce(p_dias, 0) = 0 or v.publicada >= now() - make_interval(days => p_dias))
        and (coalesce(p_zona, '') = '' or p_zona = any(v.zonas))
   ),
-  pagina as (select * from f order by publicada desc, id offset desde limit por_pagina)
-  select (select count(*) from f), coalesce(jsonb_agg(vacante_json(r, acceso, sal) order by r.publicada desc, r.id), '[]'::jsonb)
+  -- Primero lo de Cd. Obregón, luego el resto de Sonora, luego lo demás (remoto); dentro, lo más nuevo
+  pagina as (
+    select * from f
+     order by ('cajeme' = any(zonas)) desc, ('sonora' = any(zonas)) desc, publicada desc, id
+     offset desde limit por_pagina
+  )
+  select (select count(*) from f),
+         coalesce(jsonb_agg(vacante_json(r.fila, acceso, sal)
+           order by ('cajeme' = any(r.zonas)) desc, ('sonora' = any(r.zonas)) desc, r.publicada desc, r.id), '[]'::jsonb)
     into total, filas
     from pagina r;
 
@@ -117,3 +125,33 @@ begin
   get diagnostics n = row_count;
   return n;
 end $$;
+
+-- ---------------------------------------------------------------------
+-- Resumen con los números de Obregón y Sonora
+-- ---------------------------------------------------------------------
+create or replace function public.resumen_vacantes()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'total', count(*),
+    'empresas', count(distinct empresa_slug),
+    'remotas', count(*) filter (where modalidad = 'remoto'),
+    'enMexico', count(*) filter (where 'MX' = any(paises)),
+    'enCajeme', count(*) filter (where 'cajeme' = any(zonas)),
+    'enSonora', count(*) filter (where 'sonora' = any(zonas)))
+  from vacantes where activa and acepta_latam;
+$$;
+grant execute on function public.resumen_vacantes() to anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- Interruptor del muro de pago. Mientras no haya pagos, se puede dejar todo
+-- visible para todos:   update config_privada set valor = 'no' where nombre = 'muro_activo';
+-- Para volver a cobrar:  update config_privada set valor = 'si' where nombre = 'muro_activo';
+-- ---------------------------------------------------------------------
+insert into public.config_privada (nombre, valor) values ('muro_activo', 'si') on conflict (nombre) do nothing;
+
+create or replace function public.tiene_acceso()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce((select valor from config_privada where nombre = 'muro_activo'), 'si') = 'no'
+      or exists (select 1 from perfiles where id = auth.uid() and acceso_hasta > now());
+$$;
+grant execute on function public.tiene_acceso() to anon, authenticated;

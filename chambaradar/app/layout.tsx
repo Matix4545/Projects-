@@ -6,11 +6,11 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
 
 const descripcion =
-  "Encuentra vacantes que no están en LinkedIn, OCC ni Indeed: las sacamos directo de las páginas de empleo de empresas en México, LATAM y de empresas que contratan remoto en dólares.";
+  "Empleos en Ciudad Obregón y trabajos remotos (home office) para todo México, sacados directo de las páginas de empleo de las empresas. Menos competencia que en LinkedIn u OCC.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(urlSitio()),
-  title: { default: "ChambaRadar · Vacantes ocultas en México y LATAM", template: "%s · ChambaRadar" },
+  title: { default: "ChambaRadar · Empleos en Cd. Obregón y home office", template: "%s · ChambaRadar" },
   description: descripcion,
   openGraph: { title: "ChambaRadar", description: descripcion, locale: "es_MX", type: "website", siteName: "ChambaRadar" },
   twitter: { card: "summary", title: "ChambaRadar", description: descripcion },

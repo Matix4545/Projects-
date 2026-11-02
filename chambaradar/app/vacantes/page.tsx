@@ -15,7 +15,7 @@ import { buscarVacantes, leerFiltros, POR_PAGINA, resumen } from "@/lib/vacantes
 
 export const metadata: Metadata = {
   title: "Vacantes",
-  description: "Vacantes en México y LATAM, y empleos remotos en dólares, sacadas directo de las páginas de empleo de las empresas.",
+  description: "Vacantes en Ciudad Obregón y Sonora, y trabajos remotos (home office) para todo México, sacadas directo de las páginas de empleo de las empresas.",
 };
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -42,11 +42,14 @@ export default async function Vacantes({ searchParams }: Props) {
   };
 
   // Título según lo que se está viendo: "Software e ingeniería en México"
-  const titulo =
-    [f.categoria ? NOMBRE_CATEGORIA[f.categoria] : "", f.zona ? `en ${NOMBRE_ZONA[f.zona]}` : f.pais ? `en ${PAISES[f.pais]}` : "", f.modalidad === "remoto" ? "· remoto" : ""]
-      .filter(Boolean)
-      .join(" ")
-      .replace(/^(en|·)\s/, (m) => (m.startsWith("en") ? "Vacantes en " : "Vacantes · ")) || "Todas las vacantes";
+  const lugar = f.zona ? `en ${NOMBRE_ZONA[f.zona]}` : f.modalidad === "remoto" ? "home office" : f.pais ? `en ${PAISES[f.pais]}` : "";
+  const titulo = f.categoria
+    ? `${NOMBRE_CATEGORIA[f.categoria]}${lugar ? (lugar === "home office" ? " · home office" : ` ${lugar}`) : ""}`
+    : lugar === "home office"
+      ? "Home office / remoto"
+      : lugar
+        ? `Vacantes ${lugar}`
+        : "Obregón, Sonora y home office";
 
   return (
     <>

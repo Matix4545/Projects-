@@ -150,7 +150,7 @@ function VentanaMas({ v, alAplicar }: { v: VacanteVista; alAplicar: (o: VacanteV
         <p className="font-semibold">Más vacantes de esta empresa{otras && otras.total > 0 ? ` (${otras.total})` : ""}</p>
         {cargando && <p className="text-sm text-gris">Buscando…</p>}
         {fallo && <p className="text-sm text-gris">No pudimos cargar las otras vacantes. Inténtalo de nuevo en un momento.</p>}
-        {otras && otras.vacantes.length === 0 && <p className="text-sm text-gris">Esta empresa no tiene otras vacantes para LATAM ahora.</p>}
+        {otras && otras.vacantes.length === 0 && <p className="text-sm text-gris">Esta empresa no tiene otras vacantes para ti ahora.</p>}
         {otras?.vacantes.map((o) => (
           <div key={o.id} className="space-y-2 rounded-2xl border border-borde p-4">
             <p className="font-semibold leading-snug">{o.titulo}</p>

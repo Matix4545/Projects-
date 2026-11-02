@@ -170,3 +170,16 @@ test("zonas: Cd. Obregón (Cajeme) y Sonora, sin confundir con Álvaro Obregón"
   assert.deepEqual(detectarZonas("Obregón, CDMX"), []);
   assert.deepEqual(detectarZonas("Monterrey, Nuevo León"), []);
 });
+
+test("enfoque Obregón: Sonora en cualquier modalidad y remotas abiertas a México", async () => {
+  const { esRelevanteObregon } = await import("../lib/normalizar.ts");
+  const v = (o: object) => ({ zonas: [], modalidad: "presencial" as const, paises: [] as string[], acepta_latam: true, ...o });
+  assert.equal(esRelevanteObregon(v({ zonas: ["cajeme", "sonora"], paises: ["MX"] })), true);
+  assert.equal(esRelevanteObregon(v({ zonas: ["sonora"], paises: ["MX"], modalidad: "hibrido" })), true);
+  assert.equal(esRelevanteObregon(v({ modalidad: "remoto", paises: ["MX"] })), true);
+  assert.equal(esRelevanteObregon(v({ modalidad: "remoto", paises: ["MX", "BR"] })), true);
+  assert.equal(esRelevanteObregon(v({ modalidad: "remoto", paises: [] })), true); // LATAM o cualquier país
+  assert.equal(esRelevanteObregon(v({ modalidad: "remoto", paises: ["BR"] })), false); // solo Brasil
+  assert.equal(esRelevanteObregon(v({ modalidad: "presencial", paises: ["MX"] })), false); // presencial en CDMX
+  assert.equal(esRelevanteObregon(v({ modalidad: "hibrido", paises: ["MX"] })), false);
+});

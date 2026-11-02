@@ -38,6 +38,11 @@ data/empresas.json ──► lib/recolector.ts ──► Supabase ──► web 
 
 ## Ciudad Obregón y Sonora
 
+**Enfoque de lanzamiento:** el recolector solo guarda vacantes de Sonora (cualquier modalidad) y remotas abiertas a México (`esRelevanteObregon()`). Para volver a todo LATAM: variable `CHAMBARADAR_ENFOQUE=latam`. El listado muestra primero Cd. Obregón, luego Sonora, luego home office.
+
+**Muro de pago:** mientras no haya pagos se puede dejar todo visible desde la base:
+`update config_privada set valor = 'no' where nombre = 'muro_activo';` (y `'si'` para volver a cobrar).
+
 - `lib/normalizar.ts → detectarZonas()` marca cada vacante con `cajeme` (Cd. Obregón) y/o `sonora`. Distingue Cd. Obregón de la alcaldía Álvaro Obregón (CDMX).
 - Filtro **Ciudad** en el listado (`?zona=cajeme` o `?zona=sonora`), opción "En Cd. Obregón" en `/empezar` y la página **`/obregon`** (Cajeme, resto de Sonora y remoto desde Obregón).
 - Las vacantes locales de Sonora vienen sobre todo de Workday (BBVA, Citi, Constellation Brands, Grupo Modelo, Grupo Peña Verde, ESAB…). Para agregar otra empresa de Workday, en `data/empresas.json` usa `"ats": "workday"` y `"board": "inquilino|wdN|sitio"`, tomado de su enlace `https://inquilino.wdN.myworkdayjobs.com/sitio`.
