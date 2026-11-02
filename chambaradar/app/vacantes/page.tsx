@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Encabezado, Pie } from "@/components/Marco";
 import { Filtros } from "@/components/Filtros";
+import { BotonAlerta } from "@/components/BotonAlerta";
+import { filtrosParaAlerta } from "@/lib/alertas";
+import { correoConfigurado } from "@/lib/correo";
 import { TarjetaVacante } from "@/components/TarjetaVacante";
 import { numero } from "@/lib/formato";
 import { pagosActivos } from "@/lib/planes";
@@ -24,7 +27,7 @@ export default async function Vacantes({ searchParams }: Props) {
 
   const enlacePagina = (pagina: number) => {
     const u = new URLSearchParams();
-    for (const [k, v] of Object.entries(params)) if (typeof v === "string" && v && k !== "pagina") u.set(k, v);
+    for (const [k, v] of Object.entries(params)) if (typeof v === "string" && v && k !== "pagina" && k !== "alerta") u.set(k, v);
     if (pagina > 1) u.set("pagina", String(pagina));
     const s = u.toString();
     return s ? `/vacantes?${s}` : "/vacantes";
@@ -42,6 +45,13 @@ export default async function Vacantes({ searchParams }: Props) {
         </div>
 
         <Filtros f={f} />
+
+        <BotonAlerta
+          filtros={filtrosParaAlerta(f)}
+          vuelta={enlacePagina(1)}
+          estado={typeof params.alerta === "string" ? params.alerta : undefined}
+          correoActivo={correoConfigurado()}
+        />
 
         {!acceso && (
           <div className="flex flex-col gap-3 rounded-2xl bg-noche p-4 text-white sm:flex-row sm:items-center sm:justify-between sm:p-5">

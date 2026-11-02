@@ -288,3 +288,5 @@ returns jsonb language sql stable security definer set search_path = public as $
   ) e;
 $$;
 grant execute on function public.empresas_con_vacantes() to anon, authenticated;
+
+-- Siguiente paso: correr supabase/02_alertas.sql (alertas por correo)

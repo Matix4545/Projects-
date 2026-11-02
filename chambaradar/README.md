@@ -14,6 +14,7 @@ Modelo de negocio: la vista previa es gratis (puesto, sueldo, ubicación, modali
 - **Sitio:** https://chambaradar.netlify.app (Netlify, proyecto `chambaradar`)
 - **Base de datos:** Supabase, proyecto `chambaradar` (us-east-2), independiente del de Reporta Cajeme
 - **Recolección:** la función programada `netlify/functions/recolectar.mts` corre cada 30 minutos y revisa un turno de empresas (48 turnos al día), así que todas se revisan cada 24 horas
+- **Alertas por correo:** `netlify/functions/alertas.mts` corre cada hora y manda a cada alerta sus vacantes nuevas (máximo un correo al día por alerta). Necesita Resend (ver pendientes)
 - **Pagos:** apagados por ahora. Los planes dicen "Próximamente" hasta que se configuren los enlaces de pago (ver abajo)
 
 ## Cómo funciona
@@ -33,6 +34,7 @@ data/empresas.json ──► lib/recolector.ts ──► Supabase ──► web 
 3. **Muro de pago en la base de datos** (`supabase/01_esquema.sql`): la app solo tiene claves **públicas**. Las tablas no se pueden leer directo; la función `buscar_vacantes()` revisa si quien pregunta pagó y, si no, devuelve las vacantes sin empresa, sin enlace y sin descripción. Escribir (recolector y pagos) requiere la **clave de la app** (`CHAMBARADAR_CLAVE`), guardada en la tabla privada `config_privada`.
 4. **Pagos** (`app/api/pago`, `app/api/stripe/webhook`): enlaces de pago de Stripe (tarjeta y OXXO). El webhook verifica la firma de Stripe, reconoce el plan por el monto y llama `registrar_pago()`, que alarga `acceso_hasta` y es idempotente.
 5. **Cuentas**: Supabase Auth con enlace mágico al correo (sin contraseña).
+6. **Alertas** (`supabase/02_alertas.sql`, `lib/alertas.ts`): cada usuario guarda hasta 10 búsquedas. `alertas_por_enviar()` calcula en la base las vacantes nuevas de cada una (vistas por primera vez después del último correo) aplicando el mismo muro de pago, y la función programada las manda en lotes con Resend. Cada correo trae baja con un clic.
 
 ## Probarlo en tu computadora
 
@@ -63,12 +65,23 @@ npm run typecheck
    1. Crea 3 enlaces de pago (Payment Links) en MXN de $49, $129 y $699 con tarjeta y OXXO.
    2. Crea un webhook hacia `https://chambaradar.netlify.app/api/stripe/webhook` con los eventos `checkout.session.completed` y `checkout.session.async_payment_succeeded`.
    3. En Netlify → Environment variables agrega `STRIPE_ENLACE_SEMANA`, `STRIPE_ENLACE_MES`, `STRIPE_ENLACE_ANIO` y `STRIPE_WEBHOOK_SECRET`, y vuelve a desplegar.
-3. **Legal:** completa `DOMICILIO` en `lib/legal.ts` y que un abogado revise `app/privacidad` y `app/terminos`.
-4. Opcional: dominio propio (p. ej. chambaradar.com) en Netlify → Domain management; luego actualiza `NEXT_PUBLIC_SITE_URL` y la configuración de Supabase del paso 1.
+3. **Alertas por correo.** Crea una cuenta en [resend.com](https://resend.com), verifica un dominio propio (el correo de alertas debe salir de él) y agrega en Netlify `RESEND_API_KEY` y `CORREO_REMITENTE` (p. ej. `ChambaRadar <alertas@chambaradar.com>`). Ese mismo dominio sirve para el SMTP de Supabase del paso 1.
+4. **Legal:** completa `DOMICILIO` en `lib/legal.ts` y que un abogado revise `app/privacidad` y `app/terminos`.
+5. Opcional: dominio propio (p. ej. chambaradar.com) en Netlify → Domain management; luego actualiza `NEXT_PUBLIC_SITE_URL` y la configuración de Supabase del paso 1.
 
-## Desplegar cambios
+## Desplegar cambios (GitHub → Netlify)
 
-El sitio de Netlify no está conectado a GitHub; se despliega subiendo esta carpeta (`chambaradar/`), que se construye en Netlify. Para que se despliegue solo con cada push: Netlify → Project configuration → Build & deploy → Link repository, con **Base directory** = `chambaradar`.
+Conectar el repositorio (una sola vez, desde el navegador, porque hay que autorizar a Netlify en GitHub):
+
+1. Netlify → proyecto **chambaradar** → **Project configuration → Build & deploy → Continuous deployment → Link repository**.
+2. Elige **GitHub**, autoriza la app de Netlify y selecciona `Matix4545/Projects-`.
+3. Configura:
+   - **Branch to deploy:** `main` (cuando este trabajo esté fusionado en `main`)
+   - **Base directory:** `chambaradar`
+   - Build command, publish y funciones se leen de `chambaradar/netlify.toml`; no hace falta escribirlos.
+4. Guarda. Desde entonces cada push a `main` que toque `chambaradar/` se publica solo; los cambios de la raíz (Reporta Cajeme) no disparan builds aquí.
+
+Los pull requests generan una vista previa (Deploy Preview) con su propio enlace.
 
 ## Agregar empresas
 
