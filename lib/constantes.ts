@@ -115,7 +115,8 @@ export const COLOR_ARREGLADO = "#9ca3af";
 
 // Centro aproximado de Ciudad Obregón y límites del área permitida para reportar
 export const CENTRO_OBREGON: [number, number] = [27.4863, -109.9405];
-export const LIMITES_CAJEME = { sur: 27.3, norte: 27.65, oeste: -110.15, este: -109.75 };
+// Caja del municipio completo (límite de OpenStreetMap, con un pequeño margen): incluye comisarías, ejidos y la sierra
+export const LIMITES_CAJEME = { sur: 27.0, norte: 28.42, oeste: -110.17, este: -109.52 };
 
 export function dentroDeCajeme(lat: number, lng: number) {
   return (
