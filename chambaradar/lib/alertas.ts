@@ -2,7 +2,7 @@
 // Funciones puras (sin red ni base de datos) para poder probarlas en tests/.
 
 import { formatoSueldo } from "./formato.ts";
-import { NOMBRE_CATEGORIA, NOMBRE_NIVEL, PAISES, type Categoria, type Nivel, type Periodo } from "./tipos.ts";
+import { NOMBRE_CATEGORIA, NOMBRE_NIVEL, NOMBRE_ZONA, PAISES, type Categoria, type Nivel, type Periodo, type Zona } from "./tipos.ts";
 
 /** Filtros que se guardan en una alerta (los mismos del buscador, sin página ni fecha). */
 export interface FiltrosAlerta {
@@ -12,6 +12,7 @@ export interface FiltrosAlerta {
   modalidad?: string;
   nivel?: string;
   tipo?: string;
+  zona?: string;
   conSueldo?: boolean;
 }
 
@@ -46,7 +47,8 @@ export function describirFiltros(f: FiltrosAlerta): string {
   if (f.categoria) partes.push(NOMBRE_CATEGORIA[f.categoria as Categoria] ?? f.categoria);
   if (f.nivel) partes.push(NOMBRE_NIVEL[f.nivel as Nivel] ?? f.nivel);
   if (f.modalidad) partes.push(MODALIDAD[f.modalidad] ?? f.modalidad);
-  if (f.pais) partes.push(PAISES[f.pais] ?? f.pais);
+  if (f.zona) partes.push(NOMBRE_ZONA[f.zona as Zona] ?? f.zona);
+  else if (f.pais) partes.push(PAISES[f.pais] ?? f.pais);
   if (f.tipo === "local") partes.push("empresas de LATAM");
   if (f.tipo === "remoto") partes.push("empresas extranjeras");
   if (f.conSueldo) partes.push("con sueldo publicado");
@@ -58,14 +60,14 @@ export function describirFiltros(f: FiltrosAlerta): string {
 export function enlaceBusqueda(sitio: string, f: FiltrosAlerta): string {
   const p = new URLSearchParams();
   if (f.q) p.set("q", f.q);
-  for (const k of ["tipo", "pais", "modalidad", "categoria", "nivel"] as const) if (f[k]) p.set(k, f[k]!);
+  for (const k of ["tipo", "pais", "zona", "modalidad", "categoria", "nivel"] as const) if (f[k]) p.set(k, f[k]!);
   if (f.conSueldo) p.set("sueldo", "1");
   const s = p.toString();
   return `${sitio}/vacantes${s ? `?${s}` : ""}`;
 }
 
 /** Convierte los filtros del buscador a filtros de alerta (descarta vacíos). */
-export function filtrosParaAlerta(f: { q: string; categoria: string; pais: string; modalidad: string; nivel: string; tipo: string; conSueldo: boolean }): FiltrosAlerta {
+export function filtrosParaAlerta(f: { q: string; categoria: string; pais: string; modalidad: string; nivel: string; tipo: string; zona?: string; conSueldo: boolean }): FiltrosAlerta {
   const r: FiltrosAlerta = {};
   if (f.q) r.q = f.q;
   if (f.categoria) r.categoria = f.categoria;
@@ -73,6 +75,7 @@ export function filtrosParaAlerta(f: { q: string; categoria: string; pais: strin
   if (f.modalidad) r.modalidad = f.modalidad;
   if (f.nivel) r.nivel = f.nivel;
   if (f.tipo) r.tipo = f.tipo;
+  if (f.zona) r.zona = f.zona;
   if (f.conSueldo) r.conSueldo = true;
   return r;
 }

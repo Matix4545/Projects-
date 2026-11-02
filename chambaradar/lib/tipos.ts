@@ -1,14 +1,17 @@
 // Tipos compartidos entre el recolector (scripts/) y la web (app/).
 // Este archivo no importa nada para que también corra con Node directo.
 
-export type Ats = "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters" | "recruitee" | "bamboohr" | "teamtailor";
+export type Ats = "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters" | "recruitee" | "bamboohr" | "teamtailor" | "workday";
 
 /** Empresa que vigilamos. Viene de data/empresas.json. */
 export interface Empresa {
   slug: string;
   nombre: string;
   ats: Ats;
-  /** Identificador del tablero de empleos en el ATS (p. ej. "clara" o "kraken.com") */
+  /**
+   * Identificador del tablero de empleos en el ATS (p. ej. "clara" o "kraken.com").
+   * En Workday es "inquilino|servidor|sitio", p. ej. "bbva|wd3|BBVA".
+   */
   board: string;
   /** "local": empresa de LATAM. "remoto": empresa extranjera que contrata desde LATAM. */
   tipo: "local" | "remoto";
@@ -56,6 +59,8 @@ export interface Vacante {
   modalidad: Modalidad;
   /** Se puede hacer desde LATAM (en un país de LATAM o remoto abierto a la región) */
   acepta_latam: boolean;
+  /** Zonas locales detectadas en la ubicación: "cajeme" (Cd. Obregón), "sonora" */
+  zonas: Zona[];
   categoria: Categoria;
   nivel: Nivel;
   idioma: "es" | "pt" | "en";
@@ -67,6 +72,10 @@ export interface Vacante {
   publicada: string;
   vista: string;
 }
+
+export const ZONAS = ["cajeme", "sonora"] as const;
+export type Zona = (typeof ZONAS)[number];
+export const NOMBRE_ZONA: Record<Zona, string> = { cajeme: "Cd. Obregón (Cajeme)", sonora: "Sonora" };
 
 export const CATEGORIAS = [
   "software",

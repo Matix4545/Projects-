@@ -14,6 +14,7 @@ const v: Vacante = {
   paises: ["MX"],
   modalidad: "hibrido",
   acepta_latam: true,
+  zonas: [],
   categoria: "ventas",
   nivel: "intermedio",
   idioma: "en",

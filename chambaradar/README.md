@@ -21,12 +21,12 @@ Modelo de negocio: la vista previa es gratis (puesto, sueldo, ubicación, modali
 
 ```
 data/empresas.json ──► lib/recolector.ts ──► Supabase ──► web Next.js
- (~220 empresas)        APIs públicas de 8      funciones de la base     muestra la vista
+ (~240 empresas)        APIs públicas de 9      funciones de la base     muestra la vista
                         sistemas (Greenhouse,   aplican el muro de pago  previa o todo,
                         Lever, Ashby, Workable,                          según la base
                         SmartRecruiters,
                         Recruitee, BambooHR,
-                        Teamtailor)
+                        Teamtailor, Workday)
 ```
 
 1. **Recolector** (`lib/recolector.ts`): para cada empresa llama la API pública de su sistema de reclutamiento. Son las mismas APIs que usan las empresas para mostrar vacantes en su sitio, así que no se copian portales.
@@ -35,6 +35,13 @@ data/empresas.json ──► lib/recolector.ts ──► Supabase ──► web 
 4. **Pagos** (`app/api/pago`, `app/api/stripe/webhook`): enlaces de pago de Stripe (tarjeta y OXXO). El webhook verifica la firma de Stripe, reconoce el plan por el monto y llama `registrar_pago()`, que alarga `acceso_hasta` y es idempotente.
 5. **Cuentas**: Supabase Auth con enlace mágico al correo (sin contraseña).
 6. **Alertas** (`supabase/02_alertas.sql`, `lib/alertas.ts`): cada usuario guarda hasta 10 búsquedas. `alertas_por_enviar()` calcula en la base las vacantes nuevas de cada una (vistas por primera vez después del último correo) aplicando el mismo muro de pago, y la función programada las manda en lotes con Resend. Cada correo trae baja con un clic.
+
+## Ciudad Obregón y Sonora
+
+- `lib/normalizar.ts → detectarZonas()` marca cada vacante con `cajeme` (Cd. Obregón) y/o `sonora`. Distingue Cd. Obregón de la alcaldía Álvaro Obregón (CDMX).
+- Filtro **Ciudad** en el listado (`?zona=cajeme` o `?zona=sonora`), opción "En Cd. Obregón" en `/empezar` y la página **`/obregon`** (Cajeme, resto de Sonora y remoto desde Obregón).
+- Las vacantes locales de Sonora vienen sobre todo de Workday (BBVA, Citi, Constellation Brands, Grupo Modelo, Grupo Peña Verde, ESAB…). Para agregar otra empresa de Workday, en `data/empresas.json` usa `"ats": "workday"` y `"board": "inquilino|wdN|sitio"`, tomado de su enlace `https://inquilino.wdN.myworkdayjobs.com/sitio`.
+- No se copian OCC, Computrabajo ni Indeed: sus términos lo prohíben.
 
 ## Probarlo en tu computadora
 

@@ -153,4 +153,20 @@ test("descarta montos que no pueden ser sueldo", async () => {
   assert.equal(sueldoCreible({ min: 40, max: 60, moneda: "USD", periodo: "hora" }).sueldo_max, 60);
   assert.equal(sueldoCreible({ min: 900, max: 1200, moneda: "USD", periodo: "hora" }).sueldo_max, null);
   assert.equal(sueldoCreible(null).moneda, null);
+  assert.equal(sueldoCreible({ min: 0.2, max: 0.4, moneda: "USD", periodo: "año" }).sueldo_max, null);
+});
+
+test("zonas: Cd. Obregón (Cajeme) y Sonora, sin confundir con Álvaro Obregón", async () => {
+  const { detectarZonas } = await import("../lib/normalizar.ts");
+  assert.deepEqual(detectarZonas("Obregon, Sonora, Mexico"), ["cajeme", "sonora"]);
+  assert.deepEqual(detectarZonas("Cd. Obregón, Son."), ["cajeme", "sonora"]);
+  assert.deepEqual(detectarZonas("Ciudad Obregon"), ["cajeme", "sonora"]);
+  assert.deepEqual(detectarZonas("85065 OBREGON"), ["cajeme", "sonora"]);
+  assert.deepEqual(detectarZonas("Cajeme, México"), ["cajeme", "sonora"]);
+  assert.deepEqual(detectarZonas("Hermosillo, Sonora, México"), ["sonora"]);
+  assert.deepEqual(detectarZonas("Navojoa"), ["sonora"]);
+  assert.deepEqual(detectarZonas("Álvaro Obregón, Ciudad de México"), []);
+  assert.deepEqual(detectarZonas("Alvaro Obregon, CDMX"), []);
+  assert.deepEqual(detectarZonas("Obregón, CDMX"), []);
+  assert.deepEqual(detectarZonas("Monterrey, Nuevo León"), []);
 });

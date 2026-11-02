@@ -58,6 +58,7 @@ export function Encabezado({ usuario, oscuro = false, buscador }: { usuario: Usu
               {[
                 ["/vacantes", "Vacantes"],
                 ["/empezar", "Elegir mi área"],
+                ["/obregon", "Empleos en Cd. Obregón"],
                 ["/empresas", "Empresas"],
                 ["/precios", "Precios"],
                 [usuario ? "/cuenta" : "/entrar", usuario ? "Mi cuenta y alertas" : "Entrar"],
@@ -88,6 +89,7 @@ export function Pie() {
           <Link href="/vacantes" className="block hover:text-white">Todas las vacantes</Link>
           <Link href="/vacantes?tipo=remoto&modalidad=remoto" className="block hover:text-white">Remoto en dólares</Link>
           <Link href="/vacantes?pais=MX" className="block hover:text-white">Vacantes en México</Link>
+          <Link href="/obregon" className="block hover:text-white">Empleos en Cd. Obregón</Link>
           <Link href="/empresas" className="block hover:text-white">Empresas que contratan</Link>
         </div>
         <div className="space-y-2 text-sm">

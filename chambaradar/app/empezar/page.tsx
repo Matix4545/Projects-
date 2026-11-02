@@ -23,6 +23,7 @@ const EMOJI: Record<Categoria, string> = {
 };
 
 const DONDE = [
+  { valor: "cajeme", titulo: "En Cd. Obregón", texto: "Vacantes en Cajeme, Sonora" },
   { valor: "remoto", titulo: "Remoto", texto: "Desde cualquier lugar, incluso para empresas extranjeras" },
   { valor: "mx", titulo: "En México", texto: "Presencial, híbrido o remoto en México" },
   { valor: "", titulo: "Me da igual", texto: "Todo México y LATAM" },
@@ -69,11 +70,11 @@ export default function Empezar() {
 
           <p className="mt-8 text-sm font-semibold text-radar-oscuro">Paso 2 de 2</p>
           <h2 className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl">¿Dónde quieres trabajar?</h2>
-          <fieldset className="mt-4 grid gap-2.5 sm:grid-cols-3">
+          <fieldset className="mt-4 grid gap-2.5 sm:grid-cols-2">
             <legend className="sr-only">Dónde</legend>
             {DONDE.map((d, i) => (
               <label key={d.valor || "todo"} className="cursor-pointer">
-                <input type="radio" name="donde" value={d.valor} defaultChecked={i === 0} className="peer sr-only" />
+                <input type="radio" name="donde" value={d.valor} defaultChecked={i === 1} className="peer sr-only" />
                 <span className="block h-full rounded-2xl border-2 border-borde p-4 transition peer-checked:border-radar peer-checked:bg-radar-claro/50 peer-focus-visible:ring-4 peer-focus-visible:ring-radar/20 hover:border-slate-300">
                   <span className="block font-bold">{d.titulo}</span>
                   <span className="mt-0.5 block text-sm text-gris">{d.texto}</span>

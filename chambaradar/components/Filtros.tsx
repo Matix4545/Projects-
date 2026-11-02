@@ -50,6 +50,13 @@ function FormFiltros({ f, alCambiar, pie }: { f: TFiltros; alCambiar: boolean; p
           ))}
         </select>
       </Campo>
+      <Campo etiqueta="Ciudad">
+        <select name="zona" defaultValue={f.zona} onChange={enviar} className="campo py-2.5">
+          <option value="">Cualquier ciudad</option>
+          <option value="cajeme">Cd. Obregón (Cajeme)</option>
+          <option value="sonora">Todo Sonora</option>
+        </select>
+      </Campo>
       <Campo etiqueta="Modalidad">
         <select name="modalidad" defaultValue={f.modalidad} onChange={enviar} className="campo py-2.5">
           <option value="">Cualquiera</option>
@@ -93,7 +100,7 @@ function FormFiltros({ f, alCambiar, pie }: { f: TFiltros; alCambiar: boolean; p
 }
 
 export function cuantosFiltros(f: TFiltros) {
-  return [f.categoria, f.pais, f.modalidad, f.tipo, f.nivel, f.dias ? "x" : "", f.conSueldo ? "x" : ""].filter(Boolean).length;
+  return [f.categoria, f.pais, f.zona, f.modalidad, f.tipo, f.nivel, f.dias ? "x" : "", f.conSueldo ? "x" : ""].filter(Boolean).length;
 }
 
 /** Columna de filtros (escritorio). */
@@ -157,6 +164,7 @@ export function Buscador({ f, autoFocus = false }: { f: TFiltros; autoFocus?: bo
       />
       {f.categoria && <input type="hidden" name="categoria" value={f.categoria} />}
       {f.pais && <input type="hidden" name="pais" value={f.pais} />}
+      {f.zona && <input type="hidden" name="zona" value={f.zona} />}
       {f.modalidad && <input type="hidden" name="modalidad" value={f.modalidad} />}
       {f.tipo && <input type="hidden" name="tipo" value={f.tipo} />}
       {f.nivel && <input type="hidden" name="nivel" value={f.nivel} />}

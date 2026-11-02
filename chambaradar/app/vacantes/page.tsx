@@ -10,7 +10,7 @@ import { correoConfigurado } from "@/lib/correo";
 import { numero } from "@/lib/formato";
 import { pagosActivos } from "@/lib/planes";
 import { accesoLocal, usuarioActual } from "@/lib/supabase/servidor";
-import { NOMBRE_CATEGORIA, PAISES } from "@/lib/tipos";
+import { NOMBRE_CATEGORIA, NOMBRE_ZONA, PAISES } from "@/lib/tipos";
 import { buscarVacantes, leerFiltros, POR_PAGINA, resumen } from "@/lib/vacantes";
 
 export const metadata: Metadata = {
@@ -43,9 +43,10 @@ export default async function Vacantes({ searchParams }: Props) {
 
   // Título según lo que se está viendo: "Software e ingeniería en México"
   const titulo =
-    [f.categoria ? NOMBRE_CATEGORIA[f.categoria] : "", f.pais ? `en ${PAISES[f.pais]}` : "", f.modalidad === "remoto" ? "· remoto" : ""]
+    [f.categoria ? NOMBRE_CATEGORIA[f.categoria] : "", f.zona ? `en ${NOMBRE_ZONA[f.zona]}` : f.pais ? `en ${PAISES[f.pais]}` : "", f.modalidad === "remoto" ? "· remoto" : ""]
       .filter(Boolean)
-      .join(" ") || "Todas las vacantes";
+      .join(" ")
+      .replace(/^(en|·)\s/, (m) => (m.startsWith("en") ? "Vacantes en " : "Vacantes · ")) || "Todas las vacantes";
 
   return (
     <>

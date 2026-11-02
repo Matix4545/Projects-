@@ -1,7 +1,7 @@
 // Convierte las vacantes de cada ATS a un formato único y decide si sirven
 // para alguien en México/LATAM. Funciones puras: se prueban en tests/.
 
-import type { Categoria, Empresa, Modalidad, Nivel, Sueldo, Vacante, VacanteCruda } from "./tipos.ts";
+import type { Categoria, Empresa, Modalidad, Nivel, Sueldo, Vacante, VacanteCruda, Zona } from "./tipos.ts";
 
 /** Quita acentos y pasa a minúsculas para comparar texto. */
 export function plano(texto: string | null | undefined): string {
@@ -46,7 +46,13 @@ function decodificar(t: string): string {
 
 /** Palabras que identifican cada país de LATAM (sin acentos, en minúsculas). */
 const CLAVES_PAIS: Record<string, string[]> = {
-  MX: ["mexico", "cdmx", "ciudad de mexico", "guadalajara", "monterrey", "queretaro", "puebla", "tijuana", "merida", "leon, gto", "jalisco", "nuevo leon", "cmx"],
+  MX: [
+    "mexico", "cdmx", "ciudad de mexico", "guadalajara", "monterrey", "queretaro", "puebla", "tijuana", "merida", "leon, gto", "jalisco", "nuevo leon", "cmx",
+    // Sonora
+    "sonora", "hermosillo", "obregon", "cd. obregon", "cajeme", "navojoa", "guaymas", "empalme", "nogales", "san luis rio colorado", "huatabampo", "caborca",
+    // Otras ciudades con muchas vacantes
+    "saltillo", "chihuahua", "ciudad juarez", "mexicali", "culiacan", "mazatlan", "aguascalientes", "san luis potosi", "toluca", "veracruz", "piedras negras", "cancun",
+  ],
   BR: ["brazil", "brasil", "sao paulo", "rio de janeiro", "belo horizonte", "curitiba", "florianopolis", "porto alegre", "campinas", "recife"],
   AR: ["argentina", "buenos aires", "cordoba", "rosario", "mendoza", "caba"],
   CO: ["colombia", "bogota", "medellin", "cali", "barranquilla"],
@@ -88,6 +94,28 @@ export function detectarPaises(texto: string): string[] {
     }
   }
   return encontrados;
+}
+
+// ---------------------------------------------------------------------------
+// Zonas locales (por ahora: Cd. Obregón / Cajeme y Sonora)
+// ---------------------------------------------------------------------------
+
+const CIUDADES_SONORA = /\b(sonora|hermosillo|cajeme|navojoa|guaymas|empalme|nogales|san luis rio colorado|huatabampo|caborca|etchojoa|alamos|pueblo yaqui|bacum|esperanza,? son)\b/;
+
+/**
+ * "Obregón" puede ser Cd. Obregón, Sonora, o la alcaldía Álvaro Obregón (CDMX).
+ * Cuenta como Cajeme si dice Cajeme, "Ciudad/Cd. Obregón", "Obregón, Sonora",
+ * el código postal 850xx, o "Obregón" a secas sin "Álvaro" ni CDMX.
+ */
+export function detectarZonas(texto: string): Zona[] {
+  const t = plano(texto).replace(/alvaro obregon/g, " ");
+  const enCdmx = /cdmx|ciudad de mexico|mexico city|distrito federal/.test(t);
+  const cajeme =
+    /\bcajeme\b|(ciudad|cd\.?) ?obregon|obregon[ ,-]+(son\b|sonora)|\b850\d\d\b/.test(t) || (/\bobregon\b/.test(t) && !enCdmx);
+  const zonas: Zona[] = [];
+  if (cajeme) zonas.push("cajeme");
+  if (cajeme || CIUDADES_SONORA.test(t)) zonas.push("sonora");
+  return zonas;
 }
 
 export function detectarModalidad(ubicaciones: string[], titulo: string, pista?: string): Modalidad {
@@ -233,6 +261,7 @@ export function normalizar(cruda: VacanteCruda, empresa: Empresa, ahora = new Da
     paises,
     modalidad,
     acepta_latam: aceptaLatam(ubicaciones, modalidad, paises, empresa),
+    zonas: detectarZonas(textoUbic),
     categoria: detectarCategoria(titulo, cruda.departamento),
     nivel: detectarNivel(titulo, cruda.tipoEmpleo),
     idioma: descripcion.length > 80 ? detectarIdioma(`${titulo}\n${descripcion}`) : idiomaDelTitulo(titulo, paises),
@@ -263,7 +292,9 @@ export function idiomaDelTitulo(titulo: string, paises: string[]): "es" | "pt" |
 
 function resumirUbicacion(ubicaciones: string[]): string {
   // Primero las ubicaciones de LATAM, que son las que le importan al usuario
-  const unicas = [...new Set(ubicaciones.map((u) => u.replace(/(\s*,\s*)+/g, ", ").replace(/^, |, $/g, "").trim()).filter(Boolean))].sort((a, b) => Number(detectarPaises(b).length > 0) - Number(detectarPaises(a).length > 0));
+  // Primero Cd. Obregón/Sonora, luego el resto de LATAM y al final lo demás
+  const peso = (u: string) => (detectarZonas(u).includes("cajeme") ? 3 : detectarZonas(u).length ? 2 : detectarPaises(u).length ? 1 : 0);
+  const unicas = [...new Set(ubicaciones.map((u) => u.replace(/(\s*,\s*)+/g, ", ").replace(/^, |, $/g, "").trim()).filter(Boolean))].sort((a, b) => peso(b) - peso(a));
   if (unicas.length === 0) return "Sin ubicación";
   if (unicas.length <= 3) return unicas.join(" · ");
   return `${unicas.slice(0, 3).join(" · ")} y ${unicas.length - 3} más`;
@@ -293,6 +324,8 @@ export function sueldoCreible(s: Sueldo | null | undefined): Pick<Vacante, "suel
   const tope = TOPE_ANUAL[s.moneda?.toUpperCase()];
   const anual = (max ?? min ?? 0) * (POR_ANIO[s.periodo] ?? 1);
   if (tope && anual > tope) return nada;
+  // Menos de 1 (p. ej. "$0") o un sueldo anual de menos de mil tampoco son reales
+  if ((max ?? min ?? 0) < 1 || (s.periodo === "año" && anual < 1000)) return nada;
   return { sueldo_min: min, sueldo_max: max, moneda: s.moneda, periodo: s.periodo };
 }
 

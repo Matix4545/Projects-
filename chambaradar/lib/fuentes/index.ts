@@ -325,7 +325,137 @@ async function teamtailor(board: string): Promise<VacanteCruda[]> {
   });
 }
 
-const LECTORES = { greenhouse, lever, ashby, workable, smartrecruiters, recruitee, bamboohr, teamtailor } as const;
+// --- Workday ------------------------------------------------------------------
+// Lo usan bancos y corporativos con sucursales y plantas en México (BBVA,
+// Santander, Grupo Modelo, Constellation Brands…). Tienen miles de vacantes en
+// el mundo, así que pedimos solo las de México con el filtro de país del sitio.
+interface WdFaceta {
+  facetParameter?: string;
+  descriptor?: string;
+  id?: string;
+  count?: number;
+  values?: WdFaceta[];
+}
+interface WdJob {
+  title: string;
+  externalPath: string;
+  locationsText?: string;
+  postedOn?: string;
+  bulletFields?: string[];
+}
+interface WdDetalle {
+  jobPostingInfo?: {
+    jobDescription?: string;
+    location?: string;
+    additionalLocations?: string[];
+    timeType?: string;
+    remoteType?: string;
+    startDate?: string;
+  };
+}
+
+async function postJson<T>(url: string, cuerpo: unknown): Promise<T> {
+  let ultimo: unknown;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "user-agent": AGENTE, accept: "application/json", "content-type": "application/json" },
+        body: JSON.stringify(cuerpo),
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status} en ${url}`);
+      return (await r.json()) as T;
+    } catch (e) {
+      ultimo = e;
+      if (/HTTP 4\d\d/.test(String(e))) break;
+      await new Promise((res) => setTimeout(res, 1500 * 2 ** i));
+    }
+  }
+  throw ultimo;
+}
+
+/** Busca, dentro de las facetas de Workday, el valor que corresponde a México. */
+export function facetaMexico(facetas: WdFaceta[]): { parametro: string; id: string } | null {
+  const visitar = (lista: WdFaceta[], parametro: string): { parametro: string; id: string } | null => {
+    for (const f of lista) {
+      const p = f.facetParameter ?? parametro;
+      if (f.id && f.descriptor && /^m[eé]xico$/i.test(f.descriptor.trim()) && /country|location/i.test(p)) return { parametro: p, id: f.id };
+      if (f.values) {
+        const r = visitar(f.values, p);
+        if (r) return r;
+      }
+    }
+    return null;
+  };
+  return visitar(facetas, "");
+}
+
+/** "Posted 3 Days Ago" / "Publicado hace 3 días" / "Posted Today" → fecha aproximada */
+export function fechaWorkday(texto: string | undefined, ahora = new Date()): string | undefined {
+  if (!texto) return undefined;
+  const t = texto.toLowerCase();
+  const dias = /today|hoy/.test(t) ? 0 : /yesterday|ayer/.test(t) ? 1 : Number(t.match(/(\d+)\+?/)?.[1] ?? NaN);
+  if (Number.isNaN(dias)) return undefined;
+  return new Date(ahora.getTime() - dias * 86_400_000).toISOString();
+}
+
+/** "/job/Obregon-Sonora-Mexico/Especialista_R-1" → "Obregon Sonora Mexico" */
+function lugarDeRuta(ruta: string): string {
+  const partes = ruta.split("/").filter(Boolean);
+  return partes.length >= 3 ? decodeURIComponent(partes[1]).replace(/-/g, " ") : "";
+}
+
+async function workday(board: string): Promise<VacanteCruda[]> {
+  const [inquilino, servidor, sitio] = board.split("|");
+  if (!inquilino || !servidor || !sitio) throw new Error(`Board de Workday inválido: ${board} (usa "inquilino|wdN|sitio")`);
+  const base = `https://${inquilino}.${servidor}.myworkdayjobs.com`;
+  const api = `${base}/wday/cxs/${inquilino}/${sitio}`;
+
+  const primera = await postJson<{ total: number; jobPostings: WdJob[]; facets?: WdFaceta[] }>(`${api}/jobs`, { limit: 20, offset: 0, searchText: "", appliedFacets: {} });
+  const mx = facetaMexico(primera.facets ?? []);
+  const filtro = mx ? { appliedFacets: { [mx.parametro]: [mx.id] }, searchText: "" } : { appliedFacets: {}, searchText: "Mexico" };
+
+  // Workday solo dice el total en la primera página
+  const empleos: WdJob[] = [];
+  let total = Infinity;
+  for (let offset = 0; offset < Math.min(total, 600); offset += 20) {
+    const pagina = await postJson<{ total: number; jobPostings: WdJob[] }>(`${api}/jobs`, { limit: 20, offset, ...filtro });
+    if (offset === 0) total = pagina.total ?? 0;
+    empleos.push(...(pagina.jobPostings ?? []));
+    if (!pagina.jobPostings?.length) break;
+  }
+
+  // El detalle trae la descripción y todas las ubicaciones; se pide para las primeras 60
+  const detalles = await Promise.all(
+    empleos.map((j, i) =>
+      i < 60 ? leerJson<WdDetalle>(`${api}${j.externalPath}`, 1).catch(() => null) : Promise.resolve(null),
+    ),
+  );
+
+  return empleos.map((j, i) => {
+    const d = detalles[i]?.jobPostingInfo;
+    const varias = /\d+\s+(locations|ubicaciones)/i.test(j.locationsText ?? "");
+    let ubicaciones = d?.location
+      ? [d.location, ...(d.additionalLocations ?? [])]
+      : [varias ? lugarDeRuta(j.externalPath) : (j.locationsText ?? lugarDeRuta(j.externalPath))];
+    // Ya filtramos por México: si la ubicación no dice el país, se agrega
+    if (mx) ubicaciones = ubicaciones.map((u) => (/m[eé]xico|\bmx\b/i.test(u) ? u : `${u}, México`));
+    return {
+      idExterno: j.bulletFields?.[0] ?? j.externalPath,
+      titulo: j.title,
+      url: `${base}/${sitio}${j.externalPath}`,
+      ubicaciones,
+      modalidadAts: /remote|remoto/i.test(d?.remoteType ?? "") ? "remote" : /hybrid|h[ií]brido/i.test(d?.remoteType ?? "") ? "hybrid" : undefined,
+      tipoEmpleo: d?.timeType,
+      descripcion: htmlATexto(d?.jobDescription ?? ""),
+      publicada: d?.startDate ? new Date(d.startDate).toISOString() : fechaWorkday(j.postedOn),
+      sueldo: null,
+    };
+  });
+}
+
+const LECTORES = { greenhouse, lever, ashby, workable, smartrecruiters, recruitee, bamboohr, teamtailor, workday } as const;
 
 export function leerVacantes(empresa: Empresa): Promise<VacanteCruda[]> {
   return LECTORES[empresa.ats](empresa.board);

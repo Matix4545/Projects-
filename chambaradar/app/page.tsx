@@ -133,6 +133,25 @@ export default async function Inicio() {
         </section>
       )}
 
+      {/* Atajo local */}
+      <section className="contenedor mt-16">
+        <Link
+          href="/obregon"
+          className="group mx-auto flex max-w-4xl flex-col items-start gap-4 rounded-3xl border border-borde bg-white p-6 transition hover:border-radar hover:shadow-lg sm:flex-row sm:items-center sm:p-7"
+        >
+          <span className="text-4xl" aria-hidden>
+            🌵
+          </span>
+          <span className="flex-1">
+            <span className="block text-lg font-bold">¿Eres de Ciudad Obregón?</span>
+            <span className="block text-gris">Vacantes en Cajeme y el sur de Sonora, y trabajo remoto que puedes hacer desde casa.</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 font-semibold text-radar-oscuro">
+            Ver empleos en Obregón <Flecha className="size-4 transition group-hover:translate-x-1" />
+          </span>
+        </Link>
+      </section>
+
       {/* Comparativa */}
       <section className="contenedor mt-24">
         <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">¿Cansado de que no te contesten?</h2>

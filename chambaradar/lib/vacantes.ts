@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { vistaDeVacante, vistaDesdeBase, type FilaBase, type VacanteVista } from "./muro.ts";
 import { supabaseConfigurado, supabaseSesion } from "./supabase/servidor.ts";
-import { CATEGORIAS, NIVELES, PAISES, type Categoria, type Modalidad, type Nivel, type Vacante } from "./tipos.ts";
+import { CATEGORIAS, NIVELES, PAISES, ZONAS, type Categoria, type Modalidad, type Nivel, type Vacante, type Zona } from "./tipos.ts";
 
 export const POR_PAGINA = 20;
 
@@ -14,6 +14,8 @@ export interface Filtros {
   modalidad: Modalidad | "";
   nivel: Nivel | "";
   tipo: "local" | "remoto" | "";
+  /** Zona local: "cajeme" (Cd. Obregón) o "sonora" */
+  zona: Zona | "";
   conSueldo: boolean;
   dias: number;
   pagina: number;
@@ -31,7 +33,8 @@ export function leerFiltros(p: Params): Filtros {
   const tipo = uno(p.tipo);
   // "donde" viene del paso de bienvenida (/empezar): remoto o en México
   const donde = uno(p.donde);
-  const pais = (uno(p.pais) || (donde === "mx" ? "MX" : "")).toUpperCase();
+  const pais = (uno(p.pais) || (donde === "mx" || donde === "cajeme" ? "MX" : "")).toUpperCase();
+  const zona = uno(p.zona) || (donde === "cajeme" ? "cajeme" : "");
   const dias = Number(uno(p.dias));
   return {
     q: uno(p.q).trim().slice(0, 80),
@@ -40,6 +43,7 @@ export function leerFiltros(p: Params): Filtros {
     modalidad: ["remoto", "hibrido", "presencial"].includes(modalidad) ? (modalidad as Modalidad) : donde === "remoto" ? "remoto" : "",
     nivel: (NIVELES as readonly string[]).includes(nivel) ? (nivel as Nivel) : "",
     tipo: tipo === "local" || tipo === "remoto" ? tipo : "",
+    zona: (ZONAS as readonly string[]).includes(zona) ? (zona as Zona) : "",
     conSueldo: uno(p.sueldo) === "1",
     dias: [1, 7, 30].includes(dias) ? dias : 0,
     pagina: Math.min(Math.max(1, Math.floor(Number(uno(p.pagina))) || 1), 500),
@@ -72,6 +76,7 @@ export async function buscarVacantes(f: Filtros, accesoEnLocal: boolean): Promis
     p_dias: f.dias,
     p_pagina: f.pagina,
     p_por_pagina: POR_PAGINA,
+    p_zona: f.zona,
   });
   if (error) throw new Error(`Error buscando vacantes: ${error.message}`);
   const r = data as { total: number; acceso: boolean; vacantes: FilaBase[] };
@@ -110,6 +115,7 @@ async function buscarEnArchivo(f: Filtros, acceso: boolean): Promise<Resultado> 
       (!f.modalidad || v.modalidad === f.modalidad) &&
       (!f.nivel || v.nivel === f.nivel) &&
       (!f.tipo || v.empresa_tipo === f.tipo) &&
+      (!f.zona || (v.zonas ?? []).includes(f.zona)) &&
       (!f.conSueldo || v.sueldo_max != null) &&
       (!limite || v.publicada >= limite),
   );
