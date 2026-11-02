@@ -455,7 +455,101 @@ async function workday(board: string): Promise<VacanteCruda[]> {
   });
 }
 
-const LECTORES = { greenhouse, lever, ashby, workable, smartrecruiters, recruitee, bamboohr, teamtailor, workday } as const;
+// --- SAP SuccessFactors (sitios de empleo "careers.empresa.com") ---------------
+// Lo usan maquiladoras y corporativos con plantas en México (Yazaki, Lear,
+// Gruma…). No hay API: se lee la búsqueda pública del propio sitio (permitida
+// en su robots.txt) filtrada a México, y el detalle de cada vacante.
+const PAIS_CODIGO: Record<string, string> = { MX: "México", BR: "Brasil", AR: "Argentina", CO: "Colombia", CL: "Chile", PE: "Perú", CR: "Costa Rica" };
+
+function textoHtml(s: string): string {
+  return htmlATexto(s).replace(/\s+/g, " ").trim();
+}
+
+/** Las filas de la tabla de resultados de SuccessFactors. */
+export function filasSuccessFactors(html: string): { titulo: string; ruta: string; ubicacion: string; fecha: string; area: string }[] {
+  return [...html.matchAll(/<tr class="data-row">([\s\S]*?)<\/tr>/g)].map((m) => {
+    const r = m[1];
+    const ubic = [...r.matchAll(/class="jobLocation">\s*([^<]+?)\s*</g)].map((x) => x[1]);
+    return {
+      titulo: textoHtml(r.match(/class="jobTitle-link"[^>]*>([^<]+)</)?.[1] ?? ""),
+      ruta: r.match(/href="(\/job\/[^"]+)"/)?.[1] ?? "",
+      ubicacion: textoHtml(ubic.at(-1) ?? ""),
+      fecha: textoHtml(r.match(/class="jobDate">([^<]+)</)?.[1] ?? ""),
+      area: textoHtml(r.match(/class="jobDepartment">([^<]*)</)?.[1] ?? ""),
+    };
+  }).filter((f) => f.titulo && f.ruta);
+}
+
+/** "Ciudad Obregon Cajeme, SON, MX" → "Ciudad Obregon Cajeme, SON, México" */
+function paisLegible(u: string): string {
+  return u.replace(/,\s*([A-Z]{2})\s*$/, (m, c) => (PAIS_CODIGO[c] ? `, ${PAIS_CODIGO[c]}` : m));
+}
+
+/** El contenido del <span class="jobdescription">, que trae spans y divs anidados. */
+export function descripcionSuccessFactors(html: string): string {
+  const inicio = html.search(/class="jobdescription"[^>]*>/);
+  if (inicio < 0) return "";
+  const desde = html.indexOf(">", inicio) + 1;
+  let profundidad = 0;
+  for (const t of html.slice(desde, desde + 60_000).matchAll(/<(\/?)span\b/g)) {
+    profundidad += t[1] ? -1 : 1;
+    if (profundidad < 0) return html.slice(desde, desde + t.index!);
+  }
+  return "";
+}
+
+async function leerTexto(url: string): Promise<string> {
+  const r = await fetch(url, { headers: { "user-agent": AGENTE }, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status} en ${url}`);
+  return r.text();
+}
+
+async function successfactors(board: string): Promise<VacanteCruda[]> {
+  const base = `https://${board}`;
+  const filas: ReturnType<typeof filasSuccessFactors> = [];
+  for (let inicio = 0; inicio < 500; inicio += 25) {
+    const html = await leerTexto(`${base}/search/?q=&optionsFacetsDD_country=MX&startrow=${inicio}`);
+    const pagina = filasSuccessFactors(html);
+    filas.push(...pagina);
+    const total = Number(html.match(/Results <b>[^<]*<\/b>\s*of\s*<b>([\d,]+)<\/b>/)?.[1]?.replace(/,/g, "") ?? 0);
+    if (pagina.length === 0 || inicio + 25 >= total) break;
+  }
+
+  // Detalle: descripción y ubicación exacta (máximo 60, empezando por Sonora)
+  const orden = [...filas.keys()].sort((a, b) => Number(/SON\b|sonora/i.test(filas[b].ubicacion)) - Number(/SON\b|sonora/i.test(filas[a].ubicacion)));
+  const detalle = new Map<number, string>();
+  for (let i = 0; i < Math.min(orden.length, 60); i += 6) {
+    await Promise.all(
+      orden.slice(i, i + 6).map(async (k) => {
+        try {
+          detalle.set(k, await leerTexto(`${base}${filas[k].ruta}`));
+        } catch {
+          /* sin detalle: se usa lo de la lista */
+        }
+      }),
+    );
+  }
+
+  return filas.map((f, k) => {
+    const h = detalle.get(k) ?? "";
+    const meta = (prop: string) => h.match(new RegExp(`itemprop="${prop}" content="([^"]*)"`))?.[1] ?? "";
+    const lugar = meta("addressLocality") ? [meta("addressLocality"), meta("addressRegion"), meta("addressCountry")].filter(Boolean).join(", ") : f.ubicacion;
+    const desc = descripcionSuccessFactors(h);
+    const fecha = meta("datePosted") || f.fecha;
+    return {
+      idExterno: f.ruta.match(/\/(\d+)\/?$/)?.[1] ?? f.ruta,
+      titulo: f.titulo,
+      url: `${base}${f.ruta}`,
+      ubicaciones: [paisLegible(lugar)],
+      departamento: f.area,
+      descripcion: htmlATexto(desc),
+      publicada: fecha && !Number.isNaN(new Date(fecha).getTime()) ? new Date(fecha).toISOString() : undefined,
+      sueldo: null,
+    };
+  });
+}
+
+const LECTORES = { greenhouse, lever, ashby, workable, smartrecruiters, recruitee, bamboohr, teamtailor, workday, successfactors } as const;
 
 export function leerVacantes(empresa: Empresa): Promise<VacanteCruda[]> {
   return LECTORES[empresa.ats](empresa.board);

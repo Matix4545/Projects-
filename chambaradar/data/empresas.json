@@ -240,5 +240,9 @@
   {"slug": "3m", "nombre": "3M", "ats": "workday", "board": "3m|wd1|Search", "tipo": "remoto"},
   {"slug": "provident-mx", "nombre": "Provident México", "ats": "teamtailor", "board": "providentmexico", "tipo": "local"},
   {"slug": "quala", "nombre": "Quala", "ats": "teamtailor", "board": "qualacompany", "tipo": "local"},
-  {"slug": "unity-communications", "nombre": "Unity Communications", "ats": "recruitee", "board": "unitycommunications", "tipo": "remoto"}
+  {"slug": "unity-communications", "nombre": "Unity Communications", "ats": "recruitee", "board": "unitycommunications", "tipo": "remoto"},
+  {"slug": "yazaki", "nombre": "Yazaki", "ats": "successfactors", "board": "careers.yazaki.com", "tipo": "remoto"},
+  {"slug": "lear", "nombre": "Lear Corporation", "ats": "successfactors", "board": "jobs.lear.com", "tipo": "remoto"},
+  {"slug": "edgewell", "nombre": "Edgewell Personal Care", "ats": "successfactors", "board": "careers.edgewell.com", "tipo": "remoto"},
+  {"slug": "gruma", "nombre": "Gruma (Maseca)", "ats": "successfactors", "board": "careers.gruma.com", "tipo": "local"}
 ]
