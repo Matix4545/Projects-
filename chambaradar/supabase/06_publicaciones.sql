@@ -89,9 +89,10 @@ declare
   url text := coalesce(
     case when p.contacto_whatsapp is not null then
       'https://wa.me/52' || p.contacto_whatsapp || '?text=' ||
-      replace(replace('Hola, vi su vacante de ' || p.puesto || ' en ChambaRadar y me interesa.', ' ', '%20'), ',', '%2C') end,
+      -- Solo letras, números y espacios en el mensaje, para que el enlace nunca se rompa
+      replace('Hola, vi su vacante de ' || regexp_replace(p.puesto, '[^[:alnum:] ]', ' ', 'g') || ' en ChambaRadar y me interesa', ' ', '%20') end,
     p.contacto_url,
-    'mailto:' || p.contacto_correo || '?subject=' || replace('Vacante de ' || p.puesto || ' (ChambaRadar)', ' ', '%20'));
+    'mailto:' || p.contacto_correo || '?subject=' || replace('Vacante de ' || regexp_replace(p.puesto, '[^[:alnum:] ]', ' ', 'g') || ' ChambaRadar', ' ', '%20'));
   extra text := concat_ws(E'\n',
     case when p.horario is not null then 'Horario: ' || p.horario end,
     case when p.contacto_whatsapp is not null then 'WhatsApp: ' || p.contacto_whatsapp end,
