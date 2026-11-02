@@ -1,6 +1,6 @@
 import type { Periodo } from "./tipos.ts";
 
-const PERIODO: Record<Periodo, string> = { hora: "hora", mes: "mes", "año": "año" };
+const PERIODO: Record<Periodo, string> = { hora: "hora", semana: "semana", mes: "mes", "año": "año" };
 
 function cifra(n: number, moneda: string): string {
   const compacto = n >= 10_000;
@@ -20,7 +20,7 @@ export function formatoSueldo(min: number | null, max: number | null, moneda: st
   try {
     const partes = [min, max].filter((n): n is number => n != null);
     const rango = min != null && max != null && min !== max ? `${cifra(min, moneda)} – ${cifra(max, moneda)}` : cifra(partes[0], moneda);
-    return `${rango} ${moneda} al ${PERIODO[periodo ?? "año"]}`;
+    return `${rango} ${moneda} ${periodo === "semana" ? "a la" : "al"} ${PERIODO[periodo ?? "año"]}`;
   } catch {
     return null;
   }

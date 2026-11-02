@@ -3,7 +3,6 @@ import Link from "next/link";
 import { Flecha } from "@/components/Iconos";
 import { Encabezado, Pie } from "@/components/Marco";
 import { TarjetaVacante, type ContextoTarjeta } from "@/components/TarjetaVacante";
-import { CORREO_CONTACTO } from "@/lib/legal";
 import { numero } from "@/lib/formato";
 import { pagosActivos } from "@/lib/planes";
 import { accesoLocal, usuarioActual } from "@/lib/supabase/servidor";
@@ -113,11 +112,11 @@ export default async function Obregon() {
         <section className="rounded-3xl border-2 border-dashed border-radar/40 bg-white p-6 sm:p-8">
           <h2 className="text-xl font-bold">¿Tienes un negocio en Obregón y buscas personal?</h2>
           <p className="mt-2 text-gris">
-            Muy pronto vas a poder publicar tus vacantes gratis en ChambaRadar. Si quieres ser de las primeras empresas, escríbenos y te avisamos.
+            Publica tus vacantes gratis en ChambaRadar y recibe solicitudes directo por WhatsApp o correo.
           </p>
-          <a href={`mailto:${CORREO_CONTACTO}?subject=${encodeURIComponent("Quiero publicar vacantes en Obregón")}`} className="boton mt-5">
-            Quiero publicar vacantes
-          </a>
+          <Link href="/publicar" className="boton mt-5">
+            Publicar una vacante gratis
+          </Link>
         </section>
       </main>
       <Pie />

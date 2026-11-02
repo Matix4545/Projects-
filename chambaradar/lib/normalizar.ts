@@ -325,7 +325,7 @@ export function limpiarTexto(t: string): string {
  * fondos, rangos mal capturados) y mejor no mostrarlo.
  */
 const TOPE_ANUAL: Record<string, number> = { USD: 1_000_000, EUR: 1_000_000, GBP: 1_000_000, CAD: 1_300_000, MXN: 20_000_000, BRL: 5_000_000 };
-const POR_ANIO: Record<string, number> = { hora: 2080, mes: 12, "año": 1 };
+const POR_ANIO: Record<string, number> = { hora: 2080, semana: 52, mes: 12, "año": 1 };
 
 export function sueldoCreible(s: Sueldo | null | undefined): Pick<Vacante, "sueldo_min" | "sueldo_max" | "moneda" | "periodo"> {
   const nada = { sueldo_min: null, sueldo_max: null, moneda: null, periodo: null };

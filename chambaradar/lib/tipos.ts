@@ -36,7 +36,7 @@ export interface VacanteCruda {
 }
 
 export type Modalidad = "remoto" | "hibrido" | "presencial";
-export type Periodo = "hora" | "mes" | "año";
+export type Periodo = "hora" | "semana" | "mes" | "año";
 
 export interface Sueldo {
   min: number | null;

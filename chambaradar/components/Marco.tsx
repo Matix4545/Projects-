@@ -32,8 +32,8 @@ export function Encabezado({ usuario, oscuro = false, buscador }: { usuario: Usu
           <Link href="/empresas" className={`hidden px-2 lg:inline ${enlace}`}>
             Empresas
           </Link>
-          <Link href="/precios" className={`hidden px-2 lg:inline ${enlace}`}>
-            Precios
+          <Link href="/publicar" className={`hidden px-2 lg:inline ${enlace}`}>
+            Publica tu vacante
           </Link>
           {usuario ? (
             <Link href="/cuenta" className={`rounded-full border px-4 py-2 font-semibold ${oscuro ? "border-white/20 text-white hover:bg-white/10" : "border-borde text-tinta hover:bg-slate-50"}`}>
@@ -60,6 +60,7 @@ export function Encabezado({ usuario, oscuro = false, buscador }: { usuario: Usu
                 ["/empezar", "Elegir mi área"],
                 ["/obregon", "Empleos en Cd. Obregón"],
                 ["/empresas", "Empresas"],
+                ["/publicar", "Publica tu vacante"],
                 ["/precios", "Precios"],
                 [usuario ? "/cuenta" : "/entrar", usuario ? "Mi cuenta y alertas" : "Entrar"],
               ].map(([href, texto]) => (
@@ -94,6 +95,7 @@ export function Pie() {
         </div>
         <div className="space-y-2 text-sm">
           <p className="font-semibold text-white">ChambaRadar</p>
+          <Link href="/publicar" className="block hover:text-white">Publica tu vacante gratis</Link>
           <Link href="/precios" className="block hover:text-white">Precios</Link>
           <Link href="/privacidad" className="block hover:text-white">Aviso de privacidad</Link>
           <Link href="/terminos" className="block hover:text-white">Términos y condiciones</Link>

@@ -21,7 +21,7 @@ const PREGUNTAS = [
   },
   {
     p: "¿Por qué no veo la vacante que vi en Facebook?",
-    r: "Por ahora juntamos las vacantes que las empresas publican en sus propias páginas de empleo. Muy pronto los negocios de Obregón van a poder publicar aquí sus vacantes gratis.",
+    r: "Juntamos las vacantes que las empresas publican en sus propias páginas de empleo, más las que los negocios de Obregón publican aquí gratis. Si tienes un negocio, publica tu vacante en “Publica tu vacante”.",
   },
   {
     p: "¿Qué veo gratis?",
