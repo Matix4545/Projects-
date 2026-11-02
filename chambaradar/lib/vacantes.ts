@@ -1,7 +1,8 @@
 import "server-only";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { supabaseAdmin, supabaseConfigurado } from "./supabase/servidor.ts";
+import { vistaDeVacante, vistaDesdeBase, type FilaBase, type VacanteVista } from "./muro.ts";
+import { supabaseConfigurado, supabaseSesion } from "./supabase/servidor.ts";
 import { CATEGORIAS, NIVELES, PAISES, type Categoria, type Modalidad, type Nivel, type Vacante } from "./tipos.ts";
 
 export const POR_PAGINA = 20;
@@ -44,40 +45,35 @@ export function leerFiltros(p: Params): Filtros {
 }
 
 export interface Resultado {
-  vacantes: Vacante[];
+  vacantes: VacanteVista[];
   total: number;
+  /** ¿Quien pregunta ve empresas y enlaces? */
+  acceso: boolean;
 }
 
 /**
- * Busca vacantes. Con Supabase configurado consulta la base de datos; si no,
- * usa data/vacantes.json (generado por "npm run recolectar") para probar en local.
- *
- * `buscarEnEmpresa` solo se activa para usuarios con acceso: si no, alguien
- * podría escribir "Stripe" en el buscador y descubrir de qué empresa es cada vacante.
+ * Busca vacantes. Con Supabase, la función buscar_vacantes() de la base aplica
+ * el muro de pago según quién tiene la sesión. Sin Supabase usa
+ * data/vacantes.json (generado por "npm run recolectar") para probar en local.
  */
-export async function buscarVacantes(f: Filtros, buscarEnEmpresa: boolean): Promise<Resultado> {
-  if (supabaseConfigurado()) return buscarEnSupabase(f, buscarEnEmpresa);
-  return buscarEnArchivo(f, buscarEnEmpresa);
-}
-
-async function buscarEnSupabase(f: Filtros, buscarEnEmpresa: boolean): Promise<Resultado> {
-  let q = supabaseAdmin().from("vacantes").select("*", { count: "exact" }).eq("activa", true).eq("acepta_latam", true);
-  if (f.q) {
-    // Quitar caracteres que rompen la sintaxis de filtros de PostgREST
-    const texto = f.q.replace(/[,()%*\\]/g, " ").trim();
-    if (texto) q = buscarEnEmpresa ? q.or(`titulo.ilike.%${texto}%,empresa_nombre.ilike.%${texto}%`) : q.ilike("titulo", `%${texto}%`);
-  }
-  if (f.categoria) q = q.eq("categoria", f.categoria);
-  if (f.pais) q = q.contains("paises", [f.pais]);
-  if (f.modalidad) q = q.eq("modalidad", f.modalidad);
-  if (f.nivel) q = q.eq("nivel", f.nivel);
-  if (f.tipo) q = q.eq("empresa_tipo", f.tipo);
-  if (f.conSueldo) q = q.not("sueldo_max", "is", null);
-  if (f.dias) q = q.gte("publicada", new Date(Date.now() - f.dias * 86_400_000).toISOString());
-  const desde = (f.pagina - 1) * POR_PAGINA;
-  const { data, count, error } = await q.order("publicada", { ascending: false }).range(desde, desde + POR_PAGINA - 1);
+export async function buscarVacantes(f: Filtros, accesoEnLocal: boolean): Promise<Resultado> {
+  if (!supabaseConfigurado()) return buscarEnArchivo(f, accesoEnLocal);
+  const sb = await supabaseSesion();
+  const { data, error } = await sb.rpc("buscar_vacantes", {
+    p_q: f.q,
+    p_categoria: f.categoria,
+    p_pais: f.pais,
+    p_modalidad: f.modalidad,
+    p_nivel: f.nivel,
+    p_tipo: f.tipo,
+    p_con_sueldo: f.conSueldo,
+    p_dias: f.dias,
+    p_pagina: f.pagina,
+    p_por_pagina: POR_PAGINA,
+  });
   if (error) throw new Error(`Error buscando vacantes: ${error.message}`);
-  return { vacantes: (data ?? []) as Vacante[], total: count ?? 0 };
+  const r = data as { total: number; acceso: boolean; vacantes: FilaBase[] };
+  return { total: r.total, acceso: r.acceso, vacantes: r.vacantes.map(vistaDesdeBase) };
 }
 
 // --- Modo local (sin Supabase) ---------------------------------------------
@@ -98,7 +94,9 @@ async function todasLocales(): Promise<Vacante[]> {
 
 const sinAcentos = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-async function buscarEnArchivo(f: Filtros, buscarEnEmpresa: boolean): Promise<Resultado> {
+async function buscarEnArchivo(f: Filtros, acceso: boolean): Promise<Resultado> {
+  // Sin acceso solo se busca en el título; si no, escribir "Stripe" revelaría qué vacantes son de quién
+  const buscarEnEmpresa = acceso;
   const limite = f.dias ? new Date(Date.now() - f.dias * 86_400_000).toISOString() : "";
   const q = sinAcentos(f.q);
   const filtradas = (await todasLocales()).filter(
@@ -114,7 +112,7 @@ async function buscarEnArchivo(f: Filtros, buscarEnEmpresa: boolean): Promise<Re
       (!limite || v.publicada >= limite),
   );
   const desde = (f.pagina - 1) * POR_PAGINA;
-  return { vacantes: filtradas.slice(desde, desde + POR_PAGINA), total: filtradas.length };
+  return { vacantes: filtradas.slice(desde, desde + POR_PAGINA).map((v) => vistaDeVacante(v, acceso)), total: filtradas.length, acceso };
 }
 
 // --- Números para la portada y la página de empresas -------------------------
@@ -135,28 +133,15 @@ export interface EmpresaConVacantes {
   paises: string[];
 }
 
-type FilaLigera = Pick<Vacante, "empresa_slug" | "empresa_nombre" | "empresa_tipo" | "modalidad" | "paises">;
-
-async function filasLigeras(): Promise<FilaLigera[]> {
-  if (!supabaseConfigurado()) return todasLocales();
-  const filas: FilaLigera[] = [];
-  // PostgREST devuelve máximo 1000 filas por consulta: paginamos
-  for (let desde = 0; desde < 100_000; desde += 1000) {
-    const { data, error } = await supabaseAdmin()
-      .from("vacantes")
-      .select("empresa_slug, empresa_nombre, empresa_tipo, modalidad, paises")
-      .eq("activa", true)
-      .eq("acepta_latam", true)
-      .range(desde, desde + 999);
-    if (error) throw new Error(`Error leyendo vacantes: ${error.message}`);
-    filas.push(...((data ?? []) as FilaLigera[]));
-    if (!data || data.length < 1000) break;
-  }
-  return filas;
-}
+type FilaLigera = Pick<Vacante, "empresa_slug" | "empresa_nombre" | "empresa_tipo" | "modalidad" | "paises" | "acepta_latam">;
 
 export async function resumen(): Promise<Resumen> {
-  const filas = await filasLigeras();
+  if (supabaseConfigurado()) {
+    const { data, error } = await (await supabaseSesion()).rpc("resumen_vacantes");
+    if (error) throw new Error(`Error leyendo el resumen: ${error.message}`);
+    return data as Resumen;
+  }
+  const filas: FilaLigera[] = (await todasLocales()).filter((f) => f.acepta_latam);
   return {
     total: filas.length,
     empresas: new Set(filas.map((f) => f.empresa_slug)).size,
@@ -166,8 +151,13 @@ export async function resumen(): Promise<Resumen> {
 }
 
 export async function empresasConVacantes(): Promise<EmpresaConVacantes[]> {
+  if (supabaseConfigurado()) {
+    const { data, error } = await (await supabaseSesion()).rpc("empresas_con_vacantes");
+    if (error) throw new Error(`Error leyendo empresas: ${error.message}`);
+    return data as EmpresaConVacantes[];
+  }
   const mapa = new Map<string, EmpresaConVacantes>();
-  for (const f of await filasLigeras()) {
+  for (const f of (await todasLocales()).filter((v) => v.acepta_latam)) {
     const e = mapa.get(f.empresa_slug) ?? { slug: f.empresa_slug, nombre: f.empresa_nombre, tipo: f.empresa_tipo, total: 0, remotas: 0, paises: [] };
     e.total++;
     if (f.modalidad === "remoto") e.remotas++;

@@ -164,7 +164,168 @@ async function workable(board: string): Promise<VacanteCruda[]> {
   }));
 }
 
-const LECTORES = { greenhouse, lever, ashby, workable } as const;
+// --- SmartRecruiters ---------------------------------------------------------
+// Empresas grandes publican miles de vacantes en el mundo; pedimos solo las de
+// países de LATAM (la API filtra por país) y las remotas sin país.
+interface SrJob {
+  id: string;
+  name: string;
+  releasedDate?: string;
+  location?: { city?: string; country?: string; remote?: boolean; hybrid?: boolean; fullLocation?: string };
+  function?: { label?: string };
+  department?: { label?: string };
+  typeOfEmployment?: { label?: string };
+  experienceLevel?: { label?: string };
+}
+
+const PAISES_SR = ["mx", "br", "ar", "co", "cl", "pe", "cr", "uy", "ec", "gt", "do", "pa"];
+
+async function smartrecruiters(board: string): Promise<VacanteCruda[]> {
+  const todas: SrJob[] = [];
+  for (const pais of PAISES_SR) {
+    for (let offset = 0; offset < 1000; offset += 100) {
+      const d = await leerJson<{ totalFound: number; content: SrJob[] }>(
+        `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(board)}/postings?limit=100&offset=${offset}&country=${pais}`,
+      );
+      todas.push(...d.content);
+      if (offset + 100 >= d.totalFound) break;
+    }
+  }
+  return todas.map((j) => ({
+    idExterno: j.id,
+    titulo: j.name,
+    url: `https://jobs.smartrecruiters.com/${board}/${j.id}`,
+    ubicaciones: [j.location?.fullLocation ?? [j.location?.city, j.location?.country].filter(Boolean).join(", ")],
+    modalidadAts: j.location?.remote ? "remote" : j.location?.hybrid ? "hybrid" : undefined,
+    departamento: j.function?.label ?? j.department?.label,
+    // Solo el nivel de entrada o prácticas dice algo útil; "Mid-Senior Level" no es "senior"
+    tipoEmpleo: [j.typeOfEmployment?.label, /intern|entry/i.test(j.experienceLevel?.label ?? "") ? j.experienceLevel?.label : ""].filter(Boolean).join(" "),
+    // La lista no trae descripción (habría que pedir cada vacante); se muestra al abrir el enlace
+    descripcion: "",
+    publicada: j.releasedDate,
+    sueldo: null,
+  }));
+}
+
+// --- Recruitee ---------------------------------------------------------------
+interface RecruiteeJob {
+  id: number;
+  title: string;
+  careers_url: string;
+  location?: string;
+  country?: string;
+  city?: string;
+  remote?: boolean;
+  hybrid?: boolean;
+  locations?: { name?: string; city?: string; country?: string }[];
+  department?: string;
+  employment_type_code?: string;
+  description?: string;
+  requirements?: string;
+  published_at?: string;
+  salary?: { min?: string | number | null; max?: string | number | null; currency?: string | null; period?: string | null };
+}
+
+async function recruitee(board: string): Promise<VacanteCruda[]> {
+  const d = await leerJson<{ offers: RecruiteeJob[] }>(`https://${encodeURIComponent(board)}.recruitee.com/api/offers/`);
+  return d.offers.map((j) => {
+    const min = j.salary?.min != null ? Number(j.salary.min) : null;
+    const max = j.salary?.max != null ? Number(j.salary.max) : null;
+    return {
+      idExterno: String(j.id),
+      titulo: j.title,
+      url: j.careers_url,
+      ubicaciones: j.locations?.length
+        ? j.locations.map((l) => [l.city || l.name, l.country].filter(Boolean).join(", "))
+        : [j.location || [j.city, j.country].filter(Boolean).join(", ")],
+      modalidadAts: j.remote ? "remote" : j.hybrid ? "hybrid" : undefined,
+      departamento: j.department,
+      tipoEmpleo: j.employment_type_code,
+      descripcion: htmlATexto(`${j.description ?? ""}${j.requirements ?? ""}`),
+      publicada: j.published_at?.replace(" UTC", "Z").replace(" ", "T"),
+      sueldo:
+        j.salary?.currency && (min || max)
+          ? { min: min || null, max: max || null, moneda: j.salary.currency, periodo: periodoDeIntervalo(j.salary.period) }
+          : null,
+    };
+  });
+}
+
+// --- BambooHR ----------------------------------------------------------------
+// Muy usado por fintechs mexicanas (Bitso, Konfío, Klar, albo…). La lista no
+// trae descripción; se pide el detalle de cada vacante (suelen ser pocas).
+interface BambooJob {
+  id: string;
+  jobOpeningName: string;
+  departmentLabel?: string;
+  employmentStatusLabel?: string;
+  location?: { city?: string | null; state?: string | null };
+  atsLocation?: { country?: string | null; state?: string | null; city?: string | null };
+  isRemote?: boolean | null;
+  locationType?: string; // "1" presencial, "2" remoto, "3" híbrido (según BambooHR)
+}
+
+async function bamboohr(board: string): Promise<VacanteCruda[]> {
+  const base = `https://${encodeURIComponent(board)}.bamboohr.com/careers`;
+  const d = await leerJson<{ result: BambooJob[] }>(`${base}/list`);
+  const lista = d.result ?? [];
+  const detalles = await Promise.all(
+    lista.slice(0, 80).map((j) =>
+      leerJson<{ result?: { jobOpening?: { description?: string; datePosted?: string } } }>(`${base}/${j.id}/detail`, 1).catch(() => null),
+    ),
+  );
+  return lista.map((j, i) => {
+    const l = j.atsLocation ?? {};
+    const ubicacion = [l.city ?? j.location?.city, l.state ?? j.location?.state, l.country].filter(Boolean).join(", ");
+    const det = detalles[i]?.result?.jobOpening;
+    return {
+      idExterno: j.id,
+      titulo: j.jobOpeningName,
+      url: `${base}/${j.id}`,
+      ubicaciones: [ubicacion],
+      modalidadAts: j.isRemote || j.locationType === "2" ? "remote" : j.locationType === "3" ? "hybrid" : undefined,
+      departamento: j.departmentLabel,
+      tipoEmpleo: j.employmentStatusLabel,
+      descripcion: htmlATexto(det?.description ?? ""),
+      publicada: det?.datePosted,
+      sueldo: null,
+    };
+  });
+}
+
+// --- Teamtailor (RSS público) --------------------------------------------------
+function etiqueta(xml: string, nombre: string): string {
+  const m = xml.match(new RegExp(`<${nombre}(?:\\s[^>]*)?>([\\s\\S]*?)</${nombre}>`));
+  return m ? m[1].replace(/^<!\[CDATA\[|\]\]>$/g, "").trim() : "";
+}
+
+async function teamtailor(board: string): Promise<VacanteCruda[]> {
+  const r = await fetch(`https://${encodeURIComponent(board)}.teamtailor.com/jobs.rss`, {
+    headers: { "user-agent": AGENTE },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status} en Teamtailor ${board}`);
+  const xml = await r.text();
+  const items = xml.split("<item>").slice(1).map((x) => x.split("</item>")[0]);
+  return items.map((it) => {
+    const lugares = it.split("<tt:location>").slice(1).map((l) => [etiqueta(l, "tt:city"), etiqueta(l, "tt:country")].filter(Boolean).join(", "));
+    const remoto = etiqueta(it, "remoteStatus");
+    const enlace = etiqueta(it, "link");
+    return {
+      idExterno: etiqueta(it, "guid") || enlace,
+      titulo: htmlATexto(etiqueta(it, "title")),
+      url: enlace,
+      ubicaciones: lugares,
+      modalidadAts: remoto === "fully" ? "remote" : remoto === "hybrid" ? "hybrid" : undefined,
+      departamento: etiqueta(it, "tt:department"),
+      descripcion: htmlATexto(etiqueta(it, "description")),
+      publicada: etiqueta(it, "pubDate") ? new Date(etiqueta(it, "pubDate")).toISOString() : undefined,
+      sueldo: null,
+    };
+  });
+}
+
+const LECTORES = { greenhouse, lever, ashby, workable, smartrecruiters, recruitee, bamboohr, teamtailor } as const;
 
 export function leerVacantes(empresa: Empresa): Promise<VacanteCruda[]> {
   return LECTORES[empresa.ats](empresa.board);

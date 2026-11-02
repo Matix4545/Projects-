@@ -2,86 +2,97 @@
 
 Vacantes de México y LATAM que no están en LinkedIn, OCC ni Indeed. Las sacamos todos los días directo de las páginas de empleo de cada empresa, en dos nichos:
 
-- **Empresas de LATAM**: Clara, Nubank, Kavak, Kueski, Addi, Platzi, QuintoAndar, Despegar, VTEX y más.
+- **Empresas de LATAM**: Bitso, Konfío, Clara, Nubank, Kavak, Kueski, Plata, Spin by OXXO, Skydropx, Stone, QuintoAndar, Despegar y más.
 - **Remoto en dólares**: empresas extranjeras (Stripe, Canonical, GitLab, Kraken, Supabase…) con puestos abiertos a LATAM. Las que dicen “solo US” se descartan.
 
 Modelo de negocio: la vista previa es gratis (puesto, sueldo, ubicación, modalidad y fecha). Para ver la **empresa**, la **descripción** y el **enlace para aplicar** se paga un plan único con tarjeta u **OXXO**: $49 MXN por 1 semana, $129 MXN por 1 mes o $699 MXN por 1 año.
 
-> Este proyecto vive en la carpeta `chambaradar/` y es independiente de la app de la raíz del repositorio (Reporta Cajeme). Tiene su propio `package.json`, su propio proyecto de Supabase y su propio proyecto en Vercel.
+> Este proyecto vive en la carpeta `chambaradar/` y es independiente de la app de la raíz del repositorio (Reporta Cajeme). Tiene su propio `package.json`, su propio proyecto de Supabase y su propio proyecto en Netlify.
+
+## En producción
+
+- **Sitio:** https://chambaradar.netlify.app (Netlify, proyecto `chambaradar`)
+- **Base de datos:** Supabase, proyecto `chambaradar` (us-east-2), independiente del de Reporta Cajeme
+- **Recolección:** la función programada `netlify/functions/recolectar.mts` corre cada 30 minutos y revisa un turno de empresas (48 turnos al día), así que todas se revisan cada 24 horas
+- **Pagos:** apagados por ahora. Los planes dicen "Próximamente" hasta que se configuren los enlaces de pago (ver abajo)
 
 ## Cómo funciona
 
 ```
-data/empresas.json ──► scripts/recolectar.ts ──► Supabase (tabla vacantes) ──► web Next.js
-   (qué empresas)        lee APIs públicas de        (o data/vacantes.json         oculta la empresa a
-                         Greenhouse, Lever,           en modo local)               quien no ha pagado
-                         Ashby y Workable
+data/empresas.json ──► lib/recolector.ts ──► Supabase ──► web Next.js
+ (~220 empresas)        APIs públicas de 8      funciones de la base     muestra la vista
+                        sistemas (Greenhouse,   aplican el muro de pago  previa o todo,
+                        Lever, Ashby, Workable,                          según la base
+                        SmartRecruiters,
+                        Recruitee, BambooHR,
+                        Teamtailor)
 ```
 
-1. **Recolector** (`scripts/recolectar.ts`): para cada empresa llama la API pública de su sistema de reclutamiento. Son las mismas APIs que usan las empresas para mostrar vacantes en su sitio, así que no se copian portales ni se "scrapea" HTML.
-2. **Normalización** (`lib/normalizar.ts`): detecta país, modalidad (remoto, híbrido o presencial), si acepta gente de LATAM, área, nivel, idioma y sueldo (solo de campos estructurados, nunca de texto libre). Las vacantes que no sirven desde LATAM se descartan.
-3. **Muro de pago** (`lib/muro.ts`): sin acceso, el servidor manda el nombre de la empresa y la descripción **revueltos**, sin enlace, y quita el nombre de la empresa de títulos e ids. Nada real llega al navegador. Además, la búsqueda por empresa solo funciona con acceso.
-4. **Pagos** (`app/api/pago`, `app/api/stripe/webhook`): Stripe Checkout en MXN. El webhook llama `registrar_pago()` en Supabase, que alarga `acceso_hasta` y es idempotente (si Stripe repite el evento, no se cobra dos veces el acceso).
+1. **Recolector** (`lib/recolector.ts`): para cada empresa llama la API pública de su sistema de reclutamiento. Son las mismas APIs que usan las empresas para mostrar vacantes en su sitio, así que no se copian portales.
+2. **Normalización** (`lib/normalizar.ts`): detecta país, modalidad, si acepta gente de LATAM, área, nivel, idioma y sueldo. Las que no sirven desde LATAM se descartan.
+3. **Muro de pago en la base de datos** (`supabase/01_esquema.sql`): la app solo tiene claves **públicas**. Las tablas no se pueden leer directo; la función `buscar_vacantes()` revisa si quien pregunta pagó y, si no, devuelve las vacantes sin empresa, sin enlace y sin descripción. Escribir (recolector y pagos) requiere la **clave de la app** (`CHAMBARADAR_CLAVE`), guardada en la tabla privada `config_privada`.
+4. **Pagos** (`app/api/pago`, `app/api/stripe/webhook`): enlaces de pago de Stripe (tarjeta y OXXO). El webhook verifica la firma de Stripe, reconoce el plan por el monto y llama `registrar_pago()`, que alarga `acceso_hasta` y es idempotente.
 5. **Cuentas**: Supabase Auth con enlace mágico al correo (sin contraseña).
 
-## Probarlo en tu computadora (sin configurar nada)
+## Probarlo en tu computadora
+
+Sin configurar nada (usa `data/vacantes.json`):
 
 ```bash
 cd chambaradar
 npm install
-npm run recolectar     # descarga ~1,100 vacantes a data/vacantes.json
-npm run dev            # http://localhost:3000
+npm run recolectar
+npm run dev
 ```
 
-Para ver la versión "pagada" en local, crea `.env.local` con `DEMO_ACCESO_TOTAL=1` (se ignora en producción).
-
-Pruebas y revisión de tipos:
+Con `.env.local` (ver `.env.example`) se conecta a Supabase y `npm run recolectar` guarda ahí. Para ver la versión "pagada" en modo local usa `DEMO_ACCESO_TOTAL=1` (se ignora en producción).
 
 ```bash
 npm test
 npm run typecheck
 ```
 
-## Ponerlo en producción
+## Pendientes para terminar de publicar
 
-### 1. Supabase (proyecto NUEVO, no el de Reporta Cajeme)
-1. Crea un proyecto en [supabase.com](https://supabase.com).
-2. En **SQL Editor** pega y corre `supabase/01_esquema.sql`.
-3. En **Authentication → URL Configuration** pon tu dominio en *Site URL* y agrega `https://TU-DOMINIO/auth/confirmar` en *Redirect URLs*.
-4. Opcional pero recomendado: en **Authentication → Emails → SMTP** configura un proveedor de correo (Resend, Postmark…). El correo incluido de Supabase tiene límites muy bajos.
+1. **Login (obligatorio para que funcione el enlace del correo).** En Supabase → proyecto `chambaradar` → **Authentication → URL Configuration**:
+   - *Site URL*: `https://chambaradar.netlify.app`
+   - *Redirect URLs*: agrega `https://chambaradar.netlify.app/**`
 
-### 2. Stripe
-1. Activa tu cuenta en México y, en **Settings → Payment methods**, activa **OXXO**.
-2. En **Developers → Webhooks** crea un endpoint `https://TU-DOMINIO/api/stripe/webhook` con los eventos `checkout.session.completed` y `checkout.session.async_payment_succeeded`.
+   Recomendado: en **Authentication → Emails → SMTP Settings** conecta un proveedor de correo (Resend, Postmark…). El correo incluido de Supabase manda muy pocos correos por hora.
+2. **Pagos (cuando tengas tu cuenta de Stripe para ChambaRadar).**
+   1. Crea 3 enlaces de pago (Payment Links) en MXN de $49, $129 y $699 con tarjeta y OXXO.
+   2. Crea un webhook hacia `https://chambaradar.netlify.app/api/stripe/webhook` con los eventos `checkout.session.completed` y `checkout.session.async_payment_succeeded`.
+   3. En Netlify → Environment variables agrega `STRIPE_ENLACE_SEMANA`, `STRIPE_ENLACE_MES`, `STRIPE_ENLACE_ANIO` y `STRIPE_WEBHOOK_SECRET`, y vuelve a desplegar.
+3. **Legal:** completa `DOMICILIO` en `lib/legal.ts` y que un abogado revise `app/privacidad` y `app/terminos`.
+4. Opcional: dominio propio (p. ej. chambaradar.com) en Netlify → Domain management; luego actualiza `NEXT_PUBLIC_SITE_URL` y la configuración de Supabase del paso 1.
 
-### 3. Vercel
-1. **Add New → Project**, importa este repositorio y en **Root Directory** elige `chambaradar`.
-2. Captura las variables de `.env.example` (Supabase, Stripe y `NEXT_PUBLIC_SITE_URL`).
+## Desplegar cambios
 
-### 4. Recolección diaria (GitHub Actions)
-El workflow `.github/workflows/chambaradar-recolectar.yml` corre todos los días a las 5:17 a. m. (hora de CDMX). Agrega en GitHub → **Settings → Secrets and variables → Actions**:
-- `CHAMBARADAR_SUPABASE_URL`
-- `CHAMBARADAR_SUPABASE_SERVICE_ROLE_KEY`
-
-Usan otros nombres para no mezclarse con los secretos de Reporta Cajeme.
+El sitio de Netlify no está conectado a GitHub; se despliega subiendo esta carpeta (`chambaradar/`), que se construye en Netlify. Para que se despliegue solo con cada push: Netlify → Project configuration → Build & deploy → Link repository, con **Base directory** = `chambaradar`.
 
 ## Agregar empresas
 
-Agrega una línea a `data/empresas.json`:
+**Rápido:** agrega líneas a `data/candidatas.txt` (`Nombre | tipo | slug1, slug2`) y corre:
+
+```bash
+npm run descubrir              # solo muestra qué encontró
+npm run descubrir -- --guardar # además las agrega a data/empresas.json
+```
+
+Prueba cada slug en Greenhouse, Lever, Ashby, Recruitee, SmartRecruiters, BambooHR y Teamtailor (y Workable con `--workable`).
+
+**A mano:** agrega una línea a `data/empresas.json`:
 
 ```json
 { "slug": "miempresa", "nombre": "Mi Empresa", "ats": "greenhouse", "board": "miempresa", "tipo": "local" }
 ```
 
-- `ats`: `greenhouse`, `lever`, `ashby` o `workable`. Se ve en el enlace de su página de empleos (`boards.greenhouse.io/X`, `jobs.lever.co/X`, `jobs.ashbyhq.com/X`, `apply.workable.com/X`). `X` es el `board`.
+- `ats`: `greenhouse`, `lever`, `ashby`, `workable`, `smartrecruiters`, `recruitee`, `bamboohr` o `teamtailor`.
 - `tipo`: `local` (empresa de LATAM) o `remoto` (extranjera que contrata desde LATAM).
-- `remotoGlobal: true` solo si la empresa contrata en cualquier país. Así sus vacantes que dicen "Remote" a secas cuentan como LATAM.
+- `remotoGlobal: true` solo si contrata en cualquier país (así "Remote" a secas cuenta como LATAM).
 
-Prueba solo esa empresa con `npm run recolectar -- miempresa`.
+Prueba una sola con `npm run recolectar -- miempresa`.
 
-## Pendiente antes de lanzar
+## Ideas siguientes
 
-- Completar el **aviso de privacidad** y los **términos** (`app/privacidad`, `app/terminos`, datos entre corchetes) y que los revise un abogado.
-- Verificar el dominio y registrar la marca **ChambaRadar** en el IMPI.
-- Agregar más empresas, sobre todo mexicanas, a `data/empresas.json`.
-- Siguientes ideas: alertas por correo de vacantes nuevas, favoritos, Mercado Pago, más fuentes (SmartRecruiters, Teamtailor, BambooHR).
+Alertas por correo de vacantes nuevas, favoritos, Mercado Pago, más fuentes (Personio, Breezy, Workday), y más empresas mexicanas.

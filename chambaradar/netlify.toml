@@ -1,0 +1,15 @@
+# ChambaRadar en Netlify. El sitio se publica desde esta carpeta (chambaradar/).
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+[functions]
+  directory = "netlify/functions"
+
+# Adaptador oficial de Next.js en Netlify (páginas dinámicas, rutas /api y el proxy).
+# Sin versión fija: Netlify lo actualiza en cada build.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

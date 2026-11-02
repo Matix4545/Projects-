@@ -119,3 +119,28 @@ test("normalizar arma la vacante completa", () => {
   assert.equal(v.sueldo_min, 213300);
   assert.equal(v.nivel, "senior");
 });
+
+test("limpia caracteres nulos y emojis partidos", async () => {
+  const { limpiarTexto } = await import("../lib/normalizar.ts");
+  assert.equal(limpiarTexto("ho\u0000la"), "hola");
+  assert.equal(limpiarTexto("a🚀".slice(0, 2)), "a");
+  assert.equal(limpiarTexto("ok 🚀"), "ok 🚀");
+});
+
+test("títulos en mayúsculas, idioma sin descripción y ubicaciones con comas vacías", async () => {
+  const { sinMayusculasSostenidas, idiomaDelTitulo } = await import("../lib/normalizar.ts");
+  assert.equal(sinMayusculasSostenidas("PLANEADOR (A) DE MATERIA PRIMA || PLANTA CELAYA"), "Planeador (a) de materia prima || planta celaya");
+  assert.equal(sinMayusculasSostenidas("INGENIERO DE QA Y SAP"), "Ingeniero de QA y SAP");
+  assert.equal(sinMayusculasSostenidas("Senior Engineer"), "Senior Engineer");
+  assert.equal(sinMayusculasSostenidas("QA"), "QA");
+  assert.equal(idiomaDelTitulo("Ingeniero de procesos", ["MX"]), "es");
+  assert.equal(idiomaDelTitulo("Analista de Cobrança", ["BR"]), "pt");
+  assert.equal(idiomaDelTitulo("Senior Backend Engineer", ["MX"]), "en");
+  const v = normalizar(
+    { idExterno: "9", titulo: "AUXILIAR CONTABLE", url: "u", ubicaciones: ["CELAYA PLANTA, , Mexico"], descripcion: "" },
+    local,
+  );
+  assert.equal(v.ubicacion, "CELAYA PLANTA, Mexico");
+  assert.equal(v.idioma, "es");
+  assert.equal(v.titulo, "Auxiliar contable");
+});

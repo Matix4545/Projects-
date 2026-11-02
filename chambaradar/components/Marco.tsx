@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CORREO_CONTACTO } from "@/lib/legal";
 import type { Usuario } from "@/lib/supabase/servidor";
 
 export function Logo({ claro = false }: { claro?: boolean }) {
@@ -64,7 +65,7 @@ export function Pie() {
           <Link href="/precios" className="block hover:text-white">Precios</Link>
           <Link href="/privacidad" className="block hover:text-white">Aviso de privacidad</Link>
           <Link href="/terminos" className="block hover:text-white">Términos y condiciones</Link>
-          <a href="mailto:hola@chambaradar.com" className="block hover:text-white">hola@chambaradar.com</a>
+          <a href={`mailto:${CORREO_CONTACTO}`} className="block break-all hover:text-white">Contacto</a>
         </div>
       </div>
       <p className="contenedor border-t border-white/10 py-6 text-xs">© {new Date().getFullYear()} ChambaRadar. Hecho en México.</p>

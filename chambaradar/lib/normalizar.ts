@@ -218,8 +218,8 @@ export function normalizar(cruda: VacanteCruda, empresa: Empresa, ahora = new Da
   const textoUbic = ubicaciones.join(" | ");
   const paises = detectarPaises(textoUbic);
   const modalidad = detectarModalidad(ubicaciones, cruda.titulo, cruda.modalidadAts);
-  const titulo = (cruda.titulo ?? "").replace(/\s+/g, " ").trim();
-  const descripcion = (cruda.descripcion ?? "").slice(0, 4000);
+  const titulo = sinMayusculasSostenidas(limpiarTexto(cruda.titulo ?? "").replace(/\s+/g, " ").trim());
+  const descripcion = limpiarTexto((cruda.descripcion ?? "").slice(0, 4000));
   const fecha = cruda.publicada ? new Date(cruda.publicada) : ahora;
 
   return {
@@ -229,13 +229,13 @@ export function normalizar(cruda: VacanteCruda, empresa: Empresa, ahora = new Da
     empresa_tipo: empresa.tipo,
     titulo,
     url: cruda.url,
-    ubicacion: resumirUbicacion(ubicaciones),
+    ubicacion: limpiarTexto(resumirUbicacion(ubicaciones)),
     paises,
     modalidad,
     acepta_latam: aceptaLatam(ubicaciones, modalidad, paises, empresa),
     categoria: detectarCategoria(titulo, cruda.departamento),
     nivel: detectarNivel(titulo, cruda.tipoEmpleo),
-    idioma: detectarIdioma(`${titulo}\n${descripcion}`),
+    idioma: descripcion.length > 80 ? detectarIdioma(`${titulo}\n${descripcion}`) : idiomaDelTitulo(titulo, paises),
     sueldo_min: redondear(cruda.sueldo?.min),
     sueldo_max: redondear(cruda.sueldo?.max),
     moneda: cruda.sueldo?.moneda ?? null,
@@ -246,12 +246,38 @@ export function normalizar(cruda: VacanteCruda, empresa: Empresa, ahora = new Da
   };
 }
 
+/** "PLANEADOR (A) DE MATERIA PRIMA" → "Planeador (a) de materia prima" */
+export function sinMayusculasSostenidas(t: string): string {
+  const letras = t.replace(/[^\p{L}]/gu, "");
+  if (letras.length < 8 || letras !== letras.toUpperCase()) return t;
+  const bajo = t.toLowerCase();
+  // Respeta siglas cortas conocidas
+  return (bajo.charAt(0).toUpperCase() + bajo.slice(1)).replace(/\b(it|qa|ui|ux|ai|ia|hr|rh|sap|erp|crm|sql|aws|b2b|b2c|cdmx|gdl|mty|pyme|ti)\b/g, (m) => m.toUpperCase());
+}
+
+/** Sin descripción, el idioma se adivina por el título y el país. */
+export function idiomaDelTitulo(titulo: string, paises: string[]): "es" | "pt" | "en" {
+  const t = titulo.toLowerCase();
+  if (/ção|ções|\b(analista|vaga|estágio|desenvolvedor|gerente de)\b/.test(t) && paises.includes("BR")) return "pt";
+  if (/[ñáéíóú¿]|\(a\)|\b(de|del|para|y|ejecutivo|ejecutiva|ingeniero|ingeniera|gerente|analista|auxiliar|coordinador|coordinadora|técnico|tecnico|jefe|asesor|vendedor|practicante|becario)\b/.test(t))
+    return "es";
+  return "en";
+}
+
 function resumirUbicacion(ubicaciones: string[]): string {
   // Primero las ubicaciones de LATAM, que son las que le importan al usuario
-  const unicas = [...new Set(ubicaciones)].sort((a, b) => Number(detectarPaises(b).length > 0) - Number(detectarPaises(a).length > 0));
+  const unicas = [...new Set(ubicaciones.map((u) => u.replace(/(\s*,\s*)+/g, ", ").replace(/^, |, $/g, "").trim()).filter(Boolean))].sort((a, b) => Number(detectarPaises(b).length > 0) - Number(detectarPaises(a).length > 0));
   if (unicas.length === 0) return "Sin ubicación";
   if (unicas.length <= 3) return unicas.join(" · ");
   return `${unicas.slice(0, 3).join(" · ")} y ${unicas.length - 3} más`;
+}
+
+/**
+ * Quita lo que Postgres o JSON no aceptan: caracteres nulos y mitades de emoji
+ * (al cortar un texto a 4000 caracteres un emoji puede quedar partido).
+ */
+export function limpiarTexto(t: string): string {
+  return t.replace(/\u0000/g, "").replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, "");
 }
 
 function redondear(n: number | null | undefined): number | null {

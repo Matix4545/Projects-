@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Encabezado, Pie } from "@/components/Marco";
-import { PLANES } from "@/lib/planes";
+import { PLANES, pagosActivos } from "@/lib/planes";
 import { usuarioActual } from "@/lib/supabase/servidor";
 
 export const metadata: Metadata = { title: "Precios", description: "Desbloquea empresas y enlaces de todas las vacantes. Pago único con tarjeta u OXXO." };
@@ -10,6 +10,7 @@ type Props = { searchParams: Promise<Record<string, string | undefined>> };
 export default async function Precios({ searchParams }: Props) {
   const { error, plan: elegido } = await searchParams;
   const usuario = await usuarioActual();
+  const activos = pagosActivos();
 
   return (
     <>
@@ -23,7 +24,13 @@ export default async function Precios({ searchParams }: Props) {
           </p>
         </div>
 
-        {error === "pagos" && (
+        {!activos && (
+          <p className="mx-auto mt-6 max-w-xl rounded-xl bg-radar-claro p-4 text-center text-sm text-radar-oscuro">
+            <strong>Muy pronto.</strong> Estamos por activar los pagos. Mientras tanto, la vista previa es gratis para todos.
+          </p>
+        )}
+
+        {activos && error === "pagos" && (
           <p className="mx-auto mt-6 max-w-xl rounded-xl bg-amber-50 p-4 text-center text-sm text-amber-900">
             Los pagos todavía no están activados en este sitio. Inténtalo más tarde.
           </p>
@@ -52,8 +59,8 @@ export default async function Precios({ searchParams }: Props) {
                 <li>✓ Descripción completa</li>
                 <li>✓ Buscar por empresa</li>
               </ul>
-              <button className={`mt-6 w-full ${p.destacado ? "boton" : "boton-secundario"}`}>
-                {usuario ? "Pagar" : "Crear cuenta y pagar"}
+              <button className={`mt-6 w-full ${p.destacado ? "boton" : "boton-secundario"} disabled:opacity-50`} disabled={!activos}>
+                {!activos ? "Próximamente" : usuario ? "Pagar" : "Crear cuenta y pagar"}
               </button>
             </form>
           ))}

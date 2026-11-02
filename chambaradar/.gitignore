@@ -11,3 +11,6 @@ next-env.d.ts
 npm-debug.log*
 # Vacantes descargadas por "npm run recolectar" cuando no hay Supabase
 data/vacantes.json
+
+# Netlify (estado local del CLI)
+.netlify

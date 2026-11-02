@@ -63,3 +63,33 @@ export function vistaDeVacante(v: Vacante, conAcceso: boolean): VacanteVista {
     bloqueada: true,
   };
 }
+
+/** Fila como la devuelve buscar_vacantes() en Supabase (ya bloqueada o no por la base). */
+export type FilaBase = Omit<Vacante, "url" | "empresa_nombre" | "empresa_slug" | "descripcion"> & {
+  url: string | null;
+  empresa_nombre: string | null;
+  empresa_slug: string | null;
+  descripcion: string | null;
+  bloqueada: boolean;
+  largo_empresa?: number;
+  largo_descripcion?: number;
+};
+
+/**
+ * La base ya quitó la empresa, el enlace y la descripción de las filas
+ * bloqueadas; aquí solo se rellenan con texto al azar del mismo largo para
+ * que la tarjeta se vea igual (borrosa).
+ */
+export function vistaDesdeBase(f: FilaBase): VacanteVista {
+  if (!f.bloqueada) return { ...f, empresa_nombre: f.empresa_nombre ?? "", descripcion: f.descripcion ?? "", bloqueada: false };
+  const relleno = (n: number) => "x".repeat(Math.max(1, n)).replace(/x{6}/g, (m) => `${m} `);
+  return {
+    ...f,
+    url: null,
+    empresa_slug: null,
+    // Largo al azar: ni siquiera el largo del nombre debe dar pistas de la empresa
+    empresa_nombre: revolver("x".repeat(5 + Math.floor(generador(f.id)() * 9)), `${f.id}:e`),
+    descripcion: f.largo_descripcion ? revolver(relleno(Math.min(f.largo_descripcion, 280)), `${f.id}:d`) : "",
+    bloqueada: true,
+  };
+}

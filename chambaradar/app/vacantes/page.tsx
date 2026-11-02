@@ -4,8 +4,8 @@ import { Encabezado, Pie } from "@/components/Marco";
 import { Filtros } from "@/components/Filtros";
 import { TarjetaVacante } from "@/components/TarjetaVacante";
 import { numero } from "@/lib/formato";
-import { vistaDeVacante } from "@/lib/muro";
-import { tieneAcceso, usuarioActual } from "@/lib/supabase/servidor";
+import { pagosActivos } from "@/lib/planes";
+import { accesoLocal, usuarioActual } from "@/lib/supabase/servidor";
 import { buscarVacantes, leerFiltros, POR_PAGINA } from "@/lib/vacantes";
 
 export const metadata: Metadata = {
@@ -19,8 +19,7 @@ export default async function Vacantes({ searchParams }: Props) {
   const params = await searchParams;
   const f = leerFiltros(params);
   const usuario = await usuarioActual();
-  const acceso = await tieneAcceso(usuario);
-  const { vacantes, total } = await buscarVacantes(f, acceso);
+  const { vacantes, total, acceso } = await buscarVacantes(f, accesoLocal(usuario));
   const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
 
   const enlacePagina = (pagina: number) => {
@@ -50,7 +49,7 @@ export default async function Vacantes({ searchParams }: Props) {
               <strong>Vista previa:</strong> ves los puestos y sueldos, pero la empresa y el enlace para aplicar están ocultos.
             </p>
             <Link href="/precios" className="boton shrink-0 px-4 py-2 text-sm">
-              Desbloquear desde $49 MXN
+              {pagosActivos() ? "Desbloquear desde $49 MXN" : "Ver planes"}
             </Link>
           </div>
         )}
@@ -68,10 +67,9 @@ export default async function Vacantes({ searchParams }: Props) {
           </div>
         ) : (
           <div className="space-y-3">
-            {vacantes.map((v) => {
-              const vista = vistaDeVacante(v, acceso);
-              return <TarjetaVacante key={vista.id} v={vista} />;
-            })}
+            {vacantes.map((v) => (
+              <TarjetaVacante key={v.id} v={v} />
+            ))}
           </div>
         )}
 

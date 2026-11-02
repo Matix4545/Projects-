@@ -20,3 +20,22 @@ export const PLANES: Plan[] = [
 export function buscarPlan(id: string | null | undefined): Plan | undefined {
   return PLANES.find((p) => p.id === id);
 }
+
+/**
+ * Enlace de pago de Stripe (Payment Link) de cada plan. Se configuran en las
+ * variables STRIPE_ENLACE_SEMANA, STRIPE_ENLACE_MES y STRIPE_ENLACE_ANIO.
+ * Mientras no existan, los pagos aparecen como "próximamente".
+ */
+export function enlaceDePago(plan: Plan): string | null {
+  const v = process.env[`STRIPE_ENLACE_${plan.id.toUpperCase()}`];
+  return v && v.startsWith("https://") ? v : null;
+}
+
+export function pagosActivos(): boolean {
+  return PLANES.some((p) => enlaceDePago(p) !== null);
+}
+
+/** El webhook reconoce el plan por el monto cobrado (en centavos de MXN). */
+export function planPorMonto(centavos: number | null | undefined): Plan | undefined {
+  return PLANES.find((p) => p.precio * 100 === centavos);
+}
