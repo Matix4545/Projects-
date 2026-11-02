@@ -93,3 +93,27 @@ returns jsonb language sql immutable set search_path = public as $$
     'zona', case when f->>'zona' in ('cajeme', 'sonora') then f->>'zona' end,
     'conSueldo', case when (f->>'conSueldo') = 'true' then true end));
 $$;
+
+-- guardar_vacantes() también actualiza las zonas de las que ya existían
+create or replace function public.guardar_vacantes(p_clave text, p_filas jsonb)
+returns int language plpgsql security definer set search_path = public as $$
+declare
+  n int;
+begin
+  if not clave_valida(p_clave) then raise exception 'clave inválida'; end if;
+  insert into vacantes
+  select (r).* from (
+    select jsonb_populate_record(null::vacantes, f || jsonb_build_object('creada', now())) as r
+      from jsonb_array_elements(p_filas) f
+  ) x
+  on conflict (id) do update set
+    empresa_nombre = excluded.empresa_nombre, empresa_tipo = excluded.empresa_tipo, titulo = excluded.titulo,
+    url = excluded.url, ubicacion = excluded.ubicacion, paises = excluded.paises, zonas = excluded.zonas,
+    modalidad = excluded.modalidad, acepta_latam = excluded.acepta_latam, categoria = excluded.categoria,
+    nivel = excluded.nivel, idioma = excluded.idioma, sueldo_min = excluded.sueldo_min, sueldo_max = excluded.sueldo_max,
+    moneda = excluded.moneda, periodo = excluded.periodo, descripcion = excluded.descripcion,
+    publicada = excluded.publicada, vista = excluded.vista, activa = true;
+    -- "creada" no se toca: así sabemos cuáles son nuevas de verdad
+  get diagnostics n = row_count;
+  return n;
+end $$;
