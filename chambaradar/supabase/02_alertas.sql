@@ -156,7 +156,9 @@ begin
      limit least(greatest(coalesce(p_limite, 100), 1), 500)
      for update of al skip locked
   loop
-    acceso := exists (select 1 from perfiles where id = a.usuario and acceso_hasta > now());
+    -- Con el muro apagado todos ven todo; si no, solo quien tiene un plan vigente
+    acceso := coalesce((select valor from config_privada where nombre = 'muro_activo'), 'si') = 'no'
+              or exists (select 1 from perfiles where id = a.usuario and acceso_hasta > now());
     desde := coalesce(a.ultima_envio, a.creada);
 
     select count(*), coalesce(jsonb_agg(fila order by creada desc) filter (where n <= 15), '[]'::jsonb)
