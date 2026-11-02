@@ -64,7 +64,7 @@ export function vistaDeVacante(v: Vacante, conAcceso: boolean): VacanteVista {
   };
 }
 
-/** Fila como la devuelve buscar_vacantes() en Supabase (ya bloqueada o no por la base). */
+/** Fila como la devuelve buscar_empleos() en Supabase (ya bloqueada o no por la base). */
 export type FilaBase = Omit<Vacante, "url" | "empresa_nombre" | "empresa_slug" | "descripcion"> & {
   url: string | null;
   empresa_nombre: string | null;

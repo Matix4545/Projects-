@@ -6,10 +6,10 @@
 alter table public.vacantes add column if not exists zonas text[] not null default '{}';
 create index if not exists vacantes_zonas on public.vacantes using gin (zonas);
 
--- buscar_vacantes() gana el parámetro p_zona: se reemplaza la versión anterior
-drop function if exists public.buscar_vacantes(text, text, text, text, text, text, boolean, int, int, int);
-
-create or replace function public.buscar_vacantes(
+-- Búsqueda nueva con zona y orden por cercanía. Se llama distinto que
+-- buscar_vacantes() para no romper el sitio publicado mientras se actualiza
+-- (con el mismo nombre, Postgres no sabría cuál usar).
+create or replace function public.buscar_empleos(
   p_q text default '', p_categoria text default '', p_pais text default '', p_modalidad text default '',
   p_nivel text default '', p_tipo text default '', p_con_sueldo boolean default false, p_dias int default 0,
   p_pagina int default 1, p_por_pagina int default 20, p_zona text default ''
@@ -51,7 +51,7 @@ begin
 
   return jsonb_build_object('total', total, 'acceso', acceso, 'vacantes', filas);
 end $$;
-grant execute on function public.buscar_vacantes(text, text, text, text, text, text, boolean, int, int, int, text) to anon, authenticated;
+grant execute on function public.buscar_empleos(text, text, text, text, text, text, boolean, int, int, int, text) to anon, authenticated;
 
 -- La versión bloqueada también lleva las zonas
 create or replace function public.vacante_json(r public.vacantes, acceso boolean, sal text)

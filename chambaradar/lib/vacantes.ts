@@ -58,14 +58,14 @@ export interface Resultado {
 }
 
 /**
- * Busca vacantes. Con Supabase, la función buscar_vacantes() de la base aplica
+ * Busca vacantes. Con Supabase, la función buscar_empleos() de la base aplica
  * el muro de pago según quién tiene la sesión. Sin Supabase usa
  * data/vacantes.json (generado por "npm run recolectar") para probar en local.
  */
 export async function buscarVacantes(f: Filtros, accesoEnLocal: boolean): Promise<Resultado> {
   if (!supabaseConfigurado()) return buscarEnArchivo(f, accesoEnLocal);
   const sb = await supabaseSesion();
-  const { data, error } = await sb.rpc("buscar_vacantes", {
+  const { data, error } = await sb.rpc("buscar_empleos", {
     p_q: f.q,
     p_categoria: f.categoria,
     p_pais: f.pais,
