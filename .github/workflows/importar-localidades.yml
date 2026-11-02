@@ -1,0 +1,51 @@
+# Agrega al mapa las comisarías, ejidos y campos del municipio de Cajeme (de OpenStreetMap),
+# para que ahí también se pueda reportar el agua. No toca las colonias ni los reportes existentes.
+# Se corre a mano: GitHub → pestaña "Actions" → "Importar localidades" → "Run workflow".
+# Necesita los secretos NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (los mismos de "Importar colonias").
+name: Importar localidades
+
+on:
+  workflow_dispatch:
+    inputs:
+      solo_revisar:
+        description: "Solo revisar: muestra qué localidades encontró SIN cambiar la base de datos"
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Importar localidades y subirlas a Supabase
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SOLO_REVISAR: ${{ inputs.solo_revisar }}
+        run: |
+          if [ "$SOLO_REVISAR" = "true" ]; then
+            npm run importar-localidades -- --sin-subir
+          else
+            npm run importar-localidades
+          fi
+
+      - name: Guardar el mapa de localidades para revisarlo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: localidades
+          path: data/localidades.geojson
+          if-no-files-found: ignore

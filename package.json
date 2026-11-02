@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.ts",
     "importar-zonas": "node scripts/importar-zonas.mjs",
-    "importar-secciones": "node scripts/importar-secciones.mjs"
+    "importar-secciones": "node scripts/importar-secciones.mjs",
+    "importar-localidades": "node scripts/importar-localidades.mjs"
   },
   "engines": {
     "node": "24.x"
