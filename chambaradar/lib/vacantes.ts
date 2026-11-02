@@ -29,13 +29,15 @@ export function leerFiltros(p: Params): Filtros {
   const modalidad = uno(p.modalidad);
   const nivel = uno(p.nivel);
   const tipo = uno(p.tipo);
-  const pais = uno(p.pais).toUpperCase();
+  // "donde" viene del paso de bienvenida (/empezar): remoto o en México
+  const donde = uno(p.donde);
+  const pais = (uno(p.pais) || (donde === "mx" ? "MX" : "")).toUpperCase();
   const dias = Number(uno(p.dias));
   return {
     q: uno(p.q).trim().slice(0, 80),
     categoria: (CATEGORIAS as readonly string[]).includes(categoria) ? (categoria as Categoria) : "",
     pais: pais in PAISES ? pais : "",
-    modalidad: ["remoto", "hibrido", "presencial"].includes(modalidad) ? (modalidad as Modalidad) : "",
+    modalidad: ["remoto", "hibrido", "presencial"].includes(modalidad) ? (modalidad as Modalidad) : donde === "remoto" ? "remoto" : "",
     nivel: (NIVELES as readonly string[]).includes(nivel) ? (nivel as Nivel) : "",
     tipo: tipo === "local" || tipo === "remoto" ? tipo : "",
     conSueldo: uno(p.sueldo) === "1",
@@ -165,4 +167,29 @@ export async function empresasConVacantes(): Promise<EmpresaConVacantes[]> {
     mapa.set(f.empresa_slug, e);
   }
   return [...mapa.values()].sort((a, b) => b.total - a.total);
+}
+
+// --- "Más vacantes de esta empresa" ------------------------------------------
+
+export interface Relacionadas {
+  total: number;
+  vacantes: VacanteVista[];
+}
+
+/**
+ * Otras vacantes de la misma empresa que `id`. Sin acceso, `id` es el id
+ * opaco de la tarjeta y la respuesta tampoco revela la empresa.
+ */
+export async function otrasDeEmpresa(id: string, accesoEnLocal: boolean): Promise<Relacionadas> {
+  if (supabaseConfigurado()) {
+    const { data, error } = await (await supabaseSesion()).rpc("otras_de_empresa", { p_id: id, p_limite: 10 });
+    if (error) throw new Error(`Error leyendo vacantes relacionadas: ${error.message}`);
+    const r = data as { total: number; vacantes: FilaBase[] };
+    return { total: r.total, vacantes: r.vacantes.map(vistaDesdeBase) };
+  }
+  const todas = (await todasLocales()).filter((v) => v.acepta_latam);
+  const base = todas.find((v) => (accesoEnLocal ? v.id === id : vistaDeVacante(v, false).id === id));
+  if (!base) return { total: 0, vacantes: [] };
+  const otras = todas.filter((v) => v.empresa_slug === base.empresa_slug && v.id !== base.id);
+  return { total: otras.length, vacantes: otras.slice(0, 10).map((v) => vistaDeVacante(v, accesoEnLocal)) };
 }

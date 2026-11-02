@@ -236,10 +236,7 @@ export function normalizar(cruda: VacanteCruda, empresa: Empresa, ahora = new Da
     categoria: detectarCategoria(titulo, cruda.departamento),
     nivel: detectarNivel(titulo, cruda.tipoEmpleo),
     idioma: descripcion.length > 80 ? detectarIdioma(`${titulo}\n${descripcion}`) : idiomaDelTitulo(titulo, paises),
-    sueldo_min: redondear(cruda.sueldo?.min),
-    sueldo_max: redondear(cruda.sueldo?.max),
-    moneda: cruda.sueldo?.moneda ?? null,
-    periodo: cruda.sueldo?.periodo ?? null,
+    ...sueldoCreible(cruda.sueldo),
     descripcion,
     publicada: (Number.isNaN(fecha.getTime()) ? ahora : fecha).toISOString(),
     vista: ahora.toISOString(),
@@ -278,6 +275,25 @@ function resumirUbicacion(ubicaciones: string[]): string {
  */
 export function limpiarTexto(t: string): string {
   return t.replace(/\u0000/g, "").replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, "");
+}
+
+/**
+ * Máximo anual creíble por moneda. Más que eso no es un sueldo (becas,
+ * fondos, rangos mal capturados) y mejor no mostrarlo.
+ */
+const TOPE_ANUAL: Record<string, number> = { USD: 1_000_000, EUR: 1_000_000, GBP: 1_000_000, CAD: 1_300_000, MXN: 20_000_000, BRL: 5_000_000 };
+const POR_ANIO: Record<string, number> = { hora: 2080, mes: 12, "año": 1 };
+
+export function sueldoCreible(s: Sueldo | null | undefined): Pick<Vacante, "sueldo_min" | "sueldo_max" | "moneda" | "periodo"> {
+  const nada = { sueldo_min: null, sueldo_max: null, moneda: null, periodo: null };
+  if (!s) return nada;
+  const min = redondear(s.min);
+  const max = redondear(s.max);
+  if (min == null && max == null) return nada;
+  const tope = TOPE_ANUAL[s.moneda?.toUpperCase()];
+  const anual = (max ?? min ?? 0) * (POR_ANIO[s.periodo] ?? 1);
+  if (tope && anual > tope) return nada;
+  return { sueldo_min: min, sueldo_max: max, moneda: s.moneda, periodo: s.periodo };
 }
 
 function redondear(n: number | null | undefined): number | null {

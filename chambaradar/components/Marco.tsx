@@ -14,33 +14,63 @@ export function Logo({ claro = false }: { claro?: boolean }) {
   );
 }
 
-export function Encabezado({ usuario, oscuro = false }: { usuario: Usuario | null; oscuro?: boolean }) {
-  const enlace = oscuro ? "text-slate-300 hover:text-white" : "text-gris hover:text-tinta";
+/**
+ * Encabezado. Con `buscador`, el buscador ocupa el centro (escritorio) o una
+ * segunda fila (celular), como en el listado de vacantes.
+ */
+export function Encabezado({ usuario, oscuro = false, buscador }: { usuario: Usuario | null; oscuro?: boolean; buscador?: React.ReactNode }) {
+  const enlace = oscuro ? "text-slate-300 hover:text-white" : "text-slate-600 hover:text-tinta";
   return (
-    <header className={oscuro ? "bg-noche" : "border-b border-borde bg-white"}>
-      <div className="contenedor flex h-16 items-center justify-between gap-4">
+    <header className={oscuro ? "bg-noche" : "sticky top-0 z-40 border-b border-borde bg-white/95 backdrop-blur"}>
+      <div className="contenedor flex h-16 items-center gap-4">
         <Logo claro={oscuro} />
-        <nav className="flex items-center gap-4 text-sm font-medium sm:gap-6">
-          <Link href="/vacantes" className={enlace}>
+        {buscador ? <div className="hidden flex-1 md:block">{buscador}</div> : <div className="flex-1" />}
+        <nav className="flex items-center gap-2 text-sm font-medium sm:gap-3">
+          <Link href="/vacantes" className={`hidden px-2 lg:inline ${enlace}`}>
             Vacantes
           </Link>
-          <Link href="/empresas" className={`hidden sm:inline ${enlace}`}>
+          <Link href="/empresas" className={`hidden px-2 lg:inline ${enlace}`}>
             Empresas
           </Link>
-          <Link href="/precios" className={`hidden sm:inline ${enlace}`}>
+          <Link href="/precios" className={`hidden px-2 lg:inline ${enlace}`}>
             Precios
           </Link>
           {usuario ? (
-            <Link href="/cuenta" className={enlace}>
+            <Link href="/cuenta" className={`rounded-full border px-4 py-2 font-semibold ${oscuro ? "border-white/20 text-white hover:bg-white/10" : "border-borde text-tinta hover:bg-slate-50"}`}>
               Mi cuenta
             </Link>
           ) : (
-            <Link href="/entrar" className="rounded-lg bg-radar px-3 py-1.5 text-white hover:bg-radar-oscuro">
+            <Link href="/entrar" className={`rounded-full px-4 py-2 font-semibold ${oscuro ? "bg-white text-noche hover:bg-slate-200" : "bg-noche text-white hover:bg-slate-700"}`}>
               Entrar
             </Link>
           )}
+          {/* Menú (celular y tablet) sin JavaScript */}
+          <details className="relative lg:hidden">
+            <summary
+              className={`flex size-9 cursor-pointer list-none items-center justify-center rounded-full border ${oscuro ? "border-white/20 text-white" : "border-borde text-tinta"}`}
+              aria-label="Menú"
+            >
+              <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </summary>
+            <div className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-borde bg-white py-2 text-tinta shadow-xl">
+              {[
+                ["/vacantes", "Vacantes"],
+                ["/empezar", "Elegir mi área"],
+                ["/empresas", "Empresas"],
+                ["/precios", "Precios"],
+                [usuario ? "/cuenta" : "/entrar", usuario ? "Mi cuenta y alertas" : "Entrar"],
+              ].map(([href, texto]) => (
+                <Link key={href} href={href} className="block px-4 py-2.5 hover:bg-slate-50">
+                  {texto}
+                </Link>
+              ))}
+            </div>
+          </details>
         </nav>
       </div>
+      {buscador && <div className="contenedor pb-3 md:hidden">{buscador}</div>}
     </header>
   );
 }

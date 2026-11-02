@@ -144,3 +144,13 @@ test("títulos en mayúsculas, idioma sin descripción y ubicaciones con comas v
   assert.equal(v.idioma, "es");
   assert.equal(v.titulo, "Auxiliar contable");
 });
+
+test("descarta montos que no pueden ser sueldo", async () => {
+  const { sueldoCreible } = await import("../lib/normalizar.ts");
+  assert.equal(sueldoCreible({ min: null, max: 5_000_000, moneda: "USD", periodo: "año" }).sueldo_max, null);
+  assert.equal(sueldoCreible({ min: 120_000, max: 140_000, moneda: "USD", periodo: "año" }).sueldo_max, 140_000);
+  assert.equal(sueldoCreible({ min: 147_000, max: 183_000, moneda: "MXN", periodo: "año" }).sueldo_max, 183_000);
+  assert.equal(sueldoCreible({ min: 40, max: 60, moneda: "USD", periodo: "hora" }).sueldo_max, 60);
+  assert.equal(sueldoCreible({ min: 900, max: 1200, moneda: "USD", periodo: "hora" }).sueldo_max, null);
+  assert.equal(sueldoCreible(null).moneda, null);
+});
