@@ -1,0 +1,260 @@
+// Convierte las vacantes de cada ATS a un formato único y decide si sirven
+// para alguien en México/LATAM. Funciones puras: se prueban en tests/.
+
+import type { Categoria, Empresa, Modalidad, Nivel, Sueldo, Vacante, VacanteCruda } from "./tipos.ts";
+
+/** Quita acentos y pasa a minúsculas para comparar texto. */
+export function plano(texto: string | null | undefined): string {
+  return (texto ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+/** Convierte HTML (a veces escapado dos veces, como en Greenhouse) a texto plano. */
+export function htmlATexto(html: string): string {
+  let t = html;
+  // Greenhouse manda el HTML escapado (&lt;p&gt;…)
+  if (/&lt;\/?[a-z]/i.test(t)) t = decodificar(t);
+  t = t
+    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<\/(p|div|li|h[1-6]|br|tr)>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<[^>]+>/g, " ");
+  t = decodificar(t);
+  return t
+    .split("\n")
+    .map((l) => l.replace(/[ \t ]+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+function decodificar(t: string): string {
+  return t
+    .replace(/&nbsp;|&#160;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&#x27;|&rsquo;|&lsquo;/g, "'")
+    .replace(/&ldquo;|&rdquo;/g, '"')
+    .replace(/&mdash;|&ndash;/g, "–")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&amp;/g, "&");
+}
+
+// ---------------------------------------------------------------------------
+// Ubicación
+// ---------------------------------------------------------------------------
+
+/** Palabras que identifican cada país de LATAM (sin acentos, en minúsculas). */
+const CLAVES_PAIS: Record<string, string[]> = {
+  MX: ["mexico", "cdmx", "ciudad de mexico", "guadalajara", "monterrey", "queretaro", "puebla", "tijuana", "merida", "leon, gto", "jalisco", "nuevo leon", "cmx"],
+  BR: ["brazil", "brasil", "sao paulo", "rio de janeiro", "belo horizonte", "curitiba", "florianopolis", "porto alegre", "campinas", "recife"],
+  AR: ["argentina", "buenos aires", "cordoba", "rosario", "mendoza", "caba"],
+  CO: ["colombia", "bogota", "medellin", "cali", "barranquilla"],
+  CL: ["chile", "santiago"],
+  PE: ["peru", "lima"],
+  UY: ["uruguay", "montevideo"],
+  CR: ["costa rica", "san jose, cr"],
+  EC: ["ecuador", "quito", "guayaquil"],
+  GT: ["guatemala"],
+  PA: ["panama"],
+  DO: ["dominican republic", "republica dominicana", "santo domingo"],
+  PY: ["paraguay", "asuncion"],
+  BO: ["bolivia"],
+  VE: ["venezuela", "caracas"],
+  SV: ["el salvador"],
+  HN: ["honduras"],
+  NI: ["nicaragua"],
+};
+
+/** Regiones que incluyen a LATAM. */
+const REGIONES_LATAM = /\b(latam|lat am|latin america|latinoamerica|america latina|south america|central america|americas|amer\b|anywhere|worldwide|global|any location|cualquier lugar|todo el mundo)/;
+
+/** Palabras que solo dicen "remoto" sin nombrar un país o región. */
+const SOLO_REMOTO = /\b(remote|remoto|remota|fully|100%|work from home|home based|home office|wfh|teletrabajo|location|flexible|n\/a|none|any)\b/g;
+
+/** ¿La ubicación dice solo "Remote" (sin país ni región)? */
+function remotoSinRegion(ubicaciones: string[]): boolean {
+  return ubicaciones.every((u) => plano(u).replace(SOLO_REMOTO, " ").replace(/[^a-z]+/g, "").length === 0);
+}
+
+/** Países de LATAM mencionados en el texto. */
+export function detectarPaises(texto: string): string[] {
+  // "New Mexico" es un estado de EE.UU., no México
+  const t = plano(texto).replace(/new mexico|, nm\b/g, " ");
+  const encontrados: string[] = [];
+  for (const [codigo, claves] of Object.entries(CLAVES_PAIS)) {
+    if (claves.some((c) => new RegExp(`(^|[^a-z])${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`).test(t))) {
+      encontrados.push(codigo);
+    }
+  }
+  return encontrados;
+}
+
+export function detectarModalidad(ubicaciones: string[], titulo: string, pista?: string): Modalidad {
+  const p = plano(pista ?? "");
+  const t = plano([...ubicaciones, titulo].join(" | "));
+  if (/hybrid|hibrid/.test(p) || /hybrid|hibrid/.test(t)) return "hibrido";
+  if (/remote/.test(p) || /\bremot[eoa]\b|anywhere|home.based|home office|work from home|teletrabajo/.test(t)) return "remoto";
+  return "presencial";
+}
+
+/**
+ * ¿Puede aplicar alguien que vive en LATAM?
+ * - Sí, si la vacante está en un país de LATAM (presencial, híbrida o remota).
+ * - Sí, si es remota para una región que incluye LATAM (LATAM, Americas, Worldwide…).
+ * - Sí, si es remota "a secas" en una empresa que contrata en cualquier país.
+ * - No, si es remota pero limitada a otro país o región (Remote - US, Remote, North America…).
+ */
+export function aceptaLatam(ubicaciones: string[], modalidad: Modalidad, paises: string[], empresa: Empresa): boolean {
+  if (paises.length > 0) return true;
+  const t = plano(ubicaciones.join(" | "));
+  if (modalidad !== "remoto") return false;
+  if (REGIONES_LATAM.test(t)) return true;
+  // "Remote" a secas: solo cuenta en empresas que contratan en cualquier país.
+  // "Remote, North America" o "Remote - US" nombran otra región y no cuentan.
+  return Boolean(empresa.remotoGlobal) && remotoSinRegion(ubicaciones);
+}
+
+// ---------------------------------------------------------------------------
+// Categoría, nivel e idioma
+// ---------------------------------------------------------------------------
+
+/** Reglas en orden: la primera que coincide con el título gana. */
+const REGLAS_CATEGORIA: [Categoria, RegExp][] = [
+  ["seguridad", /secur|seguridad|ciberseg|infosec|soc analyst|pentest|threat|grc\b|iam\b/],
+  ["datos-ia", /\bdata\b|datos|analytics|analista de datos|machine learning|\bml\b|\bai\b|\bia\b|inteligencia artificial|scientist|cientific|\bbi\b|business intelligence|llm|research engineer/],
+  ["diseno", /design|disen|ux|ui\b|ilustra|creative|creativ|visual|motion|brand designer/],
+  ["producto", /product manager|product owner|gerente de producto|\bpm\b|product lead|head of product|product director|product operations|\bproduct\b(?!.*engineer)/],
+  ["software", /engineer|ingenier|developer|desarrollador|programador|devops|\bsre\b|backend|back-end|frontend|front-end|full ?stack|mobile|ios\b|android|qa\b|quality assurance|tester|architect|arquitect|software|tech lead|cloud|infra|platform|sistemas|soporte tecnico|it support|helpdesk/],
+  ["ventas", /go.to.market|\bgtm\b|account strategist|sales|ventas|vendedor|account executive|\bae\b|sdr\b|bdr\b|business development|desarrollo de negocio|comercial|account manager|partnership|alianzas|key account|inside sales/],
+  ["marketing", /campaign|campana|marketing|mercadotecnia|growth|seo\b|content|contenido|social media|redes sociales|community|comunicacion|communications|\bpr\b|copywriter|brand/],
+  ["atencion-clientes", /customer|cliente|support|soporte|success|experiencia|call center|atencion|onboarding specialist/],
+  ["finanzas", /fraud|fraude|controller|controllership|\balm\b|financ|accountant|accounting|contador|contab|tesorer|treasury|fp&a|auditor|tax\b|impuesto|payroll|nomina|credit|credito|cobranza|collections|risk|riesgo|billing|facturacion/],
+  ["recursos-humanos", /recruit|reclut|talent|talento|\bhr\b|human resources|recursos humanos|people|personas|rrhh|compensation|benefits/],
+  ["legal", /legal|lawyer|abogad|counsel|compliance|cumplimiento|regulatory|regulatorio|privacy|juridic/],
+  ["operaciones", /operation|operacion|logistic|logistica|supply|cadena de suministro|warehouse|almacen|fleet|flota|procurement|compras|category manager|strateg|estrateg|country manager|general manager|program\b|project manager|program manager|chief of staff|admin|asistente|assistant|office|oficina|analyst|analista|coordinador|coordinator/],
+];
+
+export function detectarCategoria(titulo: string, departamento = ""): Categoria {
+  const t = plano(titulo);
+  for (const [categoria, regla] of REGLAS_CATEGORIA) if (regla.test(t)) return categoria;
+  const d = plano(departamento);
+  if (d) for (const [categoria, regla] of REGLAS_CATEGORIA) if (regla.test(d)) return categoria;
+  return "otros";
+}
+
+export function detectarNivel(titulo: string, tipoEmpleo = ""): Nivel {
+  const t = plano(`${titulo} ${tipoEmpleo}`);
+  if (/intern|internship|becari|practicante|pasante|trainee|estagi|aprendiz|working student|new grad/.test(t)) return "practicante";
+  // "Product Manager" o "Account Manager" no son puestos de dirección; estos sí:
+  if (/\b(head|director|directora|vp|vice president|chief|cto|cfo|ceo|coo|jefe|jefa|gerente general|country manager|general manager|engineering manager|managing director|manager of|managers)\b/.test(t)) return "gerencia";
+  if (/\b(senior|sr\.?|staff|principal|lead|lider|especialista senior|expert)\b|\biii\b|\biv\b/.test(t)) return "senior";
+  if (/\b(junior|jr\.?|entry|associate|asociado|trainee)\b|\bi\b(?!i)/.test(t)) return "junior";
+  return "intermedio";
+}
+
+const PALABRAS_ES = /\b(el|la|los|las|para|con|que|una|del|experiencia|buscamos|requisitos|años|trabajo|equipo|nuestro|nuestra)\b/g;
+const PALABRAS_PT = /\b(você|voce|para|com|que|uma|experiência|vaga|requisitos|anos|trabalho|equipe|nosso|nossa|são|não)\b/g;
+const PALABRAS_EN = /\b(the|and|with|you|our|for|experience|team|we|are|will|requirements|years|work)\b/g;
+
+export function detectarIdioma(texto: string): "es" | "pt" | "en" {
+  const t = texto.toLowerCase().slice(0, 3000);
+  const es = (t.match(PALABRAS_ES) ?? []).length;
+  const pt = (t.match(PALABRAS_PT) ?? []).length + (t.match(/ção|ções|ão\b/g) ?? []).length * 2;
+  const en = (t.match(PALABRAS_EN) ?? []).length;
+  if (en >= es && en >= pt) return "en";
+  return pt > es ? "pt" : "es";
+}
+
+// ---------------------------------------------------------------------------
+// Sueldo
+// ---------------------------------------------------------------------------
+
+/** Lee el bloque de rango salarial de Greenhouse: <div class="pay-range">…$120,000…$140,000 USD</div> */
+export function sueldoDeGreenhouse(html: string): Sueldo | null {
+  const h = /&lt;/.test(html) ? decodificar(html) : html;
+  const bloque = h.match(/class="pay-range"[\s\S]*?<\/div>/i)?.[0];
+  if (!bloque) return null;
+  const texto = decodificar(bloque.replace(/<[^>]+>/g, " "));
+  const numeros = [...texto.matchAll(/(\d[\d,.]*)\s*(k)?/gi)]
+    .map((m) => aNumero(m[1]) * (m[2] ? 1000 : 1))
+    .filter((n) => n > 0);
+  if (numeros.length === 0) return null;
+  const moneda = texto.match(/\b(USD|MXN|BRL|CAD|EUR|GBP|COP|CLP|ARS|PEN)\b/)?.[1] ?? (texto.includes("R$") ? "BRL" : "USD");
+  const min = Math.min(...numeros);
+  const max = Math.max(...numeros);
+  return { min, max, moneda, periodo: periodoPorMonto(max, texto) };
+}
+
+function aNumero(s: string): number {
+  // "120,000" o "120.000" o "110.4"
+  const limpio = /^\d{1,3}([.,]\d{3})+$/.test(s) ? s.replace(/[.,]/g, "") : s.replace(/,/g, "");
+  const n = Number(limpio);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function periodoPorMonto(max: number, texto = ""): Sueldo["periodo"] {
+  const t = plano(texto);
+  if (/hour|hora|\/hr|per hr/.test(t)) return "hora";
+  if (/month|mes|mensual|mensal/.test(t)) return "mes";
+  if (max > 0 && max < 300) return "hora";
+  return "año";
+}
+
+/** Convierte el intervalo de Ashby ("1 YEAR", "1 MONTH", "1 HOUR") o Lever ("per-year-salary") */
+export function periodoDeIntervalo(intervalo: string | undefined | null): Sueldo["periodo"] {
+  const i = (intervalo ?? "").toLowerCase();
+  if (i.includes("hour")) return "hora";
+  if (i.includes("month")) return "mes";
+  return "año";
+}
+
+// ---------------------------------------------------------------------------
+// Ensamblado final
+// ---------------------------------------------------------------------------
+
+export function normalizar(cruda: VacanteCruda, empresa: Empresa, ahora = new Date()): Vacante {
+  const ubicaciones = (cruda.ubicaciones ?? []).map((u) => (u ?? "").trim()).filter(Boolean);
+  const textoUbic = ubicaciones.join(" | ");
+  const paises = detectarPaises(textoUbic);
+  const modalidad = detectarModalidad(ubicaciones, cruda.titulo, cruda.modalidadAts);
+  const titulo = (cruda.titulo ?? "").replace(/\s+/g, " ").trim();
+  const descripcion = (cruda.descripcion ?? "").slice(0, 4000);
+  const fecha = cruda.publicada ? new Date(cruda.publicada) : ahora;
+
+  return {
+    id: `${empresa.slug}:${cruda.idExterno}`,
+    empresa_slug: empresa.slug,
+    empresa_nombre: empresa.nombre,
+    empresa_tipo: empresa.tipo,
+    titulo,
+    url: cruda.url,
+    ubicacion: resumirUbicacion(ubicaciones),
+    paises,
+    modalidad,
+    acepta_latam: aceptaLatam(ubicaciones, modalidad, paises, empresa),
+    categoria: detectarCategoria(titulo, cruda.departamento),
+    nivel: detectarNivel(titulo, cruda.tipoEmpleo),
+    idioma: detectarIdioma(`${titulo}\n${descripcion}`),
+    sueldo_min: redondear(cruda.sueldo?.min),
+    sueldo_max: redondear(cruda.sueldo?.max),
+    moneda: cruda.sueldo?.moneda ?? null,
+    periodo: cruda.sueldo?.periodo ?? null,
+    descripcion,
+    publicada: (Number.isNaN(fecha.getTime()) ? ahora : fecha).toISOString(),
+    vista: ahora.toISOString(),
+  };
+}
+
+function resumirUbicacion(ubicaciones: string[]): string {
+  // Primero las ubicaciones de LATAM, que son las que le importan al usuario
+  const unicas = [...new Set(ubicaciones)].sort((a, b) => Number(detectarPaises(b).length > 0) - Number(detectarPaises(a).length > 0));
+  if (unicas.length === 0) return "Sin ubicación";
+  if (unicas.length <= 3) return unicas.join(" · ");
+  return `${unicas.slice(0, 3).join(" · ")} y ${unicas.length - 3} más`;
+}
+
+function redondear(n: number | null | undefined): number | null {
+  if (n == null || !Number.isFinite(n) || n <= 0) return null;
+  return n >= 1000 ? Math.round(n / 100) * 100 : Math.round(n * 100) / 100;
+}

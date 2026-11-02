@@ -1,0 +1,121 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  aceptaLatam,
+  detectarCategoria,
+  detectarIdioma,
+  detectarModalidad,
+  detectarNivel,
+  detectarPaises,
+  htmlATexto,
+  normalizar,
+  sueldoDeGreenhouse,
+} from "../lib/normalizar.ts";
+import type { Empresa } from "../lib/tipos.ts";
+
+const local: Empresa = { slug: "x", nombre: "X", ats: "greenhouse", board: "x", tipo: "local" };
+const global: Empresa = { ...local, tipo: "remoto", remotoGlobal: true };
+const gringa: Empresa = { ...local, tipo: "remoto" };
+
+test("detecta países de LATAM por ciudad o país", () => {
+  assert.deepEqual(detectarPaises("Mexico City / CMX / Mexico"), ["MX"]);
+  assert.deepEqual(detectarPaises("São Paulo, Brazil"), ["BR"]);
+  assert.deepEqual(detectarPaises("Bogotá · Buenos Aires"), ["AR", "CO"]);
+  assert.deepEqual(detectarPaises("Ciudad de México (Híbrido)"), ["MX"]);
+});
+
+test("no confunde New Mexico ni California con LATAM", () => {
+  assert.deepEqual(detectarPaises("Albuquerque, New Mexico"), []);
+  assert.deepEqual(detectarPaises("San Francisco, California"), []);
+});
+
+test("modalidad: remoto, híbrido y presencial", () => {
+  assert.equal(detectarModalidad(["Remote, LATAM"], "Engineer"), "remoto");
+  assert.equal(detectarModalidad(["Home based - Worldwide"], "Engineer"), "remoto");
+  assert.equal(detectarModalidad(["Bogotá"], "Analista (Híbrido)"), "hibrido");
+  assert.equal(detectarModalidad(["Mexico City"], "Engineer", "hybrid"), "hibrido");
+  assert.equal(detectarModalidad(["Monterrey"], "Engineer"), "presencial");
+});
+
+test("acepta LATAM: país de LATAM o región remota que la incluye", () => {
+  assert.equal(aceptaLatam(["Mexico City"], "presencial", ["MX"], gringa), true);
+  assert.equal(aceptaLatam(["Remote - LATAM"], "remoto", [], gringa), true);
+  assert.equal(aceptaLatam(["Remote, Americas"], "remoto", [], gringa), true);
+  assert.equal(aceptaLatam(["Home based - Worldwide"], "remoto", [], gringa), true);
+});
+
+test("rechaza remoto limitado a otra región", () => {
+  assert.equal(aceptaLatam(["Remote - US"], "remoto", [], gringa), false);
+  assert.equal(aceptaLatam(["Remote, North America"], "remoto", [], global), false);
+  assert.equal(aceptaLatam(["Remote, South Korea"], "remoto", [], global), false);
+  assert.equal(aceptaLatam(["San Francisco, CA"], "presencial", [], gringa), false);
+});
+
+test('"Remote" a secas solo cuenta en empresas que contratan en cualquier país', () => {
+  assert.equal(aceptaLatam(["Remote"], "remoto", [], global), true);
+  assert.equal(aceptaLatam(["Remote"], "remoto", [], gringa), false);
+});
+
+test("categoría por título", () => {
+  assert.equal(detectarCategoria("Senior Backend Engineer"), "software");
+  assert.equal(detectarCategoria("Data Scientist"), "datos-ia");
+  assert.equal(detectarCategoria("Account Executive - LATAM"), "ventas");
+  assert.equal(detectarCategoria("Product Manager, Payments"), "producto");
+  assert.equal(detectarCategoria("Diseñador UX/UI"), "diseno");
+  assert.equal(detectarCategoria("Ejecutivo de Cobranza"), "finanzas");
+  assert.equal(detectarCategoria("Security Engineer, Cloud"), "seguridad");
+  assert.equal(detectarCategoria("Reclutador IT"), "recursos-humanos");
+  assert.equal(detectarCategoria("Campaign Manager, Mexico"), "marketing");
+});
+
+test("nivel por título", () => {
+  assert.equal(detectarNivel("Software Engineer Intern"), "practicante");
+  assert.equal(detectarNivel("Becario de Finanzas"), "practicante");
+  assert.equal(detectarNivel("Jr. Data Analyst"), "junior");
+  assert.equal(detectarNivel("Sr. Backend Engineer"), "senior");
+  assert.equal(detectarNivel("Staff Engineer"), "senior");
+  assert.equal(detectarNivel("Director of Engineering"), "gerencia");
+  assert.equal(detectarNivel("Product Manager"), "intermedio");
+  assert.equal(detectarNivel("Account Manager"), "intermedio");
+});
+
+test("idioma de la vacante", () => {
+  assert.equal(detectarIdioma("Buscamos una persona con experiencia en ventas para nuestro equipo"), "es");
+  assert.equal(detectarIdioma("Buscamos uma pessoa com experiência para a nossa equipe, você não"), "pt");
+  assert.equal(detectarIdioma("We are looking for an engineer with experience to join our team"), "en");
+});
+
+test("HTML escapado de Greenhouse a texto", () => {
+  const t = htmlATexto("&lt;p&gt;Hola &amp;amp; adiós&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Uno&lt;/li&gt;&lt;/ul&gt;");
+  assert.equal(t, "Hola & adiós\n• Uno");
+});
+
+test("sueldo de Greenhouse solo desde el bloque pay-range", () => {
+  const html =
+    '<p>Mercado de $100B</p><div class="pay-range"><span>$120,000</span><span class="divider">&mdash;</span><span>$140,000 USD</span></div>';
+  assert.deepEqual(sueldoDeGreenhouse(html), { min: 120000, max: 140000, moneda: "USD", periodo: "año" });
+  assert.equal(sueldoDeGreenhouse("<p>Mercado de $100B</p>"), null);
+});
+
+test("normalizar arma la vacante completa", () => {
+  const v = normalizar(
+    {
+      idExterno: "1",
+      titulo: "  Senior   Backend Engineer ",
+      url: "https://x.com/1",
+      ubicaciones: ["Remote, United States", "Remote, Mexico"],
+      modalidadAts: "remote",
+      descripcion: "We are looking for an engineer with experience",
+      publicada: "2026-10-01T00:00:00Z",
+      sueldo: { min: 213333.33, max: 293333.33, moneda: "MXN", periodo: "año" },
+    },
+    gringa,
+  );
+  assert.equal(v.id, "x:1");
+  assert.equal(v.titulo, "Senior Backend Engineer");
+  assert.deepEqual(v.paises, ["MX"]);
+  assert.equal(v.acepta_latam, true);
+  assert.equal(v.ubicacion, "Remote, Mexico · Remote, United States");
+  assert.equal(v.sueldo_min, 213300);
+  assert.equal(v.nivel, "senior");
+});

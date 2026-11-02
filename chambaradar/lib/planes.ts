@@ -1,0 +1,22 @@
+// Planes de acceso. Son pagos únicos (no suscripción) para poder aceptar
+// OXXO además de tarjeta: mucha gente en México no tiene tarjeta de crédito.
+
+export interface Plan {
+  id: "semana" | "mes" | "anio";
+  nombre: string;
+  /** Precio en pesos mexicanos */
+  precio: number;
+  dias: number;
+  nota: string;
+  destacado?: boolean;
+}
+
+export const PLANES: Plan[] = [
+  { id: "semana", nombre: "1 semana", precio: 49, dias: 7, nota: "Para probar" },
+  { id: "mes", nombre: "1 mes", precio: 129, dias: 30, nota: "El más elegido", destacado: true },
+  { id: "anio", nombre: "1 año", precio: 699, dias: 365, nota: "Ahorras 55 %" },
+];
+
+export function buscarPlan(id: string | null | undefined): Plan | undefined {
+  return PLANES.find((p) => p.id === id);
+}
