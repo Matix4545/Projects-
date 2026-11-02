@@ -13,7 +13,7 @@
     "importar-secciones": "node scripts/importar-secciones.mjs"
   },
   "engines": {
-    "node": ">=22"
+    "node": "24.x"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
