@@ -24,7 +24,17 @@ Supabase → **Authentication → URL Configuration**:
 - Site URL: `https://chambaradar.netlify.app`
 - Redirect URLs: `https://chambaradar.netlify.app/**`
 
-## 4. Opcionales
+## 4. Cobro (gratis para Obregón, de pago para el resto)
+
+Siempre gratis y completas para todos: vacantes de Cd. Obregón y Sonora, home office abierto a México y las que publican los negocios (`supabase/07_gratis_obregon.sql`, ya aplicado). El plan de pago desbloquea el resto: otras ciudades, LATAM y remoto solo para otros países.
+
+Para empezar a cobrar:
+1. Cuenta de Stripe para ChambaRadar (no la de Nexio), con OXXO activado.
+2. Tres Payment Links en MXN: 49 (1 semana), 129 (1 mes), 699 (1 año). Después del pago, redirigir a `https://chambaradar.com/cuenta?pago=ok`.
+3. En Netlify: `STRIPE_ENLACE_SEMANA`, `STRIPE_ENLACE_MES`, `STRIPE_ENLACE_ANIO`, `STRIPE_SECRET_KEY` y `STRIPE_WEBHOOK_SECRET`; webhook hacia `/api/stripe/webhook` con `checkout.session.completed` y `checkout.session.async_payment_succeeded`.
+4. Encender el muro en Supabase: `update config_privada set valor = 'si' where nombre = 'muro_activo';`
+
+## 5. Opcionales
 
 - **Correos de alertas:** cuenta en resend.com con un dominio propio → variables `RESEND_API_KEY` y `CORREO_REMITENTE` en Netlify.
 - **Despliegue automático:** Netlify → proyecto chambaradar → Link repository → GitHub `Matix4545/Projects-`, rama `main`, base directory `chambaradar`.

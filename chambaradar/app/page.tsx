@@ -25,7 +25,7 @@ const PREGUNTAS = [
   },
   {
     p: "¿Qué veo gratis?",
-    r: "Todos los puestos, sueldos (cuando la empresa los publica), ubicación, modalidad y fecha. Con un plan de pago ves el nombre de la empresa, la descripción completa y el enlace para aplicar.",
+    r: "Todo lo de Cd. Obregón y Sonora, y todo el home office abierto a México, completo y con enlace para aplicar. Del resto del catálogo (otras ciudades, LATAM y remoto en dólares) ves gratis el puesto, sueldo y ubicación; con un plan de pago ves la empresa, la descripción y el enlace.",
   },
   {
     p: "¿Cómo pago? ¿Se renueva solo?",
@@ -192,9 +192,9 @@ export default async function Inicio() {
       {/* Banda de vista previa gratis */}
       <section className="mt-24 bg-radar py-16 text-center text-white">
         <div className="contenedor">
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Vista previa gratis</h2>
+          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Gratis para Obregón</h2>
           <p className="mx-auto mt-3 max-w-xl text-lg text-emerald-50">
-            Mira todas las vacantes, sueldos y ubicaciones sin registrarte. Elige tu área y en un segundo ves lo que hay.
+            Lo de Obregón, Sonora y el home office para México es gratis y completo, sin registrarte. Elige tu área y en un segundo ves lo que hay.
           </p>
           <Link href="/empezar" className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-lg font-semibold text-radar-oscuro shadow-lg transition hover:bg-emerald-50">
             Ver vacantes <Flecha className="size-5" />

@@ -22,11 +22,15 @@ export default async function Precios({ searchParams }: Props) {
             Ve qué empresa es, la descripción completa y el enlace para aplicar directo. Pago único con tarjeta o en efectivo en OXXO: no se
             renueva solo.
           </p>
+          <p className="mt-3 rounded-xl bg-radar-claro p-3 text-sm text-radar-oscuro">
+            Las vacantes de Cd. Obregón y Sonora, el home office abierto a México y las que publican los negocios son <strong>siempre gratis</strong>.
+            El plan es para el resto del catálogo: otras ciudades, LATAM y remoto en dólares.
+          </p>
         </div>
 
         {!activos && (
           <p className="mx-auto mt-6 max-w-xl rounded-xl bg-radar-claro p-4 text-center text-sm text-radar-oscuro">
-            <strong>Muy pronto.</strong> Estamos por activar los pagos. Mientras tanto, la vista previa es gratis para todos.
+            <strong>Muy pronto.</strong> Estamos por activar los pagos. Mientras tanto, todo el catálogo es gratis para todos.
           </p>
         )}
 
