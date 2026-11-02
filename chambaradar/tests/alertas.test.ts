@@ -25,7 +25,7 @@ const opciones = { sitio: "https://chambaradar.netlify.app", responsable: "Spenc
 
 test("describe los filtros en español", () => {
   assert.equal(describirFiltros(base.filtros), "Software e ingeniería · remoto · México");
-  assert.equal(describirFiltros({}), "Todas las vacantes");
+  assert.equal(describirFiltros({}), "Obregón, Sonora y home office");
   assert.equal(describirFiltros({ q: "react", conSueldo: true, tipo: "remoto" }), "empresas extranjeras · con sueldo publicado · puesto: «react»");
 });
 
@@ -76,4 +76,11 @@ test("con plan: lleva empresa y enlace directo", () => {
 
 test("sin pagos activos no invita a comprar", () => {
   assert.doesNotMatch(correoDeAlerta(base, { ...opciones, pagosActivos: false }).html, /\/precios/);
+});
+
+test("alcance: cerca de Obregón por defecto y todo México/LATAM", () => {
+  assert.equal(describirFiltros({}), "Obregón, Sonora y home office");
+  assert.equal(describirFiltros({ alcance: "todo" }), "Todo México y LATAM");
+  assert.equal(describirFiltros({ alcance: "todo", categoria: "ventas" }), "Ventas · todo México y LATAM");
+  assert.equal(enlaceBusqueda("", { alcance: "todo", pais: "CO" }), "/vacantes?pais=CO&donde=todo");
 });

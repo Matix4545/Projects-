@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CATEGORIAS, NIVELES, NOMBRE_CATEGORIA, NOMBRE_NIVEL } from "@/lib/tipos";
+import { CATEGORIAS, NIVELES, NOMBRE_CATEGORIA, NOMBRE_NIVEL, PAISES } from "@/lib/tipos";
 import type { Filtros as TFiltros } from "@/lib/vacantes";
 import { Ajustes, Lupa } from "./Iconos";
 import { Modal } from "./Modal";
@@ -10,8 +10,9 @@ import { Modal } from "./Modal";
 /** El filtro "¿Dónde?" resume zona y modalidad en una sola opción. */
 export function dondeDe(f: TFiltros): string {
   if (f.zona) return f.zona;
+  if (f.alcance === "todo") return "todo";
   if (f.modalidad === "remoto") return "remoto";
-  return "";
+  return "cerca";
 }
 
 /** No mandar campos vacíos, para que la URL quede limpia (/vacantes?pais=MX). */
@@ -49,12 +50,35 @@ function FormFiltros({ f, alCambiar, pie }: { f: TFiltros; alCambiar: boolean; p
       </Campo>
       <Campo etiqueta="¿Dónde?">
         <select name="donde" defaultValue={dondeDe(f)} onChange={enviar} className="campo py-2.5">
-          <option value="">Obregón, Sonora y remoto</option>
+          <option value="cerca">Obregón, Sonora y home office</option>
           <option value="cajeme">En Cd. Obregón (Cajeme)</option>
           <option value="sonora">En Sonora</option>
           <option value="remoto">Remoto / home office</option>
+          <option value="todo">Todo México y LATAM</option>
         </select>
       </Campo>
+      {f.alcance === "todo" && (
+        <Campo etiqueta="País">
+          <select name="pais" defaultValue={f.pais} onChange={enviar} className="campo py-2.5">
+            <option value="">Cualquier país</option>
+            {Object.entries(PAISES).map(([codigo, nombre]) => (
+              <option key={codigo} value={codigo}>
+                {nombre}
+              </option>
+            ))}
+          </select>
+        </Campo>
+      )}
+      {f.alcance === "todo" && (
+        <Campo etiqueta="Modalidad">
+          <select name="modalidad" defaultValue={f.modalidad} onChange={enviar} className="campo py-2.5">
+            <option value="">Cualquiera</option>
+            <option value="remoto">Remoto</option>
+            <option value="hibrido">Híbrido</option>
+            <option value="presencial">Presencial</option>
+          </select>
+        </Campo>
+      )}
       <Campo etiqueta="Empresa">
         <select name="tipo" defaultValue={f.tipo} onChange={enviar} className="campo py-2.5">
           <option value="">Todas</option>
@@ -90,7 +114,7 @@ function FormFiltros({ f, alCambiar, pie }: { f: TFiltros; alCambiar: boolean; p
 }
 
 export function cuantosFiltros(f: TFiltros) {
-  return [f.categoria, dondeDe(f), f.tipo, f.nivel, f.dias ? "x" : "", f.conSueldo ? "x" : ""].filter(Boolean).length;
+  return [f.categoria, dondeDe(f) === "cerca" ? "" : "x", f.alcance === "todo" ? f.pais : "", f.alcance === "todo" ? f.modalidad : "", f.tipo, f.nivel, f.dias ? "x" : "", f.conSueldo ? "x" : ""].filter(Boolean).length;
 }
 
 /** Columna de filtros (escritorio). */
@@ -153,7 +177,9 @@ export function Buscador({ f, autoFocus = false }: { f: TFiltros; autoFocus?: bo
         className="w-full rounded-full border border-borde bg-white py-2.5 pr-4 pl-11 text-[15px] outline-none transition placeholder:text-slate-400 focus:border-radar focus:ring-4 focus:ring-radar/15"
       />
       {f.categoria && <input type="hidden" name="categoria" value={f.categoria} />}
-      {dondeDe(f) && <input type="hidden" name="donde" value={dondeDe(f)} />}
+      {dondeDe(f) !== "cerca" && <input type="hidden" name="donde" value={dondeDe(f)} />}
+      {f.alcance === "todo" && f.pais && <input type="hidden" name="pais" value={f.pais} />}
+      {f.alcance === "todo" && f.modalidad && <input type="hidden" name="modalidad" value={f.modalidad} />}
       {f.tipo && <input type="hidden" name="tipo" value={f.tipo} />}
       {f.nivel && <input type="hidden" name="nivel" value={f.nivel} />}
       {f.dias > 0 && <input type="hidden" name="dias" value={f.dias} />}

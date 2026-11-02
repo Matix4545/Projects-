@@ -13,6 +13,7 @@ export interface FiltrosAlerta {
   nivel?: string;
   tipo?: string;
   zona?: string;
+  alcance?: string;
   conSueldo?: boolean;
 }
 
@@ -53,7 +54,9 @@ export function describirFiltros(f: FiltrosAlerta): string {
   if (f.tipo === "remoto") partes.push("empresas extranjeras");
   if (f.conSueldo) partes.push("con sueldo publicado");
   if (f.q) partes.push(`puesto: «${f.q}»`);
-  return partes.length ? partes.join(" · ") : "Todas las vacantes";
+  if (!partes.length) return f.alcance === "todo" ? "Todo México y LATAM" : "Obregón, Sonora y home office";
+  if (f.alcance === "todo" && !f.pais && !f.zona) partes.push("todo México y LATAM");
+  return partes.join(" · ");
 }
 
 /** Enlace al buscador con los filtros de la alerta. */
@@ -62,12 +65,13 @@ export function enlaceBusqueda(sitio: string, f: FiltrosAlerta): string {
   if (f.q) p.set("q", f.q);
   for (const k of ["tipo", "pais", "zona", "modalidad", "categoria", "nivel"] as const) if (f[k]) p.set(k, f[k]!);
   if (f.conSueldo) p.set("sueldo", "1");
+  if (f.alcance === "todo") p.set("donde", "todo");
   const s = p.toString();
   return `${sitio}/vacantes${s ? `?${s}` : ""}`;
 }
 
 /** Convierte los filtros del buscador a filtros de alerta (descarta vacíos). */
-export function filtrosParaAlerta(f: { q: string; categoria: string; pais: string; modalidad: string; nivel: string; tipo: string; zona?: string; conSueldo: boolean }): FiltrosAlerta {
+export function filtrosParaAlerta(f: { q: string; categoria: string; pais: string; modalidad: string; nivel: string; tipo: string; zona?: string; alcance?: string; conSueldo: boolean }): FiltrosAlerta {
   const r: FiltrosAlerta = {};
   if (f.q) r.q = f.q;
   if (f.categoria) r.categoria = f.categoria;
@@ -76,6 +80,7 @@ export function filtrosParaAlerta(f: { q: string; categoria: string; pais: strin
   if (f.nivel) r.nivel = f.nivel;
   if (f.tipo) r.tipo = f.tipo;
   if (f.zona) r.zona = f.zona;
+  if (f.alcance === "todo") r.alcance = "todo";
   if (f.conSueldo) r.conSueldo = true;
   return r;
 }

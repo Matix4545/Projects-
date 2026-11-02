@@ -42,7 +42,15 @@ export default async function Vacantes({ searchParams }: Props) {
   };
 
   // Título según lo que se está viendo: "Software e ingeniería en México"
-  const lugar = f.zona ? `en ${NOMBRE_ZONA[f.zona]}` : f.modalidad === "remoto" ? "home office" : f.pais ? `en ${PAISES[f.pais]}` : "";
+  const lugar = f.zona
+    ? `en ${NOMBRE_ZONA[f.zona]}`
+    : f.alcance === "todo"
+      ? f.pais
+        ? `en ${PAISES[f.pais]}`
+        : "en todo México y LATAM"
+      : f.modalidad === "remoto"
+        ? "home office"
+        : "";
   const titulo = f.categoria
     ? `${NOMBRE_CATEGORIA[f.categoria]}${lugar ? (lugar === "home office" ? " · home office" : ` ${lugar}`) : ""}`
     : lugar === "home office"

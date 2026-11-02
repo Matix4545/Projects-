@@ -25,7 +25,8 @@ const EMOJI: Record<Categoria, string> = {
 const DONDE = [
   { valor: "cajeme", titulo: "En Cd. Obregón", texto: "Presencial o híbrido en Cajeme" },
   { valor: "remoto", titulo: "Home office", texto: "Remoto desde tu casa, para empresas de México y del mundo" },
-  { valor: "", titulo: "Las dos", texto: "Obregón, el resto de Sonora y remoto" },
+  { valor: "cerca", titulo: "Las dos", texto: "Obregón, el resto de Sonora y home office" },
+  { valor: "todo", titulo: "Otra ciudad", texto: "Todo México y LATAM: CDMX, Monterrey, Guadalajara, Bogotá…" },
 ];
 
 /** Paso de bienvenida: elegir área y dónde, y de ahí al listado ya filtrado. */
@@ -69,7 +70,7 @@ export default function Empezar() {
 
           <p className="mt-8 text-sm font-semibold text-radar-oscuro">Paso 2 de 2</p>
           <h2 className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl">¿Dónde quieres trabajar?</h2>
-          <fieldset className="mt-4 grid gap-2.5 sm:grid-cols-3">
+          <fieldset className="mt-4 grid gap-2.5 sm:grid-cols-2">
             <legend className="sr-only">Dónde</legend>
             {DONDE.map((d, i) => (
               <label key={d.valor || "todo"} className="cursor-pointer">

@@ -1,4 +1,5 @@
 import "server-only";
+import { esRelevanteObregon } from "./normalizar.ts";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { vistaDeVacante, vistaDesdeBase, type FilaBase, type VacanteVista } from "./muro.ts";
@@ -16,6 +17,8 @@ export interface Filtros {
   tipo: "local" | "remoto" | "";
   /** Zona local: "cajeme" (Cd. Obregón) o "sonora" */
   zona: Zona | "";
+  /** "cerca": Obregón, Sonora y home office para México (por defecto). "todo": todo México y LATAM. */
+  alcance: "cerca" | "todo";
   conSueldo: boolean;
   dias: number;
   pagina: number;
@@ -33,17 +36,21 @@ export function leerFiltros(p: Params): Filtros {
   const tipo = uno(p.tipo);
   // "donde" viene del paso de bienvenida (/empezar): remoto o en México
   const donde = uno(p.donde);
-  const pais = (uno(p.pais) || (donde === "mx" || donde === "cajeme" ? "MX" : "")).toUpperCase();
+  // Si se eligió un "¿Dónde?" concreto, manda sobre el país/modalidad que se hubieran quedado de antes
+  const dondeConcreto = ["cerca", "cajeme", "sonora", "remoto", "mx"].includes(donde);
+  const pais = (dondeConcreto ? (donde === "remoto" || donde === "cerca" ? "" : "MX") : uno(p.pais)).toUpperCase();
   const zona = uno(p.zona) || (donde === "cajeme" || donde === "sonora" ? donde : "");
   const dias = Number(uno(p.dias));
   return {
     q: uno(p.q).trim().slice(0, 80),
     categoria: (CATEGORIAS as readonly string[]).includes(categoria) ? (categoria as Categoria) : "",
     pais: pais in PAISES ? pais : "",
-    modalidad: ["remoto", "hibrido", "presencial"].includes(modalidad) ? (modalidad as Modalidad) : donde === "remoto" ? "remoto" : "",
+    modalidad: donde === "remoto" ? "remoto" : !dondeConcreto && ["remoto", "hibrido", "presencial"].includes(modalidad) ? (modalidad as Modalidad) : "",
     nivel: (NIVELES as readonly string[]).includes(nivel) ? (nivel as Nivel) : "",
     tipo: tipo === "local" || tipo === "remoto" ? tipo : "",
     zona: (ZONAS as readonly string[]).includes(zona) ? (zona as Zona) : "",
+    // Quien elige "Todo México y LATAM" o un país distinto de México ve todo el catálogo
+    alcance: donde === "todo" || uno(p.alcance) === "todo" || (pais !== "" && pais !== "MX") ? "todo" : "cerca",
     conSueldo: uno(p.sueldo) === "1",
     dias: [1, 7, 30].includes(dias) ? dias : 0,
     pagina: Math.min(Math.max(1, Math.floor(Number(uno(p.pagina))) || 1), 500),
@@ -65,7 +72,7 @@ export interface Resultado {
 export async function buscarVacantes(f: Filtros, accesoEnLocal: boolean): Promise<Resultado> {
   if (!supabaseConfigurado()) return buscarEnArchivo(f, accesoEnLocal);
   const sb = await supabaseSesion();
-  const { data, error } = await sb.rpc("buscar_empleos", {
+  const { data, error } = await sb.rpc("buscar_chambas", {
     p_q: f.q,
     p_categoria: f.categoria,
     p_pais: f.pais,
@@ -77,6 +84,7 @@ export async function buscarVacantes(f: Filtros, accesoEnLocal: boolean): Promis
     p_pagina: f.pagina,
     p_por_pagina: POR_PAGINA,
     p_zona: f.zona,
+    p_cerca: f.alcance === "cerca",
   });
   if (error) throw new Error(`Error buscando vacantes: ${error.message}`);
   const r = data as { total: number; acceso: boolean; vacantes: FilaBase[] };
@@ -118,6 +126,7 @@ async function buscarEnArchivo(f: Filtros, acceso: boolean): Promise<Resultado> 
       (!f.nivel || v.nivel === f.nivel) &&
       (!f.tipo || v.empresa_tipo === f.tipo) &&
       (!f.zona || (v.zonas ?? []).includes(f.zona)) &&
+      (f.alcance === "todo" || esRelevanteObregon(v)) &&
       (!f.conSueldo || v.sueldo_max != null) &&
       (!limite || v.publicada >= limite),
   );

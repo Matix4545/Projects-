@@ -24,13 +24,14 @@ async function enParalelo<T>(items: T[], n: number, fn: (x: T) => Promise<void>)
 }
 
 /**
- * Qué vacantes se guardan. "obregon" (lanzamiento): solo Sonora y remotas
- * abiertas a México. "latam": todo lo que sirve desde LATAM.
+ * Qué vacantes se guardan. "latam" (por defecto): todo lo que sirve desde
+ * LATAM. "obregon": solo Sonora y remotas abiertas a México.
  * Se cambia con la variable CHAMBARADAR_ENFOQUE.
  */
 export type Enfoque = "obregon" | "latam";
 export function enfoqueActual(): Enfoque {
-  return process.env.CHAMBARADAR_ENFOQUE === "latam" ? "latam" : "obregon";
+  // Por defecto se guarda todo; la web decide qué mostrar ("cerca de Obregón" primero)
+  return process.env.CHAMBARADAR_ENFOQUE === "obregon" ? "obregon" : "latam";
 }
 
 export async function recolectar(

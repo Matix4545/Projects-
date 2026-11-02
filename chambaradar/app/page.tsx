@@ -101,7 +101,12 @@ export default async function Inicio() {
             <Link href="/empezar" className="boton px-8 py-4 text-lg shadow-lg shadow-radar/30">
               Ver vacantes <Flecha className="size-5" />
             </Link>
-            <span className="text-sm text-slate-400">Gratis · sin registrarte</span>
+            <span className="text-sm text-slate-400">
+              Gratis · sin registrarte ·{" "}
+              <Link href="/vacantes?donde=todo" className="underline decoration-slate-600 underline-offset-4 hover:text-white">
+                ¿No vives en Obregón? Ve todo México y LATAM
+              </Link>
+            </span>
           </div>
           <dl className="mx-auto mt-10 flex max-w-xl flex-wrap justify-center gap-x-8 gap-y-3 text-sm">
             {[
