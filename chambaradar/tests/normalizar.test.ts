@@ -193,3 +193,11 @@ test("área: agricultura y campo", async () => {
     assert.notEqual(detectarCategoria(t), "agro", t);
   }
 });
+
+test("área: ciberseguridad solo si es seguridad informática", async () => {
+  const { detectarCategoria } = await import("../lib/normalizar.ts");
+  assert.equal(detectarCategoria("Security Engineer"), "seguridad");
+  assert.equal(detectarCategoria("Analista de Ciberseguridad"), "seguridad");
+  assert.equal(detectarCategoria("Contador de Nómina y Seguridad Social"), "finanzas");
+  assert.notEqual(detectarCategoria("Guardia de seguridad"), "seguridad");
+});

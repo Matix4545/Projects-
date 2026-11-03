@@ -248,5 +248,6 @@
   {"slug": "syngenta", "nombre": "Syngenta", "ats": "smartrecruiters", "board": "SyngentaGroup", "tipo": "remoto", "sector": "agro"},
   {"slug": "bayer", "nombre": "Bayer", "ats": "successfactors", "board": "jobs.bayer.com", "tipo": "remoto"},
   {"slug": "bunge", "nombre": "Bunge", "ats": "successfactors", "board": "jobs.bunge.com", "tipo": "remoto"},
-  {"slug": "corteva", "nombre": "Corteva Agriscience", "ats": "workday", "board": "corteva|wd5|Corteva", "tipo": "remoto", "sector": "agro"}
+  {"slug": "corteva", "nombre": "Corteva Agriscience", "ats": "workday", "board": "corteva|wd5|Corteva", "tipo": "remoto", "sector": "agro"},
+  {"slug": "radiall", "nombre": "Radiall", "ats": "wordpress", "board": "jobs.radiall.com|job_custom_radiall_location", "tipo": "remoto"}
 ]

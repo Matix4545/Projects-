@@ -549,7 +549,111 @@ async function successfactors(board: string): Promise<VacanteCruda[]> {
   });
 }
 
-const LECTORES = { greenhouse, lever, ashby, workable, smartrecruiters, recruitee, bamboohr, teamtailor, workday, successfactors } as const;
+// --- WordPress con ofertas "job" (portales hechos con Beetween, p. ej. Radiall) ---
+// board: "dominio|taxonomía-de-ubicación", p. ej. "jobs.radiall.com|job_custom_radiall_location".
+// La lista sale de la API pública de WordPress (/wp-json/wp/v2/job) y la descripción,
+// del bloque JobPosting (schema.org) que cada vacante publica para Google.
+
+interface WpJob {
+  id: number;
+  date_gmt?: string;
+  link: string;
+  title: { rendered: string };
+  [taxonomia: string]: unknown;
+}
+
+const PAIS_WP: Record<string, string> = {
+  MEXICO: "México", BRAZIL: "Brasil", ARGENTINA: "Argentina", COLOMBIA: "Colombia", CHILE: "Chile", PERU: "Perú", USA: "Estados Unidos",
+};
+
+/** "MEXICO, Sonora, Obregón" → "Obregón, Sonora, México" */
+export function ubicacionWordpress(nombre: string): string {
+  const partes = nombre.split(",").map((x) => x.trim()).filter(Boolean);
+  if (partes.length > 1 && /^[A-Z ]+$/.test(partes[0])) {
+    const pais = PAIS_WP[partes[0].trim()] ?? partes[0].charAt(0) + partes[0].slice(1).toLowerCase();
+    return [...partes.slice(1).reverse(), pais].join(", ");
+  }
+  return nombre.trim();
+}
+
+interface JobPosting {
+  description?: string;
+  datePosted?: string;
+  validThrough?: string;
+  employmentType?: string | string[];
+}
+
+/** El primer JobPosting de los bloques JSON-LD de una página (también dentro de "@graph"). */
+export function jobPostingDeHtml(html: string): JobPosting | null {
+  for (const m of html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const datos = JSON.parse(m[1]);
+      const lista: unknown[] = Array.isArray(datos) ? datos : datos?.["@graph"] ? datos["@graph"] : [datos];
+      const jp = lista.find((x) => x && typeof x === "object" && [(x as { "@type"?: unknown })["@type"]].flat().includes("JobPosting"));
+      if (jp) return jp as JobPosting;
+    } catch {
+      /* bloque inválido: se ignora */
+    }
+  }
+  return null;
+}
+
+const LATAM_WP = /mexic|méxic|brazil|brasil|argentin|colombi|chile|peru|perú|remot/i;
+
+async function wordpress(board: string): Promise<VacanteCruda[]> {
+  const [dominio, taxonomia] = board.split("|");
+  const base = `https://${dominio}`;
+  const lugares = new Map<number, string>();
+  if (taxonomia) for (const t of await leerJson<{ id: number; name: string }[]>(`${base}/wp-json/wp/v2/${taxonomia}?per_page=100`)) lugares.set(t.id, t.name);
+
+  const puestos: WpJob[] = [];
+  for (let pagina = 1; pagina <= 10; pagina++) {
+    const lote = await leerJson<WpJob[]>(`${base}/wp-json/wp/v2/job?per_page=100&page=${pagina}`);
+    puestos.push(...lote);
+    if (lote.length < 100) break;
+  }
+
+  const ubicacionesDe = (j: WpJob) =>
+    ((taxonomia ? (j[taxonomia] as number[] | undefined) : undefined) ?? []).map((id) => lugares.get(id)).filter((x): x is string => Boolean(x)).map(ubicacionWordpress);
+
+  // Descripción solo de las que pueden servir desde LATAM (las demás se descartan después)
+  const detalle = new Map<number, JobPosting | null>();
+  const conDetalle = puestos.filter((j) => LATAM_WP.test(ubicacionesDe(j).join(" ")));
+  for (let i = 0; i < Math.min(conDetalle.length, 60); i += 4) {
+    await Promise.all(
+      conDetalle.slice(i, i + 4).map(async (j) => {
+        try {
+          detalle.set(j.id, jobPostingDeHtml(await leerTexto(j.link)));
+        } catch {
+          /* sin detalle */
+        }
+      }),
+    );
+  }
+
+  const hoy = Date.now();
+  return puestos
+    .filter((j) => {
+      const vence = detalle.get(j.id)?.validThrough;
+      return !vence || Number.isNaN(Date.parse(vence)) || Date.parse(vence) > hoy;
+    })
+    .map((j) => {
+      const jp = detalle.get(j.id);
+      const fecha = jp?.datePosted || (j.date_gmt ? `${j.date_gmt}Z` : "");
+      return {
+        idExterno: String(j.id),
+        titulo: htmlATexto(j.title.rendered),
+        url: j.link,
+        ubicaciones: ubicacionesDe(j),
+        tipoEmpleo: [jp?.employmentType ?? []].flat().join(", ") || undefined,
+        descripcion: htmlATexto(jp?.description ?? ""),
+        publicada: fecha && !Number.isNaN(new Date(fecha).getTime()) ? new Date(fecha).toISOString() : undefined,
+        sueldo: null,
+      };
+    });
+}
+
+const LECTORES = { greenhouse, lever, ashby, workable, smartrecruiters, recruitee, bamboohr, teamtailor, workday, successfactors, wordpress } as const;
 
 export function leerVacantes(empresa: Empresa): Promise<VacanteCruda[]> {
   return LECTORES[empresa.ats](empresa.board);

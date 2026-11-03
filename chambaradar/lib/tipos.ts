@@ -1,7 +1,7 @@
 // Tipos compartidos entre el recolector (scripts/) y la web (app/).
 // Este archivo no importa nada para que también corra con Node directo.
 
-export type Ats = "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters" | "recruitee" | "bamboohr" | "teamtailor" | "workday" | "successfactors";
+export type Ats = "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters" | "recruitee" | "bamboohr" | "teamtailor" | "workday" | "successfactors" | "wordpress";
 
 /** Empresa que vigilamos. Viene de data/empresas.json. */
 export interface Empresa {

@@ -26,3 +26,13 @@ test("Workday: encuentra la faceta de México y entiende las fechas", () => {
   assert.equal(fechaWorkday("Posted Today", hoy), hoy.toISOString());
   assert.equal(fechaWorkday("Posted 30+ Days Ago", hoy), "2026-10-03T12:00:00.000Z");
 });
+
+test("WordPress/Beetween: ubicación legible y JobPosting dentro de @graph", async () => {
+  const { ubicacionWordpress, jobPostingDeHtml } = await import("../lib/fuentes/index.ts");
+  assert.equal(ubicacionWordpress("MEXICO, Sonora, Obregón"), "Obregón, Sonora, México");
+  assert.equal(ubicacionWordpress("USA, Arizona, Tempe"), "Tempe, Arizona, Estados Unidos");
+  assert.equal(ubicacionWordpress("SOUTH KOREA"), "SOUTH KOREA");
+  const html = `<script type="application/ld+json">{"@graph":[{"@type":"WebSite"},{"@type":"JobPosting","description":"&lt;p&gt;Hola&lt;/p&gt;","datePosted":"2026-10-26"}]}</script>`;
+  assert.equal(jobPostingDeHtml(html)?.datePosted, "2026-10-26");
+  assert.equal(jobPostingDeHtml("<p>nada</p>"), null);
+});

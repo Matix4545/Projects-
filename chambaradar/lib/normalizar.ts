@@ -163,7 +163,8 @@ export function aceptaLatam(ubicaciones: string[], modalidad: Modalidad, paises:
 const REGLAS_CATEGORIA: [Categoria, RegExp][] = [
   // Primero el campo: "Ingeniero agrónomo" o "Crop Data Scientist" son de agricultura
   ["agro", /agronom|agricol|agricult|\bagro\b|agroindustr|agrochem|agroquimic|\bcrops?\b|cultivo|cosecha|harvest|semilla|\bseeds?\b|seedcare|\bbreed|mejoramiento genetico|fitosanit|fitopatolog|plant patholog|entomolog|\briego\b|irrigat|invernadero|vivero|jornaler|ganad|livestock|avicol|poultry|porcicol|\bswine\b|\bpork\b|zootecn|veterinari|granja|\bfarms?\b|farming|tractor|maquinaria agricola|fertiliz|\bsoil\b|desarrollista tecnico|biostimul|bioestimul/],
-  ["seguridad", /secur|seguridad|ciberseg|infosec|soc analyst|pentest|threat|grc\b|iam\b/],
+  // Solo seguridad informática: "Guardia de seguridad" o "Seguridad Social" no son ciberseguridad
+  ["seguridad", /ciberseg|cyber|infosec|information security|it security|seguridad (de la )?informa|seguridad (de )?ti\b|security (engineer|analyst|architect|operations|specialist)|application security|appsec|devsecops|soc analyst|pentest|threat|grc\b|iam\b/],
   ["datos-ia", /\bdata\b|datos|analytics|analista de datos|machine learning|\bml\b|\bai\b|\bia\b|inteligencia artificial|scientist|cientific|\bbi\b|business intelligence|llm|research engineer/],
   ["diseno", /design|disen|ux|ui\b|ilustra|creative|creativ|visual|motion|brand designer/],
   ["producto", /product manager|product owner|gerente de producto|\bpm\b|product lead|head of product|product director|product operations|\bproduct\b(?!.*engineer)/],
