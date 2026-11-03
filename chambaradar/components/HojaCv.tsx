@@ -37,7 +37,7 @@ export function HojaCv({ cv }: { cv: Cv }) {
     <article id="hoja-cv" lang={cv.idioma} className="bg-white px-8 py-9 text-[0.875rem] leading-relaxed text-slate-800 sm:px-11 sm:py-11 print:p-0">
       <div>
         <h1 className="text-[1.75rem] leading-tight font-extrabold tracking-tight text-slate-900">{cv.nombre.trim() || (cv.idioma === "en" ? "Your name" : "Tu nombre")}</h1>
-        {cv.titular.trim() && <p className="mt-0.5 text-base font-medium text-emerald-700">{cv.titular}</p>}
+        {cv.titular.trim() && <p className="mt-0.5 text-base font-medium text-blue-700">{cv.titular}</p>}
         {contacto.length > 0 && <p className="mt-2 text-[0.8rem] text-slate-600">{contacto.join("  ·  ")}</p>}
       </div>
 

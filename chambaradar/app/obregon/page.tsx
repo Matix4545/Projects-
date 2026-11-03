@@ -53,20 +53,20 @@ export default async function Obregon() {
 
   return (
     <>
-      <Encabezado usuario={usuario} oscuro />
-      <section className="relative overflow-hidden bg-noche pb-14 pt-10 text-white sm:pt-14">
-        <div className="pointer-events-none absolute -top-32 left-1/2 size-[36rem] -translate-x-1/2 rounded-full bg-radar/20 blur-3xl" aria-hidden />
+      <Encabezado usuario={usuario} />
+      <section className="relative overflow-hidden border-b border-borde bg-white pb-14 pt-10 sm:pt-14">
+        <div className="pointer-events-none absolute -top-32 left-1/2 size-[36rem] -translate-x-1/2 rounded-full bg-radar/10 blur-3xl" aria-hidden />
         <div className="contenedor relative">
-          <p className="text-sm font-semibold text-radar">Cajeme, Sonora</p>
+          <p className="text-sm font-semibold text-radar-oscuro">Cajeme, Sonora</p>
           <h1 className="mt-2 max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">Empleos en Ciudad Obregón</h1>
-          <p className="mt-4 max-w-xl text-lg text-slate-300">
+          <p className="mt-4 max-w-xl text-lg text-slate-600">
             Vacantes de empresas con planta o sucursal en Obregón y el sur de Sonora, más trabajo remoto que puedes hacer desde tu casa en Cajeme.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/vacantes?zona=cajeme" className="boton">
               Vacantes en Obregón <Flecha className="size-4" />
             </Link>
-            <Link href="/vacantes?modalidad=remoto&pais=MX" className="boton-secundario border-white/20 bg-white/5 text-white hover:bg-white/10">
+            <Link href="/vacantes?modalidad=remoto&pais=MX" className="boton-secundario">
               Remoto desde Obregón
             </Link>
           </div>

@@ -32,16 +32,16 @@ const DONDE = [
 /** Paso de bienvenida: elegir área y dónde, y de ahí al listado ya filtrado. */
 export default function Empezar() {
   return (
-    <main className="min-h-screen bg-noche px-4 py-8 text-white sm:py-12">
+    <main className="min-h-screen bg-fondo px-4 py-8 sm:py-12">
       <div className="mx-auto max-w-3xl">
         <div className="flex items-center justify-between">
-          <Logo claro />
-          <Link href="/vacantes" className="text-sm font-medium text-slate-300 hover:text-white">
+          <Logo />
+          <Link href="/vacantes" className="text-sm font-medium text-gris hover:text-tinta">
             Saltar
           </Link>
         </div>
 
-        <form action="/vacantes" className="mt-8 rounded-3xl bg-white p-5 text-tinta shadow-2xl sm:mt-12 sm:p-8">
+        <form action="/vacantes" className="mt-8 rounded-3xl bg-white p-5 text-tinta shadow-xl shadow-slate-200/70 border border-borde sm:mt-12 sm:p-8">
           <p className="text-sm font-semibold text-radar-oscuro">Paso 1 de 2</p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">¿Qué tipo de chamba buscas?</h1>
           <fieldset className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">

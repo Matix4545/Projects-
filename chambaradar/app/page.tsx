@@ -79,32 +79,32 @@ export default async function Inicio() {
 
   return (
     <>
-      <Encabezado usuario={usuario} oscuro />
+      <Encabezado usuario={usuario} />
 
       {/* Portada */}
-      <section className="relative overflow-hidden bg-noche pb-40 pt-14 text-white sm:pb-48 sm:pt-20">
+      <section className="relative overflow-hidden bg-white pb-40 pt-14 sm:pb-48 sm:pt-20">
         {/* Brillo de radar de fondo */}
-        <div className="pointer-events-none absolute -top-40 left-1/2 size-[46rem] -translate-x-1/2 rounded-full bg-radar/20 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute top-24 left-1/2 size-[30rem] -translate-x-1/2 rounded-full border border-white/5" aria-hidden />
-        <div className="pointer-events-none absolute top-8 left-1/2 size-[44rem] -translate-x-1/2 rounded-full border border-white/5" aria-hidden />
+        <div className="pointer-events-none absolute -top-40 left-1/2 size-[46rem] -translate-x-1/2 rounded-full bg-radar/10 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute top-24 left-1/2 size-[30rem] -translate-x-1/2 rounded-full border border-slate-100" aria-hidden />
+        <div className="pointer-events-none absolute top-8 left-1/2 size-[44rem] -translate-x-1/2 rounded-full border border-slate-100" aria-hidden />
 
         <div className="contenedor relative text-center">
-          <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-radar sm:text-sm">
+          <p className="inline-flex items-center gap-2 rounded-full border border-radar/20 bg-radar-claro/60 px-3 py-1 text-xs font-semibold text-radar-oscuro sm:text-sm">
             <span className="size-2 animate-pulse rounded-full bg-radar" /> México y LATAM · actualizado hoy
           </p>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl">
             Encuentra chamba que <span className="text-radar">no está</span> en LinkedIn ni en OCC
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg text-slate-300">
+          <p className="mx-auto mt-5 max-w-xl text-lg text-slate-600">
             Buscamos todos los días en las páginas de empleo de empresas en México, LATAM y del mundo que contratan remoto. Aplicas directo, con menos competencia.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3">
             <Link href="/empezar" className="boton px-8 py-4 text-lg shadow-lg shadow-radar/30">
               Ver vacantes <Flecha className="size-5" />
             </Link>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-gris">
               Gratis · sin registrarte
-              {local && <span className="text-radar"> · Acceso completo gratis por estar en Sonora</span>}
+              {local && <span className="font-semibold text-radar-oscuro"> · Acceso completo gratis por estar en Sonora</span>}
             </span>
           </div>
           <dl className="mx-auto mt-10 flex max-w-xl flex-wrap justify-center gap-x-8 gap-y-3 text-sm">
@@ -115,8 +115,8 @@ export default async function Inicio() {
             ].map(([n, t]) => (
               <div key={t} className="flex items-baseline gap-1.5">
                 <dt className="sr-only">{t}</dt>
-                <dd className="text-2xl font-extrabold text-white">{n}</dd>
-                <dd className="text-slate-400">{t}</dd>
+                <dd className="text-2xl font-extrabold text-tinta">{n}</dd>
+                <dd className="text-gris">{t}</dd>
               </div>
             ))}
           </dl>
@@ -126,7 +126,7 @@ export default async function Inicio() {
       {/* Vista del producto con vacantes reales */}
       {tarjetas.length > 0 && (
         <section className="contenedor relative -mt-28 sm:-mt-36">
-          <div className="mx-auto max-w-4xl rounded-3xl border border-white/10 bg-slate-200/60 p-2 shadow-2xl backdrop-blur sm:p-3">
+          <div className="mx-auto max-w-4xl rounded-3xl border border-borde bg-slate-100 p-2 shadow-2xl shadow-slate-300/50 sm:p-3">
             <div className="rounded-2xl bg-fondo p-3 sm:p-5">
               <div className="flex items-center gap-3 rounded-full border border-borde bg-white px-4 py-2.5 text-sm text-slate-400">
                 <Lupa className="size-4" /> {busquedaMuestra}
@@ -192,12 +192,12 @@ export default async function Inicio() {
       <section className="mt-24 bg-radar py-16 text-center text-white">
         <div className="contenedor">
           <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{local ? "Para ti es gratis" : "Vista previa gratis"}</h2>
-          <p className="mx-auto mt-3 max-w-xl text-lg text-emerald-50">
+          <p className="mx-auto mt-3 max-w-xl text-lg text-blue-100">
             {local
               ? "Como estás en Sonora, ves todas las vacantes completas, con empresa y enlace para aplicar, sin pagar nada."
               : "Mira todas las vacantes, sueldos y ubicaciones sin registrarte. Elige tu área y en un segundo ves lo que hay."}
           </p>
-          <Link href="/empezar" className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-lg font-semibold text-radar-oscuro shadow-lg transition hover:bg-emerald-50">
+          <Link href="/empezar" className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-lg font-semibold text-radar-oscuro shadow-lg transition hover:bg-blue-50">
             Ver vacantes <Flecha className="size-5" />
           </Link>
         </div>
@@ -251,7 +251,7 @@ export default async function Inicio() {
             ["3", "Aplica directo", "Desbloquea la empresa y te mandamos a su página oficial. Sin intermediarios."],
           ].map(([n, titulo, texto]) => (
             <li key={n} className="rounded-3xl border border-borde bg-white p-7">
-              <span className="flex size-11 items-center justify-center rounded-full bg-noche text-lg font-bold text-radar">{n}</span>
+              <span className="flex size-11 items-center justify-center rounded-full bg-radar-claro text-lg font-bold text-radar-oscuro">{n}</span>
               <h3 className="mt-5 text-lg font-bold">{titulo}</h3>
               <p className="mt-1.5 text-gris">{texto}</p>
             </li>
@@ -277,10 +277,10 @@ export default async function Inicio() {
 
       {/* Llamado final */}
       <section className="contenedor mt-24">
-        <div className="relative overflow-hidden rounded-3xl bg-noche px-6 py-14 text-center text-white">
-          <div className="pointer-events-none absolute -bottom-40 left-1/2 size-[32rem] -translate-x-1/2 rounded-full bg-radar/25 blur-3xl" aria-hidden />
+        <div className="relative overflow-hidden rounded-3xl border border-borde bg-white px-6 py-14 text-center">
+          <div className="pointer-events-none absolute -bottom-40 left-1/2 size-[32rem] -translate-x-1/2 rounded-full bg-radar/10 blur-3xl" aria-hidden />
           <h2 className="relative text-3xl font-extrabold tracking-tight sm:text-4xl">Tu siguiente chamba ya está publicada</h2>
-          <p className="relative mx-auto mt-3 max-w-xl text-slate-300">Solo que no en donde todos buscan.</p>
+          <p className="relative mx-auto mt-3 max-w-xl text-gris">Solo que no en donde todos buscan.</p>
           <Link href="/empezar" className="boton relative mt-7 px-8 py-4 text-lg">
             Empezar a buscar <Flecha className="size-5" />
           </Link>
