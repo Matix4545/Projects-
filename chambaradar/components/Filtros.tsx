@@ -10,9 +10,10 @@ import { Modal } from "./Modal";
 /** El filtro "¿Dónde?" resume zona y modalidad en una sola opción. */
 export function dondeDe(f: TFiltros): string {
   if (f.zona) return f.zona;
-  if (f.alcance === "todo") return "todo";
+  if (f.alcance === "cerca") return "cerca";
   if (f.modalidad === "remoto") return "remoto";
-  return "cerca";
+  if (f.pais === "MX") return "mx";
+  return "todo";
 }
 
 /** No mandar campos vacíos, para que la URL quede limpia (/vacantes?pais=MX). */
@@ -50,11 +51,12 @@ function FormFiltros({ f, alCambiar, pie }: { f: TFiltros; alCambiar: boolean; p
       </Campo>
       <Campo etiqueta="¿Dónde?">
         <select name="donde" defaultValue={dondeDe(f)} onChange={enviar} className="campo py-2.5">
-          <option value="cerca">Obregón, Sonora y home office</option>
-          <option value="cajeme">En Cd. Obregón (Cajeme)</option>
-          <option value="sonora">En Sonora</option>
-          <option value="remoto">Remoto / home office</option>
           <option value="todo">Todo México y LATAM</option>
+          <option value="remoto">Remoto / home office</option>
+          <option value="mx">En México</option>
+          <option value="sonora">En Sonora</option>
+          {f.local && <option value="cajeme">En Cd. Obregón (Cajeme)</option>}
+          {f.local && <option value="cerca">Cerca de ti: Sonora y home office</option>}
         </select>
       </Campo>
       {f.alcance === "todo" && (
@@ -114,7 +116,7 @@ function FormFiltros({ f, alCambiar, pie }: { f: TFiltros; alCambiar: boolean; p
 }
 
 export function cuantosFiltros(f: TFiltros) {
-  return [f.categoria, dondeDe(f) === "cerca" ? "" : "x", f.alcance === "todo" ? f.pais : "", f.alcance === "todo" ? f.modalidad : "", f.tipo, f.nivel, f.dias ? "x" : "", f.conSueldo ? "x" : ""].filter(Boolean).length;
+  return [f.categoria, ["todo", "cerca"].includes(dondeDe(f)) ? "" : "x", f.alcance === "todo" && f.pais !== "MX" ? f.pais : "", f.alcance === "todo" && f.modalidad !== "remoto" ? f.modalidad : "", f.tipo, f.nivel, f.dias ? "x" : "", f.conSueldo ? "x" : ""].filter(Boolean).length;
 }
 
 /** Columna de filtros (escritorio). */

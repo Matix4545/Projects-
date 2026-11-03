@@ -45,14 +45,10 @@ test("con acceso: se ve todo", () => {
   assert.equal(vista.id, v.id);
 });
 
-test("gratis sin pagar: lo de Sonora y el home office abierto a México", () => {
-  const sonora = vistaDeVacante({ ...v, zonas: ["cajeme", "sonora"], modalidad: "presencial" }, false);
-  assert.equal(sonora.bloqueada, false);
-  assert.equal(sonora.url, v.url);
-  const remoto = vistaDeVacante({ ...v, modalidad: "remoto", paises: ["MX"] }, false);
-  assert.equal(remoto.bloqueada, false);
-  const latam = vistaDeVacante({ ...v, modalidad: "remoto", paises: ["CO", "AR"] }, false);
-  assert.equal(latam.bloqueada, true);
+test("las vacantes que publican los negocios nunca se bloquean", () => {
+  const directa = vistaDeVacante({ ...v, id: "directa:123" }, false);
+  assert.equal(directa.bloqueada, false);
+  assert.equal(directa.url, v.url);
 });
 
 test("el texto revuelto es estable y conserva espacios", () => {

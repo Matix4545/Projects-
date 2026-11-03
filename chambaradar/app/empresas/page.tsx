@@ -7,8 +7,8 @@ import { usuarioActual } from "@/lib/supabase/servidor";
 import { empresasConVacantes } from "@/lib/vacantes";
 
 export const metadata: Metadata = {
-  title: "Empresas que contratan en Cd. Obregón y home office",
-  description: "Empresas con vacantes en Cd. Obregón y Sonora, y empresas que contratan home office desde México.",
+  title: "Empresas que contratan en México, LATAM y remoto",
+  description: "Empresas con vacantes en México y LATAM, y empresas que contratan home office desde la región.",
 };
 
 export default async function Empresas() {
@@ -25,7 +25,7 @@ export default async function Empresas() {
         <div className="max-w-2xl">
           <h1 className="text-3xl font-extrabold tracking-tight">Empresas que están contratando</h1>
           <p className="mt-2 text-gris">
-            {numero(empresas.length)} empresas con vacantes en Obregón, Sonora o home office desde México hoy. Para ver qué vacante es de cuál empresa y aplicar,{" "}
+            {numero(empresas.length)} empresas con vacantes hoy en México, LATAM o home office. Para ver qué vacante es de cuál empresa y aplicar,{" "}
             <Link href="/precios" className="font-semibold text-radar-oscuro hover:underline">
               desbloquea tu acceso
             </Link>

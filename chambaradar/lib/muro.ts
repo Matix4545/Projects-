@@ -2,7 +2,6 @@
 // la fecha, pero el nombre de la empresa y la descripción llegan revueltos
 // desde el servidor y sin enlace. Así no se pueden "destapar" desde el navegador.
 
-import { esRelevanteObregon } from "./normalizar.ts";
 import type { Vacante } from "./tipos.ts";
 
 export type VacanteVista = Omit<Vacante, "url" | "empresa_nombre" | "empresa_slug" | "descripcion"> & {
@@ -49,9 +48,9 @@ export function taparEmpresa(texto: string, v: Pick<Vacante, "empresa_nombre" | 
   return t;
 }
 
-/** Gratis para todos: lo de Obregón/Sonora, el home office abierto a México y lo que publican los negocios. */
+/** Siempre completas para todos: las vacantes que publican los negocios directo. */
 export function esGratis(v: Vacante): boolean {
-  return v.id.startsWith("directa:") || esRelevanteObregon(v);
+  return v.id.startsWith("directa:");
 }
 
 export function vistaDeVacante(v: Vacante, conAcceso: boolean): VacanteVista {

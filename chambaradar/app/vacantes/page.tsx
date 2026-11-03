@@ -10,21 +10,23 @@ import { correoConfigurado } from "@/lib/correo";
 import { numero } from "@/lib/formato";
 import { pagosActivos } from "@/lib/planes";
 import { accesoLocal, usuarioActual } from "@/lib/supabase/servidor";
+import { visitanteLocal } from "@/lib/ubicacion";
 import { NOMBRE_CATEGORIA, NOMBRE_ZONA, PAISES } from "@/lib/tipos";
 import { buscarVacantes, leerFiltros, POR_PAGINA, resumen } from "@/lib/vacantes";
 
 export const metadata: Metadata = {
   title: "Vacantes",
-  description: "Vacantes en Ciudad Obregón y Sonora, y trabajos remotos (home office) para todo México, sacadas directo de las páginas de empleo de las empresas.",
+  description: "Vacantes en México y LATAM, y trabajos remotos (home office) en pesos y dólares, sacadas directo de las páginas de empleo de las empresas.",
 };
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export default async function Vacantes({ searchParams }: Props) {
   const params = await searchParams;
-  const f = leerFiltros(params);
+  const local = await visitanteLocal();
+  const f = leerFiltros(params, local);
   const usuario = await usuarioActual();
-  const [{ vacantes, total, acceso }, r] = await Promise.all([buscarVacantes(f, accesoLocal(usuario)), resumen()]);
+  const [{ vacantes, total, acceso }, r] = await Promise.all([buscarVacantes(f, await accesoLocal(usuario)), resumen()]);
   const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
 
   const enlacePagina = (pagina: number) => {
@@ -44,20 +46,20 @@ export default async function Vacantes({ searchParams }: Props) {
   // Título según lo que se está viendo: "Software e ingeniería en México"
   const lugar = f.zona
     ? `en ${NOMBRE_ZONA[f.zona]}`
-    : f.alcance === "todo"
-      ? f.pais
-        ? `en ${PAISES[f.pais]}`
-        : "en todo México y LATAM"
-      : f.modalidad === "remoto"
-        ? "home office"
-        : "";
+    : f.modalidad === "remoto"
+      ? "home office"
+      : f.alcance === "cerca"
+        ? "cerca de ti"
+        : f.pais
+          ? `en ${PAISES[f.pais]}`
+          : "en todo México y LATAM";
   const titulo = f.categoria
     ? `${NOMBRE_CATEGORIA[f.categoria]}${lugar ? (lugar === "home office" ? " · home office" : ` ${lugar}`) : ""}`
     : lugar === "home office"
       ? "Home office / remoto"
       : lugar
         ? `Vacantes ${lugar}`
-        : "Obregón, Sonora y home office";
+        : "Todas las vacantes";
 
   return (
     <>
@@ -80,6 +82,12 @@ export default async function Vacantes({ searchParams }: Props) {
             </div>
             <FiltrosMovil f={f} total={numero(total)} />
           </div>
+
+          {acceso && local && !usuario?.conAcceso && (
+            <p className="rounded-2xl bg-radar-claro px-4 py-3 text-sm text-radar-oscuro sm:px-5">
+              <strong>Acceso completo gratis</strong> por estar en Sonora: ves la empresa y el enlace para aplicar en todas las vacantes.
+            </p>
+          )}
 
           {!acceso && (
             <Link href="/precios" className="flex items-center gap-3 rounded-2xl bg-noche px-4 py-3 text-sm text-white transition hover:bg-noche-2 sm:px-5">

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("id") ?? "";
   if (!id || id.length > 200) return NextResponse.json({ total: 0, vacantes: [] }, { status: 400 });
   try {
-    const r = await otrasDeEmpresa(id, accesoLocal(await usuarioActual()));
+    const r = await otrasDeEmpresa(id, await accesoLocal(await usuarioActual()));
     return NextResponse.json(r, { headers: { "cache-control": "private, no-store" } });
   } catch {
     return NextResponse.json({ total: 0, vacantes: [] }, { status: 500 });

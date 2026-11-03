@@ -35,7 +35,7 @@ function Seccion({ titulo, texto, enlace, total, children }: { titulo: string; t
 
 export default async function Obregon() {
   const usuario = await usuarioActual();
-  const acceso = accesoLocal(usuario);
+  const acceso = await accesoLocal(usuario);
   const [enCajeme, enSonora, remoto, r] = await Promise.all([
     buscarVacantes(leerFiltros({ zona: "cajeme" }), acceso),
     buscarVacantes(leerFiltros({ zona: "sonora" }), acceso),

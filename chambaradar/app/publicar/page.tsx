@@ -8,7 +8,7 @@ import { enviarVacante } from "./acciones";
 
 export const metadata: Metadata = {
   title: "Publica tu vacante gratis",
-  description: "¿Tienes un negocio en Cd. Obregón? Publica tus vacantes gratis en ChambaRadar y recibe solicitudes por WhatsApp o correo.",
+  description: "¿Tienes un negocio? Publica tus vacantes gratis en ChambaRadar y recibe solicitudes por WhatsApp o correo.",
 };
 
 const ESTADO: Record<string, { texto: string; clase: string }> = {
@@ -32,10 +32,10 @@ export default async function Publicar({ searchParams }: Props) {
       <Encabezado usuario={usuario} />
       <main className="contenedor max-w-3xl space-y-6 py-8 sm:py-12">
         <div>
-          <p className="text-sm font-semibold text-radar-oscuro">Para negocios de Cd. Obregón</p>
+          <p className="text-sm font-semibold text-radar-oscuro">Para negocios</p>
           <h1 className="mt-1 text-3xl font-extrabold tracking-tight">Publica tu vacante gratis</h1>
           <p className="mt-2 text-gris">
-            Llega a la gente de Obregón que busca trabajo. Las solicitudes te llegan directo por WhatsApp o correo. La revisamos en menos de 24 horas y
+            Llega a la gente que busca trabajo en tu ciudad. Las solicitudes te llegan directo por WhatsApp o correo. La revisamos en menos de 24 horas y
             dura 30 días publicada.
           </p>
         </div>

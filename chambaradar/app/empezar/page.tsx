@@ -23,10 +23,10 @@ const EMOJI: Record<Categoria, string> = {
 };
 
 const DONDE = [
-  { valor: "cajeme", titulo: "En Cd. Obregón", texto: "Presencial o híbrido en Cajeme" },
+  { valor: "todo", titulo: "Donde sea", texto: "Todo México y LATAM, presencial y remoto" },
   { valor: "remoto", titulo: "Home office", texto: "Remoto desde tu casa, para empresas de México y del mundo" },
-  { valor: "cerca", titulo: "Las dos", texto: "Obregón, el resto de Sonora y home office" },
-  { valor: "todo", titulo: "Otra ciudad", texto: "Todo México y LATAM: CDMX, Monterrey, Guadalajara, Bogotá…" },
+  { valor: "mx", titulo: "En México", texto: "Presencial o híbrido: CDMX, Monterrey, Guadalajara, Sonora…" },
+  { valor: "sonora", titulo: "En Sonora", texto: "Hermosillo, Cd. Obregón, Navojoa, Guaymas, Nogales…" },
 ];
 
 /** Paso de bienvenida: elegir área y dónde, y de ahí al listado ya filtrado. */

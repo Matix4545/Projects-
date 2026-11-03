@@ -24,9 +24,9 @@ Supabase → **Authentication → URL Configuration**:
 - Site URL: `https://chambaradar.netlify.app`
 - Redirect URLs: `https://chambaradar.netlify.app/**`
 
-## 4. Cobro (gratis para Obregón, de pago para el resto)
+## 4. Cobro (gratis para quien está en Sonora, de pago para el resto)
 
-Siempre gratis y completas para todos: vacantes de Cd. Obregón y Sonora, home office abierto a México y las que publican los negocios (`supabase/07_gratis_obregon.sql`, ya aplicado). El plan de pago desbloquea el resto: otras ciudades, LATAM y remoto solo para otros países.
+El sitio es para todo México y LATAM. Quien entra desde Sonora (según su IP; Netlify lo manda en el encabezado `x-nf-geo`) ve todo completo gratis: el servidor le pasa a Supabase la clave privada de la app en el encabezado `x-chambaradar-local` y `tiene_acceso()` la revisa (`supabase/07_gratis_obregon.sql`, ya aplicado). Las vacantes que publican los negocios siempre se ven completas. Se usa el estado y no la ciudad porque muchos celulares de Obregón aparecen como de otra ciudad de Sonora.
 
 Para empezar a cobrar:
 1. Cuenta de Stripe para ChambaRadar (no la de Nexio), con OXXO activado.

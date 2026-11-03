@@ -23,8 +23,7 @@ export default async function Precios({ searchParams }: Props) {
             renueva solo.
           </p>
           <p className="mt-3 rounded-xl bg-radar-claro p-3 text-sm text-radar-oscuro">
-            Las vacantes de Cd. Obregón y Sonora, el home office abierto a México y las que publican los negocios son <strong>siempre gratis</strong>.
-            El plan es para el resto del catálogo: otras ciudades, LATAM y remoto en dólares.
+            ¿Estás en Sonora? Tienes <strong>acceso completo gratis</strong>, sin plan. Las vacantes que publican los negocios también son siempre gratis.
           </p>
         </div>
 

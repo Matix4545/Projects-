@@ -54,7 +54,7 @@ export function describirFiltros(f: FiltrosAlerta): string {
   if (f.tipo === "remoto") partes.push("empresas extranjeras");
   if (f.conSueldo) partes.push("con sueldo publicado");
   if (f.q) partes.push(`puesto: «${f.q}»`);
-  if (!partes.length) return f.alcance === "todo" ? "Todo México y LATAM" : "Obregón, Sonora y home office";
+  if (!partes.length) return f.alcance === "todo" ? "Todo México y LATAM" : "Sonora y home office";
   if (f.alcance === "todo" && !f.pais && !f.zona) partes.push("todo México y LATAM");
   return partes.join(" · ");
 }

@@ -4,6 +4,7 @@ import { Encabezado, Pie } from "@/components/Marco";
 import { formatoSueldo, haceCuanto, numero } from "@/lib/formato";
 import type { VacanteVista } from "@/lib/muro";
 import { accesoLocal, usuarioActual } from "@/lib/supabase/servidor";
+import { visitanteLocal } from "@/lib/ubicacion";
 import { buscarVacantes, leerFiltros, resumen } from "@/lib/vacantes";
 
 const PREGUNTAS = [
@@ -17,15 +18,15 @@ const PREGUNTAS = [
   },
   {
     p: "¿Qué vacantes muestran?",
-    r: "Dos tipos: las de empresas con planta, sucursal u oficina en Cd. Obregón y el resto de Sonora, y los trabajos 100 % remotos (home office) que aceptan gente en México, de empresas mexicanas y extranjeras. Si un trabajo es presencial en otra ciudad o remoto solo para otro país, no lo mostramos.",
+    r: "Dos tipos: las de empresas con oficina, planta o sucursal en México y LATAM, y los trabajos 100 % remotos (home office) que aceptan gente de la región, de empresas mexicanas y extranjeras (muchas pagan en dólares). Si un trabajo remoto es solo para Estados Unidos u otro país, no lo mostramos.",
   },
   {
     p: "¿Por qué no veo la vacante que vi en Facebook?",
-    r: "Juntamos las vacantes que las empresas publican en sus propias páginas de empleo, más las que los negocios de Obregón publican aquí gratis. Si tienes un negocio, publica tu vacante en “Publica tu vacante”.",
+    r: "Juntamos las vacantes que las empresas publican en sus propias páginas de empleo, más las que los negocios publican aquí gratis. Si tienes un negocio, publica tu vacante en “Publica tu vacante”.",
   },
   {
     p: "¿Qué veo gratis?",
-    r: "Todo lo de Cd. Obregón y Sonora, y todo el home office abierto a México, completo y con enlace para aplicar. Del resto del catálogo (otras ciudades, LATAM y remoto en dólares) ves gratis el puesto, sueldo y ubicación; con un plan de pago ves la empresa, la descripción y el enlace.",
+    r: "Todos los puestos, sueldos (cuando la empresa los publica), ubicación, modalidad y fecha. Con un plan de pago ves el nombre de la empresa, la descripción completa y el enlace para aplicar. Las vacantes que publican los negocios aquí siempre se ven completas.",
   },
   {
     p: "¿Cómo pago? ¿Se renueva solo?",
@@ -69,12 +70,12 @@ function Muestra({ v, i }: { v: VacanteVista; i: number }) {
 
 export default async function Inicio() {
   const usuario = await usuarioActual();
-  const acceso = accesoLocal(usuario);
-  // Muestra: vacantes en Cd. Obregón (si no hay suficientes, home office con sueldo)
-  const [r, enObregon] = await Promise.all([resumen(), buscarVacantes(leerFiltros({ zona: "cajeme" }), acceso)]);
-  const local = enObregon.vacantes.length >= 3;
-  const tarjetas = (local ? enObregon : await buscarVacantes(leerFiltros({ sueldo: "1", modalidad: "remoto" }), acceso)).vacantes.slice(0, 3);
-  const busquedaMuestra = local ? "En Cd. Obregón" : "Home office con sueldo publicado";
+  const [acceso, local] = await Promise.all([accesoLocal(usuario), visitanteLocal()]);
+  // Muestra: home office con sueldo (quien está en Sonora ve primero lo de Cd. Obregón)
+  const [r, cerca] = await Promise.all([resumen(), local ? buscarVacantes(leerFiltros({ zona: "cajeme" }, true), acceso) : null]);
+  const conCerca = (cerca?.vacantes.length ?? 0) >= 3;
+  const tarjetas = (conCerca ? cerca! : await buscarVacantes(leerFiltros({ sueldo: "1", modalidad: "remoto" }), acceso)).vacantes.slice(0, 3);
+  const busquedaMuestra = conCerca ? "Cerca de ti" : "Home office con sueldo publicado";
 
   return (
     <>
@@ -89,29 +90,27 @@ export default async function Inicio() {
 
         <div className="contenedor relative text-center">
           <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-radar sm:text-sm">
-            <span className="size-2 animate-pulse rounded-full bg-radar" /> Cd. Obregón, Sonora · actualizado hoy
+            <span className="size-2 animate-pulse rounded-full bg-radar" /> México y LATAM · actualizado hoy
           </p>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl">
-            Chamba en Obregón y <span className="text-radar">home office</span> para todo México
+            Encuentra chamba que <span className="text-radar">no está</span> en LinkedIn ni en OCC
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-slate-300">
-            Revisamos todos los días las páginas de empleo de las empresas que contratan en Cajeme y de las que contratan remoto desde México. Aplicas directo, con menos competencia que en LinkedIn u OCC.
+            Buscamos todos los días en las páginas de empleo de empresas en México, LATAM y del mundo que contratan remoto. Aplicas directo, con menos competencia.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3">
             <Link href="/empezar" className="boton px-8 py-4 text-lg shadow-lg shadow-radar/30">
               Ver vacantes <Flecha className="size-5" />
             </Link>
             <span className="text-sm text-slate-400">
-              Gratis · sin registrarte ·{" "}
-              <Link href="/vacantes?donde=todo" className="underline decoration-slate-600 underline-offset-4 hover:text-white">
-                ¿No vives en Obregón? Ve todo México y LATAM
-              </Link>
+              Gratis · sin registrarte
+              {local && <span className="text-radar"> · Acceso completo gratis por estar en Sonora</span>}
             </span>
           </div>
           <dl className="mx-auto mt-10 flex max-w-xl flex-wrap justify-center gap-x-8 gap-y-3 text-sm">
             {[
-              [numero(r.enCajeme ?? 0), "en Cd. Obregón"],
-              [numero(r.enSonora ?? 0), "en Sonora"],
+              [numero(r.total), "vacantes"],
+              [numero(r.empresas), "empresas"],
               [numero(r.remotas), "home office"],
             ].map(([n, t]) => (
               <div key={t} className="flex items-baseline gap-1.5">
@@ -192,9 +191,11 @@ export default async function Inicio() {
       {/* Banda de vista previa gratis */}
       <section className="mt-24 bg-radar py-16 text-center text-white">
         <div className="contenedor">
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Gratis para Obregón</h2>
+          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{local ? "Para ti es gratis" : "Vista previa gratis"}</h2>
           <p className="mx-auto mt-3 max-w-xl text-lg text-emerald-50">
-            Lo de Obregón, Sonora y el home office para México es gratis y completo, sin registrarte. Elige tu área y en un segundo ves lo que hay.
+            {local
+              ? "Como estás en Sonora, ves todas las vacantes completas, con empresa y enlace para aplicar, sin pagar nada."
+              : "Mira todas las vacantes, sueldos y ubicaciones sin registrarte. Elige tu área y en un segundo ves lo que hay."}
           </p>
           <Link href="/empezar" className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-lg font-semibold text-radar-oscuro shadow-lg transition hover:bg-emerald-50">
             Ver vacantes <Flecha className="size-5" />
@@ -204,19 +205,19 @@ export default async function Inicio() {
 
       {/* Dos caminos */}
       <section className="contenedor mt-24 grid gap-4 md:grid-cols-2">
-        <Link href="/vacantes?donde=cajeme" className="group rounded-3xl border border-borde bg-white p-7 transition hover:border-radar hover:shadow-lg">
-          <p className="text-4xl">🌵</p>
-          <h2 className="mt-4 text-xl font-bold">En Cd. Obregón</h2>
+        <Link href="/vacantes?donde=mx" className="group rounded-3xl border border-borde bg-white p-7 transition hover:border-radar hover:shadow-lg">
+          <p className="text-4xl">🌎</p>
+          <h2 className="mt-4 text-xl font-bold">Empresas de México y LATAM</h2>
           <p className="mt-2 text-gris">
-            Plantas, bancos, agroindustria y comercio con vacantes en Cajeme, más lo de Hermosillo, Navojoa y el resto de Sonora.
+            Plantas, bancos, tecnología, comercio y oficinas en CDMX, Monterrey, Guadalajara, Querétaro, Sonora, Bogotá y más.
           </p>
           <p className="mt-5 inline-flex items-center gap-1.5 font-semibold text-radar-oscuro">
-            Ver empleos en Obregón <Flecha className="size-4 transition group-hover:translate-x-1" />
+            Ver vacantes en México <Flecha className="size-4 transition group-hover:translate-x-1" />
           </p>
         </Link>
         <Link href="/vacantes?donde=remoto" className="group rounded-3xl border border-borde bg-white p-7 transition hover:border-radar hover:shadow-lg">
           <p className="text-4xl">🏠</p>
-          <h2 className="mt-4 text-xl font-bold">Home office desde Obregón</h2>
+          <h2 className="mt-4 text-xl font-bold">Home office, en pesos o dólares</h2>
           <p className="mt-2 text-gris">
             Trabajos 100 % remotos que aceptan gente en México, de empresas mexicanas y extranjeras (muchas pagan en dólares). Los que dicen “solo US” no aparecen.
           </p>
@@ -231,7 +232,7 @@ export default async function Inicio() {
         <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">Así de fácil</h2>
         <ol className="mx-auto mt-10 grid max-w-5xl gap-4 md:grid-cols-3">
           {[
-            ["1", "Elige tu área", "Ventas, producción, salud, oficina, tecnología… y si buscas en Obregón o home office."],
+            ["1", "Elige tu área", "Ventas, producción, salud, oficina, tecnología… y si buscas en tu ciudad o home office."],
             ["2", "Mira lo que hay", "Puestos, sueldos y ubicaciones gratis. Crea una alerta y te llegan las nuevas al correo."],
             ["3", "Aplica directo", "Desbloquea la empresa y te mandamos a su página oficial. Sin intermediarios."],
           ].map(([n, titulo, texto]) => (

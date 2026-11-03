@@ -17,8 +17,10 @@ export interface Filtros {
   tipo: "local" | "remoto" | "";
   /** Zona local: "cajeme" (Cd. Obregón) o "sonora" */
   zona: Zona | "";
-  /** "cerca": Obregón, Sonora y home office para México (por defecto). "todo": todo México y LATAM. */
+  /** "todo": todo México y LATAM (por defecto). "cerca": Sonora y home office para México (por defecto solo para quien está en Sonora). */
   alcance: "cerca" | "todo";
+  /** El visitante está en Sonora: ve las opciones locales y todo gratis */
+  local: boolean;
   conSueldo: boolean;
   dias: number;
   pagina: number;
@@ -28,8 +30,8 @@ type Params = Record<string, string | string[] | undefined>;
 
 const uno = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
-/** Lee los filtros de la URL y descarta valores inválidos. */
-export function leerFiltros(p: Params): Filtros {
+/** Lee los filtros de la URL y descarta valores inválidos. `local`: el visitante está en Sonora. */
+export function leerFiltros(p: Params, local = false): Filtros {
   const categoria = uno(p.categoria);
   const modalidad = uno(p.modalidad);
   const nivel = uno(p.nivel);
@@ -49,8 +51,9 @@ export function leerFiltros(p: Params): Filtros {
     nivel: (NIVELES as readonly string[]).includes(nivel) ? (nivel as Nivel) : "",
     tipo: tipo === "local" || tipo === "remoto" ? tipo : "",
     zona: (ZONAS as readonly string[]).includes(zona) ? (zona as Zona) : "",
-    // Quien elige "Todo México y LATAM" o un país distinto de México ve todo el catálogo
-    alcance: donde === "todo" || uno(p.alcance) === "todo" || (pais !== "" && pais !== "MX") ? "todo" : "cerca",
+    // Todos ven el catálogo completo; quien está en Sonora empieza por lo cercano
+    alcance: donde === "cerca" || (local && !donde && !uno(p.alcance) && !pais && !modalidad) ? "cerca" : "todo",
+    local,
     conSueldo: uno(p.sueldo) === "1",
     dias: [1, 7, 30].includes(dias) ? dias : 0,
     pagina: Math.min(Math.max(1, Math.floor(Number(uno(p.pagina))) || 1), 500),
