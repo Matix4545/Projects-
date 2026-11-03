@@ -68,7 +68,7 @@ function FormFiltros({ f, alCambiar, pie }: { f: TFiltros; alCambiar: boolean; p
         <Campo etiqueta="País">
           <select name="pais" defaultValue={f.pais} onChange={enviar} className="campo py-2.5">
             <option value="">Cualquier país</option>
-            {Object.entries(PAISES).map(([codigo, nombre]) => (
+            {Object.entries(PAISES).filter(([codigo]) => codigo !== "BR").map(([codigo, nombre]) => (
               <option key={codigo} value={codigo}>
                 {nombre}
               </option>

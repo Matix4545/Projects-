@@ -272,5 +272,10 @@
   {"slug": "salesforce", "nombre": "Salesforce", "ats": "workday", "board": "salesforce|wd12|External_Career_Site", "tipo": "remoto"},
   {"slug": "mastercard", "nombre": "Mastercard", "ats": "workday", "board": "mastercard|wd1|CorporateCareers", "tipo": "remoto"},
   {"slug": "carrier", "nombre": "Carrier", "ats": "workday", "board": "carrier|wd5|jobs", "tipo": "remoto"},
-  {"slug": "cemex", "nombre": "Cemex", "ats": "successfactors", "board": "jobs.cemex.com", "tipo": "local"}
+  {"slug": "cemex", "nombre": "Cemex", "ats": "successfactors", "board": "jobs.cemex.com", "tipo": "local"},
+  {"slug": "toku", "nombre": "Toku", "ats": "ashby", "board": "toku", "tipo": "local"},
+  {"slug": "satellogic", "nombre": "Satellogic", "ats": "bamboohr", "board": "satellogic", "tipo": "local"},
+  {"slug": "fracttal", "nombre": "Fracttal", "ats": "teamtailor", "board": "fracttal", "tipo": "local"},
+  {"slug": "simetrik", "nombre": "Simetrik", "ats": "ashby", "board": "simetrik", "tipo": "local"},
+  {"slug": "ripio", "nombre": "Ripio", "ats": "teamtailor", "board": "ripio", "tipo": "local"}
 ]

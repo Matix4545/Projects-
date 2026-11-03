@@ -216,3 +216,11 @@ test("zonas: los 32 estados por ciudad o nombre, solo si es en México", async (
   assert.deepEqual(detectarZonas("Ciudad Obregón, Sonora"), ["cajeme", "sonora"]);
   assert.deepEqual(detectarZonas("Guadalajara, Spain", false), []);
 });
+
+test("solo Brasil no se guarda; Brasil y otro país de LATAM sí", async () => {
+  const { soloBrasil } = await import("../lib/recolector.ts");
+  assert.equal(soloBrasil({ paises: ["BR"] }), true);
+  assert.equal(soloBrasil({ paises: ["BR", "MX"] }), false);
+  assert.equal(soloBrasil({ paises: [] }), false);
+  assert.equal(soloBrasil({ paises: ["AR"] }), false);
+});

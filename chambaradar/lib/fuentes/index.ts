@@ -3,7 +3,7 @@
 // vacantes en su propio sitio, así que no hace falta "scrapear" HTML.
 
 import type { Empresa, Sueldo, VacanteCruda } from "../tipos.ts";
-import { htmlATexto, periodoDeIntervalo, sueldoDeGreenhouse } from "../normalizar.ts";
+import { detectarPaises, htmlATexto, periodoDeIntervalo, sueldoDeGreenhouse } from "../normalizar.ts";
 
 const AGENTE = "ChambaRadarBot/0.1 (+https://chambaradar.com/bot)";
 
@@ -376,19 +376,49 @@ async function postJson<T>(url: string, cuerpo: unknown): Promise<T> {
 }
 
 /** Busca, dentro de las facetas de Workday, el valor que corresponde a México. */
-export function facetaMexico(facetas: WdFaceta[]): { parametro: string; id: string } | null {
-  const visitar = (lista: WdFaceta[], parametro: string): { parametro: string; id: string } | null => {
+/** Países de LATAM de habla hispana: cómo los nombra Workday (en inglés o español) y el nombre que agregamos a la ubicación. */
+const PAISES_LATAM: [RegExp, string][] = [
+  [/^m[eé]xico$/i, "México"],
+  [/^argentina$/i, "Argentina"],
+  [/^colombia$/i, "Colombia"],
+  [/^chile$/i, "Chile"],
+  [/^per[uú]$/i, "Perú"],
+  [/^uruguay$/i, "Uruguay"],
+  [/^costa rica$/i, "Costa Rica"],
+  [/^ecuador$/i, "Ecuador"],
+  [/^guatemala$/i, "Guatemala"],
+  [/^panam[aá]$/i, "Panamá"],
+  [/^(dominican republic|rep[uú]blica dominicana)$/i, "República Dominicana"],
+  [/^paraguay$/i, "Paraguay"],
+  [/^bolivia\b/i, "Bolivia"],
+  [/^venezuela\b/i, "Venezuela"],
+  [/^el salvador$/i, "El Salvador"],
+  [/^honduras$/i, "Honduras"],
+  [/^nicaragua$/i, "Nicaragua"],
+];
+
+/** Facetas de país de LATAM (sin Brasil) en el buscador de Workday, con cuántas vacantes tiene cada una. */
+export function facetasLatam(facetas: WdFaceta[]): { parametro: string; id: string; pais: string; total: number }[] {
+  const encontradas: { parametro: string; id: string; pais: string; total: number }[] = [];
+  const visitar = (lista: WdFaceta[], parametro: string) => {
     for (const f of lista) {
       const p = f.facetParameter ?? parametro;
-      if (f.id && f.descriptor && /^m[eé]xico$/i.test(f.descriptor.trim()) && /country|location/i.test(p)) return { parametro: p, id: f.id };
-      if (f.values) {
-        const r = visitar(f.values, p);
-        if (r) return r;
+      const nombre = f.descriptor?.trim() ?? "";
+      const pais = PAISES_LATAM.find(([r]) => r.test(nombre))?.[1];
+      if (f.id && pais && /country|location/i.test(p) && !encontradas.some((e) => e.pais === pais)) {
+        encontradas.push({ parametro: p, id: f.id, pais, total: f.count ?? -1 });
       }
+      if (f.values) visitar(f.values, p);
     }
-    return null;
   };
-  return visitar(facetas, "");
+  visitar(facetas, "");
+  return encontradas;
+}
+
+/** La faceta de México (se conserva para compatibilidad y pruebas). */
+export function facetaMexico(facetas: WdFaceta[]): { parametro: string; id: string } | null {
+  const mx = facetasLatam(facetas).find((f) => f.pais === "México");
+  return mx ? { parametro: mx.parametro, id: mx.id } : null;
 }
 
 /** "Posted 3 Days Ago" / "Publicado hace 3 días" / "Posted Today" → fecha aproximada */
@@ -422,17 +452,36 @@ async function workday(board: string): Promise<VacanteCruda[]> {
   const api = `${base}/wday/cxs/${inquilino}/${sitio}`;
 
   const primera = await postJson<{ total: number; jobPostings: WdJob[]; facets?: WdFaceta[] }>(`${api}/jobs`, { limit: 20, offset: 0, searchText: "", appliedFacets: {} });
-  const mx = facetaMexico(primera.facets ?? []);
-  const filtro = mx ? { appliedFacets: { [mx.parametro]: [mx.id] }, searchText: "" } : { appliedFacets: {}, searchText: "Mexico" };
+  // Un país a la vez (México primero), solo los que tienen vacantes: así sabemos de qué país es cada una
+  const paises = facetasLatam(primera.facets ?? []).filter((f) => f.total !== 0);
+  const consultas = paises.length
+    ? paises.map((f) => ({ pais: f.pais, tope: f.pais === "México" ? 600 : 300, filtro: { appliedFacets: { [f.parametro]: [f.id] }, searchText: "" } }))
+    : [{ pais: "México", tope: 600, filtro: { appliedFacets: {}, searchText: "Mexico" } }];
 
   // Workday solo dice el total en la primera página
+  // Los países se piden en paralelo (cada uno página por página)
+  const porPais = await Promise.all(
+    consultas.map(async (c) => {
+      const lista: WdJob[] = [];
+      let total = Infinity;
+      for (let offset = 0; offset < Math.min(total, c.tope); offset += 20) {
+        const pagina = await postJson<{ total: number; jobPostings: WdJob[] }>(`${api}/jobs`, { limit: 20, offset, ...c.filtro });
+        if (offset === 0) total = pagina.total ?? 0;
+        lista.push(...(pagina.jobPostings ?? []));
+        if (!pagina.jobPostings?.length) break;
+      }
+      return { pais: c.pais, lista };
+    }),
+  );
   const empleos: WdJob[] = [];
-  let total = Infinity;
-  for (let offset = 0; offset < Math.min(total, 600); offset += 20) {
-    const pagina = await postJson<{ total: number; jobPostings: WdJob[] }>(`${api}/jobs`, { limit: 20, offset, ...filtro });
-    if (offset === 0) total = pagina.total ?? 0;
-    empleos.push(...(pagina.jobPostings ?? []));
-    if (!pagina.jobPostings?.length) break;
+  const paisDe = new Map<string, string>();
+  for (const { pais, lista } of porPais) {
+    for (const j of lista) {
+      // Sin ruta no hay enlace para aplicar; y no repetimos las de varios países
+      if (!j.externalPath || paisDe.has(j.externalPath)) continue;
+      paisDe.set(j.externalPath, pais);
+      empleos.push(j);
+    }
   }
 
   // El detalle trae la descripción y todas las ubicaciones; se pide para las primeras 60
@@ -448,8 +497,9 @@ async function workday(board: string): Promise<VacanteCruda[]> {
     let ubicaciones = d?.location
       ? [d.location, ...(d.additionalLocations ?? [])]
       : [varias ? lugarDeRuta(j.externalPath) : (j.locationsText ?? lugarDeRuta(j.externalPath))];
-    // Ya filtramos por México: si la ubicación no dice el país, se agrega
-    if (mx) ubicaciones = ubicaciones.map((u) => (/m[eé]xico|\bmx\b/i.test(u) ? u : `${u}, México`));
+    // Ya filtramos por país: si la ubicación no lo dice, se agrega
+    const pais = paisDe.get(j.externalPath);
+    if (pais && paises.length) ubicaciones = ubicaciones.map((u) => (detectarPaises(u).length ? u : `${u}, ${pais}`));
     return {
       idExterno: idWorkday(j.bulletFields?.[0], j.externalPath),
       titulo: j.title,
@@ -468,7 +518,12 @@ async function workday(board: string): Promise<VacanteCruda[]> {
 // Lo usan maquiladoras y corporativos con plantas en México (Yazaki, Lear,
 // Gruma…). No hay API: se lee la búsqueda pública del propio sitio (permitida
 // en su robots.txt) filtrada a México, y el detalle de cada vacante.
-const PAIS_CODIGO: Record<string, string> = { MX: "México", BR: "Brasil", AR: "Argentina", CO: "Colombia", CL: "Chile", PE: "Perú", CR: "Costa Rica" };
+const PAIS_CODIGO: Record<string, string> = {
+  MX: "México", BR: "Brasil", AR: "Argentina", CO: "Colombia", CL: "Chile", PE: "Perú", CR: "Costa Rica", UY: "Uruguay", EC: "Ecuador",
+  GT: "Guatemala", PA: "Panamá", DO: "República Dominicana", PY: "Paraguay", BO: "Bolivia", VE: "Venezuela", SV: "El Salvador", HN: "Honduras", NI: "Nicaragua",
+};
+/** Países que se piden a SuccessFactors (LATAM de habla hispana, México primero). */
+const PAISES_SF = ["MX", "CO", "AR", "CL", "PE", "CR", "UY", "EC", "GT", "PA", "DO", "PY", "BO", "VE", "SV", "HN", "NI"];
 
 function textoHtml(s: string): string {
   return htmlATexto(s).replace(/\s+/g, " ").trim();
@@ -520,13 +575,19 @@ export function totalSuccessFactors(html: string): number {
 
 async function successfactors(board: string): Promise<VacanteCruda[]> {
   const base = `https://${board}`;
-  const filas: ReturnType<typeof filasSuccessFactors> = [];
-  for (let inicio = 0; inicio < 500; inicio += 25) {
-    const html = await leerTexto(`${base}/search/?q=&optionsFacetsDD_country=MX&startrow=${inicio}`);
-    const pagina = filasSuccessFactors(html);
-    filas.push(...pagina);
-    const total = totalSuccessFactors(html);
-    if (pagina.length === 0 || inicio + 25 >= total) break;
+  const filas: (ReturnType<typeof filasSuccessFactors>[number] & { pais: string })[] = [];
+  const vistas = new Set<string>();
+  for (const pais of PAISES_SF) {
+    for (let inicio = 0; inicio < (pais === "MX" ? 500 : 250); inicio += 25) {
+      const html = await leerTexto(`${base}/search/?q=&optionsFacetsDD_country=${pais}&startrow=${inicio}`);
+      const pagina = filasSuccessFactors(html);
+      for (const f of pagina) {
+        if (vistas.has(f.ruta)) continue;
+        vistas.add(f.ruta);
+        filas.push({ ...f, pais });
+      }
+      if (pagina.length === 0 || inicio + 25 >= totalSuccessFactors(html)) break;
+    }
   }
 
   // Detalle: descripción y ubicación exacta (máximo 60, empezando por Sonora)
@@ -554,7 +615,8 @@ async function successfactors(board: string): Promise<VacanteCruda[]> {
       idExterno: f.ruta.match(/\/(\d+)\/?$/)?.[1] ?? f.ruta,
       titulo: f.titulo,
       url: `${base}${f.ruta}`,
-      ubicaciones: [paisLegible(lugar)],
+      // Ya filtramos por país: si la ubicación no lo dice, se agrega
+      ubicaciones: [detectarPaises(paisLegible(lugar)).length ? paisLegible(lugar) : `${paisLegible(lugar)}, ${PAIS_CODIGO[f.pais]}`],
       departamento: f.area,
       descripcion: htmlATexto(desc),
       publicada: fecha && !Number.isNaN(new Date(fecha).getTime()) ? new Date(fecha).toISOString() : undefined,

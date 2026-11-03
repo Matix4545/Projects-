@@ -475,3 +475,75 @@ Sigma Alimentos | local | sigma, sigmaalimentos
 Grupo Herdez | local | herdez, grupoherdez
 Granjas Kowi | local | kowi
 Agroindustrias Unidas de México | local | amsa, agroindustriasunidas
+# --- LATAM de habla hispana (Colombia, Argentina, Chile, Perú, Uruguay, Centroamérica, Venezuela) ---
+Rappi | local | rappi, rappiinc
+dLocal | local | dlocal
+Ualá | local | uala, ualabis
+Addi | local | addi, addicolombia
+Habi | local | habi, tuhabi
+Truora | local | truora
+Bold | local | bold, boldco
+Treinta | local | treinta
+Frubana | local | frubana
+Merqueo | local | merqueo
+Chiper | local | chiper
+Tpaga | local | tpaga
+Siigo | local | siigo
+Platzi | local | platzi, platziteam
+Lemon Cash | local | lemon, lemoncash
+Pomelo | local | pomelo, pomelofintech
+Belo | local | belo, belo-app
+Naranja X | local | naranjax
+Mercado Libre | local | mercadolibre, meli
+Despegar | local | despegar
+Satellogic | global | satellogic
+Buk | local | buk, buk-hr
+NotCo | local | notco, thenotcompany
+Betterfly | local | betterfly
+Xepelin | local | xepelin
+Cornershop | local | cornershop
+Crehana | local | crehana
+Culqi | local | culqi
+Kambista | local | kambista
+Yape | local | yape
+Fracttal | local | fracttal
+Simetrik | local | simetrik
+Kushki | local | kushki
+PedidosYa | local | pedidosya
+Globant | global | globant
+Endava | global | endava, Endava
+Wizeline | global | wizeline
+Encora | global | encora, encorainc
+Gorilla Logic | global | gorillalogic, gorilla-logic
+Nearsure | global | nearsure
+Applaudo | global | applaudo, applaudostudios
+Arkus Nexus | global | arkusnexus
+TaskUs | global | taskus
+Sutherland | global | sutherland, sutherlandglobal
+Telus International | global | telusinternational, telusdigital
+Teleperformance | global | teleperformance
+Konecta | global | konecta, konectagroup
+Atento | global | atento
+Foundever | global | foundever
+Startek | global | startek
+Ibex | global | ibex, ibexglobal
+Hapi | local | hapi, hapiapp
+Ripio | local | ripio
+Buenbit | local | buenbit
+Prometeo | local | prometeo
+Unnax | global | unnax
+Mono | local | mono, monocolombia
+Nequi | local | nequi
+Tul | local | tul
+Muni | local | muni
+Fintoc | local | fintoc
+Toku | local | toku
+Houm | local | houm
+Lapieza | local | lapieza
+Nowports | local | nowports
+Kovi | local | kovi
+Jüsto | local | justo, jüsto
+Kueski | local | kueski
+Stori | local | stori, storicard
+Clip | local | clip, payclip
+Belvo | local | belvo

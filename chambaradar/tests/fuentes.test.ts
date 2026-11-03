@@ -51,3 +51,14 @@ test("Workday: el id es el número de vacante, o la ruta si el portal pone ahí 
   assert.equal(idWorkday("Mexico City", "/job/Mexico-City/Software-Engineer_JREQ190"), "/job/Mexico-City/Software-Engineer_JREQ190");
   assert.equal(idWorkday(undefined, "/job/a_1"), "/job/a_1");
 });
+
+test("Workday: facetas de todos los países de LATAM de habla hispana, sin Brasil", async () => {
+  const { facetasLatam } = await import("../lib/fuentes/index.ts");
+  const facetas = [
+    { facetParameter: "locationMainGroup", values: [{ facetParameter: "Location_Country", values: [
+      { descriptor: "Mexico", id: "mx", count: 40 }, { descriptor: "Colombia", id: "co", count: 12 }, { descriptor: "Brazil", id: "br", count: 30 },
+      { descriptor: "Dominican Republic", id: "do", count: 3 }, { descriptor: "Venezuela, Bolivarian Republic of", id: "ve", count: 0 }, { descriptor: "Germany", id: "de", count: 9 },
+    ] }] },
+  ];
+  assert.deepEqual(facetasLatam(facetas).map((f) => [f.pais, f.id, f.total]), [["México", "mx", 40], ["Colombia", "co", 12], ["República Dominicana", "do", 3], ["Venezuela", "ve", 0]]);
+});

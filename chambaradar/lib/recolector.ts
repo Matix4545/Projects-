@@ -29,6 +29,11 @@ async function enParalelo<T>(items: T[], n: number, fn: (x: T) => Promise<void>)
  * Se cambia con la variable CHAMBARADAR_ENFOQUE.
  */
 export type Enfoque = "obregon" | "latam";
+/** ChambaRadar cubre México y la LATAM de habla hispana: lo que es solo para Brasil no se guarda. */
+export function soloBrasil(v: Pick<Vacante, "paises">): boolean {
+  return v.paises.length > 0 && v.paises.every((p) => p === "BR");
+}
+
 export function enfoqueActual(): Enfoque {
   // Por defecto se guarda todo; la web decide qué mostrar ("cerca de Obregón" primero)
   return process.env.CHAMBARADAR_ENFOQUE === "obregon" ? "obregon" : "latam";
@@ -43,7 +48,7 @@ export async function recolectar(
     enfoque = enfoqueActual(),
   }: { paralelo?: number; ahora?: Date; alAvanzar?: (texto: string) => void; enfoque?: Enfoque } = {},
 ): Promise<ResultadoRecoleccion> {
-  const sirve = (v: Vacante) => v.acepta_latam && (enfoque === "latam" || esRelevanteObregon(v));
+  const sirve = (v: Vacante) => v.acepta_latam && !soloBrasil(v) && (enfoque === "latam" || esRelevanteObregon(v));
   const mapa = new Map<string, Vacante>();
   const respondieron: string[] = [];
   const fallidas: ResultadoRecoleccion["fallidas"] = [];
