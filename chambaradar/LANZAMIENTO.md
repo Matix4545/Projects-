@@ -21,8 +21,8 @@ Al final apaga el muro de pago (todos ven empresa y enlace para aplicar).
 ## 3. Inicio de sesión (tú, 1 minuto) — necesario para las alertas
 
 Supabase → **Authentication → URL Configuration**:
-- Site URL: `https://chambaradar.netlify.app`
-- Redirect URLs: `https://chambaradar.netlify.app/**`
+- Site URL: `https://chambaradar.com`
+- Redirect URLs: `https://chambaradar.com/**`
 
 ## 4. Cobro (gratis para quien está en Sonora, de pago para el resto)
 
@@ -39,7 +39,7 @@ Para empezar a cobrar:
 - **Correos de alertas:** cuenta en resend.com con un dominio propio → variables `RESEND_API_KEY` y `CORREO_REMITENTE` en Netlify.
 - **Despliegue automático:** Netlify → proyecto chambaradar → Link repository → GitHub `Matix4545/Projects-`, rama `main`, base directory `chambaradar`.
 - **Legal:** ciudad y estado en `lib/legal.ts` (`DOMICILIO`).
-- **Difusión:** compartir `https://chambaradar.netlify.app` en los grupos de empleo de Obregón en Facebook.
+- **Difusión:** compartir `https://chambaradar.com` en los grupos de empleo de Obregón en Facebook.
 
 ## Qué incluye
 

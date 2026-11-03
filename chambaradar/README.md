@@ -11,7 +11,7 @@ Modelo de negocio: la vista previa es gratis (puesto, sueldo, ubicación, modali
 
 ## En producción
 
-- **Sitio:** https://chambaradar.netlify.app (Netlify, proyecto `chambaradar`)
+- **Sitio:** https://chambaradar.com (también https://chambaradar.netlify.app; Netlify, proyecto `chambaradar`)
 - **Base de datos:** Supabase, proyecto `chambaradar` (us-east-2), independiente del de Reporta Cajeme
 - **Recolección:** la función programada `netlify/functions/recolectar.mts` corre cada 30 minutos y revisa un turno de empresas (48 turnos al día), así que todas se revisan cada 24 horas
 - **Alertas por correo:** `netlify/functions/alertas.mts` corre cada hora y manda a cada alerta sus vacantes nuevas (máximo un correo al día por alerta). Necesita Resend (ver pendientes)
@@ -69,13 +69,13 @@ npm run typecheck
 ## Pendientes para terminar de publicar
 
 1. **Login (obligatorio para que funcione el enlace del correo).** En Supabase → proyecto `chambaradar` → **Authentication → URL Configuration**:
-   - *Site URL*: `https://chambaradar.netlify.app`
-   - *Redirect URLs*: agrega `https://chambaradar.netlify.app/**`
+   - *Site URL*: `https://chambaradar.com`
+   - *Redirect URLs*: agrega `https://chambaradar.com/**`
 
    Recomendado: en **Authentication → Emails → SMTP Settings** conecta un proveedor de correo (Resend, Postmark…). El correo incluido de Supabase manda muy pocos correos por hora.
 2. **Pagos (cuando tengas tu cuenta de Stripe para ChambaRadar).**
    1. Crea 3 enlaces de pago (Payment Links) en MXN de $49, $129 y $699 con tarjeta y OXXO.
-   2. Crea un webhook hacia `https://chambaradar.netlify.app/api/stripe/webhook` con los eventos `checkout.session.completed` y `checkout.session.async_payment_succeeded`.
+   2. Crea un webhook hacia `https://chambaradar.com/api/stripe/webhook` con los eventos `checkout.session.completed` y `checkout.session.async_payment_succeeded`.
    3. En Netlify → Environment variables agrega `STRIPE_ENLACE_SEMANA`, `STRIPE_ENLACE_MES`, `STRIPE_ENLACE_ANIO` y `STRIPE_WEBHOOK_SECRET`, y vuelve a desplegar.
 3. **Alertas por correo.** Crea una cuenta en [resend.com](https://resend.com), verifica un dominio propio (el correo de alertas debe salir de él) y agrega en Netlify `RESEND_API_KEY` y `CORREO_REMITENTE` (p. ej. `ChambaRadar <alertas@chambaradar.com>`). Ese mismo dominio sirve para el SMTP de Supabase del paso 1.
 4. **Legal:** completa `DOMICILIO` en `lib/legal.ts` y que un abogado revise `app/privacidad` y `app/terminos`.

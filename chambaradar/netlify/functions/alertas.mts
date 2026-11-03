@@ -14,7 +14,7 @@ export default async () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const clavePublica = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const claveApp = process.env.CHAMBARADAR_CLAVE;
-  const sitio = (process.env.NEXT_PUBLIC_SITE_URL || "https://chambaradar.netlify.app").replace(/\/$/, "");
+  const sitio = (process.env.NEXT_PUBLIC_SITE_URL || "https://chambaradar.com").replace(/\/$/, "");
   if (!url || !clavePublica || !claveApp) return console.error("Faltan variables de Supabase o CHAMBARADAR_CLAVE");
   // Sin proveedor de correo no se toca nada: las alertas esperan hasta que se configure
   if (!correoConfigurado()) return console.log("Alertas en pausa: falta RESEND_API_KEY o CORREO_REMITENTE");
