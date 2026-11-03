@@ -40,14 +40,23 @@ export default async function Privacidad() {
             <strong>Datos técnicos:</strong> la cookie de sesión que te mantiene conectado y los registros técnicos (dirección IP, navegador,
             fecha y hora) que generan automáticamente nuestros proveedores de alojamiento por seguridad.
           </li>
+          <li>
+            <strong>Tu CV (opcional):</strong> si usas “Haz tu CV” con tu sesión iniciada, guardamos lo que escribes (nombre, contacto,
+            experiencia, estudios, habilidades e idiomas) para que puedas volver a abrirlo. Sin sesión, se queda solo en tu navegador y no
+            nos llega. Nadie más lo ve: no lo compartimos con empresas ni lo usamos para otra cosa.
+          </li>
         </ul>
-        <p>No recabamos datos personales sensibles. No necesitas subir tu CV ni datos laborales para usar el sitio.</p>
+        <p>
+          No recabamos datos personales sensibles. Usar el creador de CV es opcional; te recomendamos no poner CURP, RFC, foto ni domicilio
+          completo.
+        </p>
 
         <h2>3. Para qué los usamos</h2>
         <p>Finalidades necesarias para darte el servicio:</p>
         <ul>
           <li>Crear y administrar tu cuenta, y enviarte el enlace para entrar.</li>
           <li>Activar, verificar y llevar el control del plan que compraste.</li>
+          <li>Guardar tu CV para que lo edites y descargues cuando quieras, si decides usar el creador de CV.</li>
           <li>Atender tus dudas, aclaraciones de pagos y solicitudes de reembolso.</li>
           <li>Proteger el sitio contra abusos y fraudes.</li>
           <li>Cumplir obligaciones legales, fiscales y contables.</li>

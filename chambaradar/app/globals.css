@@ -50,3 +50,19 @@ body {
   filter: blur(4px);
   user-select: none;
 }
+
+/* Imprimir / guardar como PDF (creador de CV) */
+@media print {
+  @page {
+    size: letter;
+    margin: 14mm 16mm;
+  }
+  body {
+    background: white !important;
+  }
+  /* Encabezado y pie del sitio (Marco) */
+  body header,
+  body footer {
+    display: none !important;
+  }
+}

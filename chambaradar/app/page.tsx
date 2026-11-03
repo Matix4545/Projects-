@@ -227,6 +227,20 @@ export default async function Inicio() {
         </Link>
       </section>
 
+      {/* Creador de CV */}
+      <section className="contenedor mt-6">
+        <Link href="/cv" className="group flex flex-col gap-4 rounded-3xl border border-borde bg-white p-7 transition hover:border-radar hover:shadow-lg sm:flex-row sm:items-center">
+          <p className="text-4xl">📄</p>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold">¿No tienes CV o ya está viejo?</h2>
+            <p className="mt-1 text-gris">Hazlo gratis en 10 minutos, en español o en inglés, y descárgalo en PDF listo para aplicar.</p>
+          </div>
+          <p className="inline-flex items-center gap-1.5 font-semibold text-radar-oscuro">
+            Hacer mi CV <Flecha className="size-4 transition group-hover:translate-x-1" />
+          </p>
+        </Link>
+      </section>
+
       {/* Cómo funciona */}
       <section className="contenedor mt-24">
         <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">Así de fácil</h2>

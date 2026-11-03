@@ -59,6 +59,7 @@ export function Encabezado({ usuario, oscuro = false, buscador }: { usuario: Usu
                 ["/vacantes", "Vacantes"],
                 ["/empezar", "Elegir mi área"],
                 ["/empresas", "Empresas"],
+                ["/cv", "Haz tu CV gratis"],
                 ["/publicar", "Publica tu vacante"],
                 ["/precios", "Precios"],
                 [usuario ? "/cuenta" : "/entrar", usuario ? "Mi cuenta y alertas" : "Entrar"],
@@ -90,6 +91,7 @@ export function Pie() {
           <Link href="/vacantes?donde=mx" className="block hover:text-white">Empleos en México</Link>
           <Link href="/vacantes?donde=sonora" className="block hover:text-white">Empleos en Sonora</Link>
           <Link href="/vacantes?donde=remoto" className="block hover:text-white">Home office</Link>
+          <Link href="/cv" className="block hover:text-white">Haz tu CV gratis</Link>
           <Link href="/empresas" className="block hover:text-white">Empresas que contratan</Link>
         </div>
         <div className="space-y-2 text-sm">
