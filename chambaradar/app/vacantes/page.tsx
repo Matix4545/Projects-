@@ -3,7 +3,6 @@ import Link from "next/link";
 import { BotonAlerta } from "@/components/BotonAlerta";
 import { Buscador, FiltrosLaterales, FiltrosMovil } from "@/components/Filtros";
 import { Candado } from "@/components/Iconos";
-import { VerificarUbicacion } from "@/components/VerificarUbicacion";
 import { Encabezado, Pie } from "@/components/Marco";
 import { TarjetaVacante, type ContextoTarjeta } from "@/components/TarjetaVacante";
 import { filtrosParaAlerta } from "@/lib/alertas";
@@ -91,8 +90,6 @@ export default async function Vacantes({ searchParams }: Props) {
               <span className="hidden shrink-0 font-semibold text-radar sm:inline">{ctx.pagosActivos ? "Desbloquear →" : "Ver planes →"}</span>
             </Link>
           )}
-
-          {!acceso && <VerificarUbicacion />}
 
           <BotonAlerta
             filtros={filtrosParaAlerta(f)}

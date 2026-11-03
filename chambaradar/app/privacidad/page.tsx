@@ -46,11 +46,6 @@ export default async function Privacidad() {
             contar visitantes usamos un código anónimo que cambia cada día y no permite identificarte. Se guardan 13 meses.
           </li>
           <li>
-            <strong>Ubicación (opcional):</strong> si tocas “Verificar que estoy en Sonora”, tu navegador nos manda tu ubicación aproximada solo
-            para comprobar que estás en Sonora. No la guardamos: únicamente dejamos en tu navegador una cookie que dice “verificado en Sonora”
-            durante 30 días.
-          </li>
-          <li>
             <strong>Tu CV (opcional):</strong> si usas “Haz tu CV” con tu sesión iniciada, guardamos lo que escribes (nombre, contacto,
             experiencia, estudios, habilidades e idiomas) para que puedas volver a abrirlo. Sin sesión, se queda solo en tu navegador y no
             nos llega. Nadie más lo ve: no lo compartimos con empresas ni lo usamos para otra cosa.

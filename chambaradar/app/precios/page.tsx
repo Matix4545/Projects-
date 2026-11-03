@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { Encabezado, Pie } from "@/components/Marco";
 import { PLANES, pagosActivos } from "@/lib/planes";
 import { usuarioActual } from "@/lib/supabase/servidor";
-import { VerificarUbicacion } from "@/components/VerificarUbicacion";
-import { visitanteLocal } from "@/lib/ubicacion";
 
 export const metadata: Metadata = { title: "Precios", description: "Desbloquea empresas y enlaces de todas las vacantes. Pago único con tarjeta u OXXO." };
 
@@ -13,7 +11,6 @@ export default async function Precios({ searchParams }: Props) {
   const { error, plan: elegido } = await searchParams;
   const usuario = await usuarioActual();
   const activos = pagosActivos();
-  const local = await visitanteLocal();
 
   return (
     <>
@@ -28,11 +25,6 @@ export default async function Precios({ searchParams }: Props) {
           <p className="mt-3 rounded-xl bg-radar-claro p-3 text-sm text-radar-oscuro">
             ¿Estás en Sonora? Tienes <strong>acceso completo gratis</strong>, sin plan. Las vacantes que publican los negocios también son siempre gratis.
           </p>
-          {!local && (
-            <div className="mt-3 text-left">
-              <VerificarUbicacion />
-            </div>
-          )}
         </div>
 
         {!activos && (
