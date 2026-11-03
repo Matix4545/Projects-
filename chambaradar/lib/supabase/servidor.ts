@@ -41,6 +41,8 @@ export interface Usuario {
   email: string;
   accesoHasta: Date | null;
   conAcceso: boolean;
+  /** Puede usar el panel de captura (/panel) */
+  esAdmin: boolean;
 }
 
 /** Usuario con sesión iniciada (o null), con la fecha hasta la que tiene acceso. */
@@ -50,13 +52,14 @@ export async function usuarioActual(): Promise<Usuario | null> {
   const { data } = await sb.auth.getUser();
   if (!data.user) return null;
   // La política de la tabla solo deja ver el perfil propio
-  const { data: perfil } = await sb.from("perfiles").select("acceso_hasta").eq("id", data.user.id).maybeSingle();
+  const { data: perfil } = await sb.from("perfiles").select("acceso_hasta, es_admin").eq("id", data.user.id).maybeSingle();
   const accesoHasta = perfil?.acceso_hasta ? new Date(perfil.acceso_hasta) : null;
   return {
     id: data.user.id,
     email: data.user.email ?? "",
     accesoHasta,
     conAcceso: Boolean(accesoHasta && accesoHasta > new Date()),
+    esAdmin: Boolean(perfil?.es_admin),
   };
 }
 

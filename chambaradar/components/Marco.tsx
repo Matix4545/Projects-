@@ -35,6 +35,11 @@ export function Encabezado({ usuario, oscuro = false, buscador }: { usuario: Usu
           <Link href="/publicar" className={`hidden px-2 lg:inline ${enlace}`}>
             Publica tu vacante
           </Link>
+          {usuario?.esAdmin && (
+            <Link href="/panel" className="hidden rounded-full bg-radar-claro px-4 py-2 font-semibold text-radar-oscuro hover:bg-blue-100 lg:inline">
+              Panel de captura
+            </Link>
+          )}
           {usuario ? (
             <Link href="/cuenta" className={`rounded-full border px-4 py-2 font-semibold ${oscuro ? "border-white/20 text-white hover:bg-white/10" : "border-borde text-tinta hover:bg-slate-50"}`}>
               Mi cuenta
@@ -56,6 +61,7 @@ export function Encabezado({ usuario, oscuro = false, buscador }: { usuario: Usu
             </summary>
             <div className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-borde bg-white py-2 text-tinta shadow-xl">
               {[
+                ...(usuario?.esAdmin ? [["/panel", "Panel de captura"]] : []),
                 ["/vacantes", "Vacantes"],
                 ["/empezar", "Elegir mi área"],
                 ["/empresas", "Empresas"],
