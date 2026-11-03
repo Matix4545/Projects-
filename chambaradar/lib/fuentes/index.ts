@@ -504,6 +504,11 @@ async function leerTexto(url: string): Promise<string> {
   return r.text();
 }
 
+/** "Results <b>1 – 25</b> of <b>318</b>" o, en portales en español, "Resultados <b>1 – 25</b> de <b>318</b>". */
+export function totalSuccessFactors(html: string): number {
+  return Number(html.match(/(?:Results|Resultados) <b>[^<]*<\/b>\s*(?:of|de)\s*<b>([\d,.]+)<\/b>/)?.[1]?.replace(/[,.]/g, "") ?? 0);
+}
+
 async function successfactors(board: string): Promise<VacanteCruda[]> {
   const base = `https://${board}`;
   const filas: ReturnType<typeof filasSuccessFactors> = [];
@@ -511,7 +516,7 @@ async function successfactors(board: string): Promise<VacanteCruda[]> {
     const html = await leerTexto(`${base}/search/?q=&optionsFacetsDD_country=MX&startrow=${inicio}`);
     const pagina = filasSuccessFactors(html);
     filas.push(...pagina);
-    const total = Number(html.match(/Results <b>[^<]*<\/b>\s*of\s*<b>([\d,]+)<\/b>/)?.[1]?.replace(/,/g, "") ?? 0);
+    const total = totalSuccessFactors(html);
     if (pagina.length === 0 || inicio + 25 >= total) break;
   }
 

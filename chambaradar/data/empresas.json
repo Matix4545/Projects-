@@ -249,5 +249,7 @@
   {"slug": "bayer", "nombre": "Bayer", "ats": "successfactors", "board": "jobs.bayer.com", "tipo": "remoto"},
   {"slug": "bunge", "nombre": "Bunge", "ats": "successfactors", "board": "jobs.bunge.com", "tipo": "remoto"},
   {"slug": "corteva", "nombre": "Corteva Agriscience", "ats": "workday", "board": "corteva|wd5|Corteva", "tipo": "remoto", "sector": "agro"},
-  {"slug": "radiall", "nombre": "Radiall", "ats": "wordpress", "board": "jobs.radiall.com|job_custom_radiall_location", "tipo": "remoto"}
+  {"slug": "radiall", "nombre": "Radiall", "ats": "wordpress", "board": "jobs.radiall.com|job_custom_radiall_location", "tipo": "remoto"},
+  {"slug": "banorte", "nombre": "Banorte", "ats": "successfactors", "board": "empleos.banorte.com", "tipo": "local"},
+  {"slug": "scotiabank-mx", "nombre": "Scotiabank México", "ats": "successfactors", "board": "jobs.scotiabank.com", "tipo": "remoto"}
 ]

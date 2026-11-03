@@ -36,3 +36,10 @@ test("WordPress/Beetween: ubicación legible y JobPosting dentro de @graph", asy
   assert.equal(jobPostingDeHtml(html)?.datePosted, "2026-10-26");
   assert.equal(jobPostingDeHtml("<p>nada</p>"), null);
 });
+
+test("SuccessFactors: total de resultados en inglés y en español", async () => {
+  const { totalSuccessFactors } = await import("../lib/fuentes/index.ts");
+  assert.equal(totalSuccessFactors("Results <b>1 – 25</b> of <b>1,204</b>"), 1204);
+  assert.equal(totalSuccessFactors("Resultados <b>1 – 25</b> de <b>318</b>"), 318);
+  assert.equal(totalSuccessFactors("<p>nada</p>"), 0);
+});
