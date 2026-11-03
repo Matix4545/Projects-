@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   description: descripcion,
   openGraph: { title: "ChambaRadar", description: descripcion, locale: "es_MX", type: "website", siteName: "ChambaRadar" },
   twitter: { card: "summary", title: "ChambaRadar", description: descripcion },
-  icons: { icon: [{ url: "/icono.svg", type: "image/svg+xml" }] },
+  icons: { icon: [{ url: "/favicon.ico", sizes: "48x48" }, { url: "/icon.png", type: "image/png", sizes: "512x512" }, { url: "/icono.svg", type: "image/svg+xml" }], apple: "/apple-icon.png" },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#ffffff" };
