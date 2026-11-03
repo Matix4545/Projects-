@@ -15,6 +15,8 @@ export interface Empresa {
   board: string;
   /** "local": empresa de LATAM. "remoto": empresa extranjera que contrata desde LATAM. */
   tipo: "local" | "remoto";
+  /** "agro": empresa del campo; sus vacantes comerciales o sin área clara van a "Agricultura y campo". */
+  sector?: "agro";
   /** Si la empresa es 100 % remota y contrata en cualquier país, "Remote" a secas cuenta como LATAM. */
   remotoGlobal?: boolean;
 }
@@ -78,6 +80,7 @@ export type Zona = (typeof ZONAS)[number];
 export const NOMBRE_ZONA: Record<Zona, string> = { cajeme: "Cd. Obregón (Cajeme)", sonora: "Sonora" };
 
 export const CATEGORIAS = [
+  "agro",
   "software",
   "datos-ia",
   "producto",
@@ -95,6 +98,7 @@ export const CATEGORIAS = [
 export type Categoria = (typeof CATEGORIAS)[number];
 
 export const NOMBRE_CATEGORIA: Record<Categoria, string> = {
+  agro: "Agricultura y campo",
   software: "Software e ingeniería",
   "datos-ia": "Datos e IA",
   producto: "Producto",

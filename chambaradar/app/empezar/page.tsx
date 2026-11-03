@@ -7,6 +7,7 @@ import { CATEGORIAS, NOMBRE_CATEGORIA, type Categoria } from "@/lib/tipos";
 export const metadata: Metadata = { title: "¿Qué chamba buscas?" };
 
 const EMOJI: Record<Categoria, string> = {
+  agro: "🌾",
   software: "💻",
   "datos-ia": "🤖",
   producto: "🧩",

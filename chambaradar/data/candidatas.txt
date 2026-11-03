@@ -428,3 +428,50 @@ Riot Games | remoto | riotgames
 Epic Games | remoto | epicgames
 Unity | remoto | unity, unity3d
 Roblox | remoto | roblox
+
+# --- Agricultura y agroindustria (Valle del Yaqui, Sonora, México) ---
+Nutrien | global | nutrien, nutrienag
+Mosaic | global | mosaic, mosaicco
+Yara | global | yara, yarainternational
+UPL | global | upl, uplltd, upl-corp
+Nufarm | global | nufarm
+FMC | global | fmc, fmccorp, fmccorporation
+Koppert | global | koppert
+Biobest | global | biobest, biobestgroup
+Driscoll's | global | driscolls, driscollsinc
+NatureSweet | local | naturesweet
+Mission Produce | global | missionproduce
+Calavo Growers | global | calavo, calavogrowers
+Fresh Del Monte | global | freshdelmonte, delmonte
+Dole | global | dole, dolefood
+Netafim | global | netafim
+Rivulis | global | rivulis
+Lindsay | global | lindsay, lindsaycorp
+Valmont | global | valmont
+AGCO | global | agco, agcocorp
+CNH Industrial | global | cnh, cnhindustrial
+Kubota | global | kubota
+Indigo Ag | global | indigo, indigoag
+Pivot Bio | global | pivotbio
+Farmers Business Network | global | fbn, farmersbusinessnetwork
+Bioceres | global | bioceres
+Plenty | global | plenty
+Gowan | global | gowan, gowancompany
+Rijk Zwaan | global | rijkzwaan
+Enza Zaden | global | enzazaden
+Sakata | global | sakata, sakataseed
+HM.CLAUSE | global | hmclause
+Limagrain | global | limagrain, vilmorin
+Elanco | global | elanco
+Zoetis | global | zoetis
+Pilgrim's | global | pilgrims, pilgrimspride
+Smithfield | global | smithfield, smithfieldfoods
+Tyson Foods | global | tyson, tysonfoods
+Grupo Bimbo | local | grupobimbo, bimbo
+Bachoco | local | bachoco, industriasbachoco
+SuKarne | local | sukarne
+Grupo Lala | local | grupolala, lala
+Sigma Alimentos | local | sigma, sigmaalimentos
+Grupo Herdez | local | herdez, grupoherdez
+Granjas Kowi | local | kowi
+Agroindustrias Unidas de México | local | amsa, agroindustriasunidas

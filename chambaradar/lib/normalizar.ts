@@ -161,6 +161,8 @@ export function aceptaLatam(ubicaciones: string[], modalidad: Modalidad, paises:
 
 /** Reglas en orden: la primera que coincide con el título gana. */
 const REGLAS_CATEGORIA: [Categoria, RegExp][] = [
+  // Primero el campo: "Ingeniero agrónomo" o "Crop Data Scientist" son de agricultura
+  ["agro", /agronom|agricol|agricult|\bagro\b|agroindustr|agrochem|agroquimic|\bcrops?\b|cultivo|cosecha|harvest|semilla|\bseeds?\b|seedcare|\bbreed|mejoramiento genetico|fitosanit|fitopatolog|plant patholog|entomolog|\briego\b|irrigat|invernadero|vivero|jornaler|ganad|livestock|avicol|poultry|porcicol|\bswine\b|\bpork\b|zootecn|veterinari|granja|\bfarms?\b|farming|tractor|maquinaria agricola|fertiliz|\bsoil\b|desarrollista tecnico|biostimul|bioestimul/],
   ["seguridad", /secur|seguridad|ciberseg|infosec|soc analyst|pentest|threat|grc\b|iam\b/],
   ["datos-ia", /\bdata\b|datos|analytics|analista de datos|machine learning|\bml\b|\bai\b|\bia\b|inteligencia artificial|scientist|cientific|\bbi\b|business intelligence|llm|research engineer/],
   ["diseno", /design|disen|ux|ui\b|ilustra|creative|creativ|visual|motion|brand designer/],
@@ -181,6 +183,11 @@ export function detectarCategoria(titulo: string, departamento = ""): Categoria 
   const d = plano(departamento);
   if (d) for (const [categoria, regla] of REGLAS_CATEGORIA) if (regla.test(d)) return categoria;
   return "otros";
+}
+
+/** En empresas del campo, lo comercial o sin área clara cuenta como agricultura. */
+function categoriaConSector(c: Categoria, empresa: Empresa): Categoria {
+  return empresa.sector === "agro" && (c === "otros" || c === "ventas") ? "agro" : c;
 }
 
 export function detectarNivel(titulo: string, tipoEmpleo = ""): Nivel {
@@ -274,7 +281,7 @@ export function normalizar(cruda: VacanteCruda, empresa: Empresa, ahora = new Da
     modalidad,
     acepta_latam: aceptaLatam(ubicaciones, modalidad, paises, empresa),
     zonas: detectarZonas(textoUbic),
-    categoria: detectarCategoria(titulo, cruda.departamento),
+    categoria: categoriaConSector(detectarCategoria(titulo, cruda.departamento), empresa),
     nivel: detectarNivel(titulo, cruda.tipoEmpleo),
     idioma: descripcion.length > 80 ? detectarIdioma(`${titulo}\n${descripcion}`) : idiomaDelTitulo(titulo, paises),
     ...sueldoCreible(cruda.sueldo),

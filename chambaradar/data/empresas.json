@@ -244,5 +244,9 @@
   {"slug": "yazaki", "nombre": "Yazaki", "ats": "successfactors", "board": "careers.yazaki.com", "tipo": "remoto"},
   {"slug": "lear", "nombre": "Lear Corporation", "ats": "successfactors", "board": "jobs.lear.com", "tipo": "remoto"},
   {"slug": "edgewell", "nombre": "Edgewell Personal Care", "ats": "successfactors", "board": "careers.edgewell.com", "tipo": "remoto"},
-  {"slug": "gruma", "nombre": "Gruma (Maseca)", "ats": "successfactors", "board": "careers.gruma.com", "tipo": "local"}
+  {"slug": "gruma", "nombre": "Gruma (Maseca)", "ats": "successfactors", "board": "careers.gruma.com", "tipo": "local"},
+  {"slug": "syngenta", "nombre": "Syngenta", "ats": "smartrecruiters", "board": "SyngentaGroup", "tipo": "remoto", "sector": "agro"},
+  {"slug": "bayer", "nombre": "Bayer", "ats": "successfactors", "board": "jobs.bayer.com", "tipo": "remoto"},
+  {"slug": "bunge", "nombre": "Bunge", "ats": "successfactors", "board": "jobs.bunge.com", "tipo": "remoto"},
+  {"slug": "corteva", "nombre": "Corteva Agriscience", "ats": "workday", "board": "corteva|wd5|Corteva", "tipo": "remoto", "sector": "agro"}
 ]

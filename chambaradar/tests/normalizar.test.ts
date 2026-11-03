@@ -183,3 +183,13 @@ test("enfoque Obregón: Sonora en cualquier modalidad y remotas abiertas a Méxi
   assert.equal(esRelevanteObregon(v({ modalidad: "presencial", paises: ["MX"] })), false); // presencial en CDMX
   assert.equal(esRelevanteObregon(v({ modalidad: "hibrido", paises: ["MX"] })), false);
 });
+
+test("área: agricultura y campo", async () => {
+  const { detectarCategoria } = await import("../lib/normalizar.ts");
+  for (const t of ["Ingeniero Agrónomo", "Desarrollista Técnico de Mercado", "Crop Research Associate", "Seed Logistics Lead", "Encargado de invernadero", "Médico Veterinario Zootecnista", "Jefe de granja porcícola", "Breeding Trial Specialist", "Técnico de riego"]) {
+    assert.equal(detectarCategoria(t), "agro", t);
+  }
+  for (const t of ["Software Engineer", "Pharmacist", "Representante de ventas", "Farmacéutico", "Seguridad patrimonial"]) {
+    assert.notEqual(detectarCategoria(t), "agro", t);
+  }
+});

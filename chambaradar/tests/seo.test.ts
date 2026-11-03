@@ -30,5 +30,5 @@ test("sitemap: cada área en todo, home office, México y Sonora, sin repetidos"
   assert.ok(r.includes("/vacantes?categoria=ventas&donde=remoto"));
   assert.ok(r.includes("/vacantes?donde=sonora"));
   assert.ok(!r.some((x) => x.includes("otros")));
-  assert.equal(r.length, 3 + 12 * 4);
+  assert.equal(r.length, 3 + 13 * 4);
 });
