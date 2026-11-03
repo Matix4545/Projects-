@@ -165,10 +165,10 @@ test("zonas: Cd. Obregón (Cajeme) y Sonora, sin confundir con Álvaro Obregón"
   assert.deepEqual(detectarZonas("Cajeme, México"), ["cajeme", "sonora"]);
   assert.deepEqual(detectarZonas("Hermosillo, Sonora, México"), ["sonora"]);
   assert.deepEqual(detectarZonas("Navojoa"), ["sonora"]);
-  assert.deepEqual(detectarZonas("Álvaro Obregón, Ciudad de México"), []);
-  assert.deepEqual(detectarZonas("Alvaro Obregon, CDMX"), []);
-  assert.deepEqual(detectarZonas("Obregón, CDMX"), []);
-  assert.deepEqual(detectarZonas("Monterrey, Nuevo León"), []);
+  assert.deepEqual(detectarZonas("Álvaro Obregón, Ciudad de México"), ["cdmx"]);
+  assert.deepEqual(detectarZonas("Alvaro Obregon, CDMX"), ["cdmx"]);
+  assert.deepEqual(detectarZonas("Obregón, CDMX"), ["cdmx"]);
+  assert.deepEqual(detectarZonas("Monterrey, Nuevo León"), ["nuevo-leon"]);
 });
 
 test("enfoque Obregón: Sonora en cualquier modalidad y remotas abiertas a México", async () => {
@@ -200,4 +200,19 @@ test("área: ciberseguridad solo si es seguridad informática", async () => {
   assert.equal(detectarCategoria("Analista de Ciberseguridad"), "seguridad");
   assert.equal(detectarCategoria("Contador de Nómina y Seguridad Social"), "finanzas");
   assert.notEqual(detectarCategoria("Guardia de seguridad"), "seguridad");
+});
+
+test("zonas: los 32 estados por ciudad o nombre, solo si es en México", async () => {
+  const { detectarZonas } = await import("../lib/normalizar.ts");
+  assert.deepEqual(detectarZonas("Guadalajara, Jalisco, México"), ["jalisco"]);
+  assert.deepEqual(detectarZonas("Ciudad de México · Monterrey"), ["cdmx", "nuevo-leon"]);
+  assert.deepEqual(detectarZonas("Naucalpan de Juárez"), ["edomex"]);
+  assert.deepEqual(detectarZonas("Tijuana, BC"), ["baja-california"]);
+  assert.deepEqual(detectarZonas("Cabo San Lucas, Baja California Sur"), ["baja-california-sur"]);
+  assert.deepEqual(detectarZonas("Mérida, Yucatán"), ["yucatan"]);
+  assert.deepEqual(detectarZonas("León, Gto."), ["guanajuato"]);
+  assert.deepEqual(detectarZonas("Miguel Hidalgo, CDMX"), ["cdmx"]);
+  assert.deepEqual(detectarZonas("Pachuca, Hidalgo"), ["hidalgo"]);
+  assert.deepEqual(detectarZonas("Ciudad Obregón, Sonora"), ["cajeme", "sonora"]);
+  assert.deepEqual(detectarZonas("Guadalajara, Spain", false), []);
 });

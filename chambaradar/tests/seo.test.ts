@@ -24,11 +24,12 @@ test("no se indexan búsquedas por texto ni filtros finos", () => {
   assert.equal(indexable(base, { categoria: "ventas", sueldo: "1" }), false);
 });
 
-test("sitemap: cada área en todo, home office, México y Sonora, sin repetidos", () => {
+test("sitemap: cada área en todo, home office y México, más un estado por página, sin repetidos", () => {
   const r = busquedasSitemap();
   assert.equal(new Set(r).size, r.length);
   assert.ok(r.includes("/vacantes?categoria=ventas&donde=remoto"));
   assert.ok(r.includes("/vacantes?donde=sonora"));
+  assert.ok(r.includes("/vacantes?donde=nuevo-leon"));
   assert.ok(!r.some((x) => x.includes("otros")));
-  assert.equal(r.length, 3 + 13 * 4);
+  assert.equal(r.length, 2 + 13 * 3 + 32);
 });

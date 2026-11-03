@@ -39,9 +39,10 @@ export function leerFiltros(p: Params, local = false): Filtros {
   // "donde" viene del paso de bienvenida (/empezar): remoto o en México
   const donde = uno(p.donde);
   // Si se eligió un "¿Dónde?" concreto, manda sobre el país/modalidad que se hubieran quedado de antes
-  const dondeConcreto = ["cerca", "cajeme", "sonora", "remoto", "mx"].includes(donde);
+  const esZona = (ZONAS as readonly string[]).includes(donde);
+  const dondeConcreto = esZona || ["cerca", "remoto", "mx"].includes(donde);
   const pais = (dondeConcreto ? (donde === "remoto" || donde === "cerca" ? "" : "MX") : uno(p.pais)).toUpperCase();
-  const zona = uno(p.zona) || (donde === "cajeme" || donde === "sonora" ? donde : "");
+  const zona = esZona ? donde : uno(p.zona);
   const dias = Number(uno(p.dias));
   return {
     q: uno(p.q).trim().slice(0, 80),
@@ -51,8 +52,8 @@ export function leerFiltros(p: Params, local = false): Filtros {
     nivel: (NIVELES as readonly string[]).includes(nivel) ? (nivel as Nivel) : "",
     tipo: tipo === "local" || tipo === "remoto" ? tipo : "",
     zona: (ZONAS as readonly string[]).includes(zona) ? (zona as Zona) : "",
-    // Todos ven el catálogo completo; quien está en Sonora empieza por lo cercano
-    alcance: donde === "cerca" || (local && !donde && !uno(p.alcance) && !pais && !modalidad) ? "cerca" : "todo",
+    // Todos ven por defecto el catálogo completo (México y LATAM)
+    alcance: donde === "cerca" ? "cerca" : "todo",
     local,
     conSueldo: uno(p.sueldo) === "1",
     dias: [1, 7, 30].includes(dias) ? dias : 0,

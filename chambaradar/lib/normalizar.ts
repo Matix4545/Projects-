@@ -1,7 +1,7 @@
 // Convierte las vacantes de cada ATS a un formato único y decide si sirven
 // para alguien en México/LATAM. Funciones puras: se prueban en tests/.
 
-import type { Categoria, Empresa, Modalidad, Nivel, Sueldo, Vacante, VacanteCruda, Zona } from "./tipos.ts";
+import type { Categoria, Empresa, Estado, Modalidad, Nivel, Sueldo, Vacante, VacanteCruda, Zona } from "./tipos.ts";
 
 /** Quita acentos y pasa a minúsculas para comparar texto. */
 export function plano(texto: string | null | undefined): string {
@@ -107,7 +107,45 @@ const CIUDADES_SONORA = /\b(sonora|hermosillo|cajeme|navojoa|guaymas|empalme|nog
  * Cuenta como Cajeme si dice Cajeme, "Ciudad/Cd. Obregón", "Obregón, Sonora",
  * el código postal 850xx, o "Obregón" a secas sin "Álvaro" ni CDMX.
  */
-export function detectarZonas(texto: string): Zona[] {
+// Estado de México según el texto de la ubicación (nombre del estado o ciudades
+// principales). Solo se usa si la vacante es en México: "Guadalajara" o "León"
+// también existen en España.
+const CIUDADES_ESTADO: [Estado, RegExp][] = [
+  ["cdmx", /\bcdmx\b|ciudad de mexico|mexico city|distrito federal|mexico,? d\.?f\b|\bpolanco\b|coyoacan|iztapalapa|azcapotzalco|tlalpan|xochimilco|alvaro obregon|miguel hidalgo|santa fe,? (cdmx|ciudad|mex)/],
+  ["edomex", /estado de mexico|state of mexico|edomex|edo\.? ?(de )?mex\b|\bmex\.?,? mexico\b|naucalpan|tlalnepantla|toluca|ecatepec|cuautitlan|huixquilucan|atizapan|\blerma\b|nezahualcoyotl|metepec|texcoco|tultitlan|coacalco|interlomas|tecamac|zumpango|ixtapaluca|chalco/],
+  ["jalisco", /jalisco|guadalajara|zapopan|tlaquepaque|tlajomulco|puerto vallarta|\bgdl\b|el salto|tonala,? jal/],
+  ["nuevo-leon", /nuevo leon|monterrey|san pedro garza|apodaca|santa catarina|escobedo|\bmty\b|guadalupe,? (n\.?l|nuevo)|cienega de flores|\bn\.l\.?\b/],
+  ["queretaro", /queretaro|\bqro\b|corregidora|el marques|san juan del rio/],
+  ["guanajuato", /guanajuato|\bleon,? (gto|guanajuato)|celaya|irapuato|silao|salamanca|\bgto\b|dolores hidalgo|san miguel de allende/],
+  ["puebla", /puebla|cholula|tehuacan/],
+  ["aguascalientes", /aguascalientes|\bags\b/],
+  ["baja-california-sur", /baja california sur|\bbcs\b|los cabos|cabo san lucas|san jose del cabo|la paz,? (b\.?c\.?s|baja)/],
+  ["baja-california", /baja california(?! sur)|tijuana|mexicali|ensenada|tecate|rosarito|\bb\.?c\.?,? mexico/],
+  ["chihuahua", /chihuahua|ciudad juarez|cd\.? juarez|juarez,? chih|delicias,? chih|cuauhtemoc,? chih/],
+  ["coahuila", /coahuila|saltillo|torreon|monclova|piedras negras|ramos arizpe|acuna/],
+  ["tamaulipas", /tamaulipas|reynosa|matamoros|nuevo laredo|tampico|ciudad victoria|altamira|ciudad madero/],
+  ["sinaloa", /sinaloa|culiacan|mazatlan|los mochis|guasave|ahome/],
+  ["sonora", /\b(sonora|hermosillo|cajeme|navojoa|guaymas|empalme|nogales|san luis rio colorado|huatabampo|caborca|etchojoa|alamos|pueblo yaqui|bacum|puerto penasco|esperanza,? son)\b/],
+  ["durango", /\bdurango\b|gomez palacio|lerdo,? dgo|\bdgo\b/],
+  ["zacatecas", /zacatecas|fresnillo/],
+  ["san-luis-potosi", /san luis potosi|\bslp\b/],
+  ["yucatan", /yucatan|merida/],
+  ["quintana-roo", /quintana roo|cancun|playa del carmen|tulum|chetumal|cozumel/],
+  ["campeche", /campeche|ciudad del carmen/],
+  ["tabasco", /tabasco|villahermosa/],
+  ["veracruz", /veracruz|xalapa|jalapa|coatzacoalcos|orizaba|boca del rio|poza rica|cordoba,? ver|minatitlan|tuxpan,? ver/],
+  ["oaxaca", /oaxaca|salina cruz|juchitan/],
+  ["chiapas", /chiapas|tuxtla|tapachula|san cristobal de las casas/],
+  ["guerrero", /guerrero|acapulco|chilpancingo|zihuatanejo|iguala/],
+  ["michoacan", /michoacan|morelia|uruapan|lazaro cardenas|zamora,? mich/],
+  ["morelos", /morelos|cuernavaca|jiutepec|cuautla/],
+  ["hidalgo", /pachuca|tulancingo|\bhgo\b|tula de allende|(?<!miguel |dolores )\bhidalgo,? (mexico|mx|hgo)\b|, hidalgo\b/],
+  ["tlaxcala", /tlaxcala|apizaco/],
+  ["nayarit", /nayarit|tepic|nuevo vallarta|bahia de banderas/],
+  ["colima", /colima|manzanillo/],
+];
+
+export function detectarZonas(texto: string, enMexico = true): Zona[] {
   const t = plano(texto).replace(/alvaro obregon/g, " ");
   const enCdmx = /cdmx|ciudad de mexico|mexico city|distrito federal/.test(t);
   const cajeme =
@@ -115,6 +153,11 @@ export function detectarZonas(texto: string): Zona[] {
   const zonas: Zona[] = [];
   if (cajeme) zonas.push("cajeme");
   if (cajeme || CIUDADES_SONORA.test(t)) zonas.push("sonora");
+  if (enMexico) {
+    // Sin "Obregón" de Sonora, para que Cajeme no cuente también como Álvaro Obregón (CDMX)
+    const sinCajeme = cajeme ? t.replace(/(ciudad|cd\.?) ?obregon|\bobregon\b/g, " ") : t;
+    for (const [estado, regla] of CIUDADES_ESTADO) if (!zonas.includes(estado) && regla.test(sinCajeme)) zonas.push(estado);
+  }
   return zonas;
 }
 
@@ -281,7 +324,7 @@ export function normalizar(cruda: VacanteCruda, empresa: Empresa, ahora = new Da
     paises,
     modalidad,
     acepta_latam: aceptaLatam(ubicaciones, modalidad, paises, empresa),
-    zonas: detectarZonas(textoUbic),
+    zonas: detectarZonas(textoUbic, paises.includes("MX")),
     categoria: categoriaConSector(detectarCategoria(titulo, cruda.departamento), empresa),
     nivel: detectarNivel(titulo, cruda.tipoEmpleo),
     idioma: descripcion.length > 80 ? detectarIdioma(`${titulo}\n${descripcion}`) : idiomaDelTitulo(titulo, paises),

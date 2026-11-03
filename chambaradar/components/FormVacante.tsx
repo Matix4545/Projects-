@@ -9,7 +9,7 @@ const VACIO: DatosVacante = {
   puesto: "",
   categoria: "otros",
   modalidad: "presencial",
-  ubicacion: "Cd. Obregón, Sonora",
+  ubicacion: "",
   sueldo_min: null,
   sueldo_max: null,
   periodo: "semana",
@@ -102,7 +102,7 @@ export function FormVacante({
           </select>
         </Campo>
         <Campo etiqueta="Ubicación">
-          <input name="ubicacion" value={d.ubicacion} onChange={(e) => poner("ubicacion", e.target.value)} className="campo py-2.5" />
+          <input name="ubicacion" value={d.ubicacion} onChange={(e) => poner("ubicacion", e.target.value)} className="campo py-2.5" required placeholder="Ciudad, Estado" />
         </Campo>
         <Campo etiqueta="Horario">
           <input name="horario" value={d.horario} onChange={(e) => poner("horario", e.target.value)} className="campo py-2.5" placeholder="Ej. Lunes a sábado, 8 a 4" />

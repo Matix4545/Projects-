@@ -1,7 +1,7 @@
 // SEO del listado de vacantes: título, descripción y dirección canónica según
 // los filtros, y la lista de búsquedas que van en el sitemap.
 
-import { CATEGORIAS, NOMBRE_CATEGORIA, NOMBRE_ZONA, PAISES, type Categoria, type Modalidad, type Zona } from "./tipos.ts";
+import { CATEGORIAS, ESTADOS, NOMBRE_CATEGORIA, NOMBRE_ZONA, PAISES, type Categoria, type Modalidad, type Zona } from "./tipos.ts";
 
 /** Lo mínimo de los filtros que hace falta aquí (Filtros de lib/vacantes.ts lo cumple). */
 export interface FiltrosSeo {
@@ -66,9 +66,9 @@ export function indexable(f: FiltrosSeo, params: Record<string, unknown>): boole
   return extras.length === 0;
 }
 
-const LUGARES_SITEMAP = ["", "donde=remoto", "donde=mx", "donde=sonora"];
+const LUGARES_SITEMAP = ["", "donde=remoto", "donde=mx"];
 
-/** Búsquedas que van en el sitemap: cada área × (todo, home office, México, Sonora). */
+/** Búsquedas que van en el sitemap: cada área × (todo, home office, México) y cada estado. */
 export function busquedasSitemap(): string[] {
   const rutas: string[] = [];
   for (const lugar of LUGARES_SITEMAP) {
@@ -78,5 +78,7 @@ export function busquedasSitemap(): string[] {
       rutas.push(`/vacantes?categoria=${c}${lugar ? `&${lugar}` : ""}`);
     }
   }
+  // Una página por estado de México
+  for (const estado of Object.keys(ESTADOS)) rutas.push(`/vacantes?donde=${estado}`);
   return rutas;
 }

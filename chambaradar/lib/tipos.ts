@@ -75,9 +75,47 @@ export interface Vacante {
   vista: string;
 }
 
-export const ZONAS = ["cajeme", "sonora"] as const;
-export type Zona = (typeof ZONAS)[number];
-export const NOMBRE_ZONA: Record<Zona, string> = { cajeme: "Cd. Obregón (Cajeme)", sonora: "Sonora" };
+/** Los 32 estados de México (slug → nombre), para filtrar vacantes por estado. */
+export const ESTADOS = {
+  aguascalientes: "Aguascalientes",
+  "baja-california": "Baja California",
+  "baja-california-sur": "Baja California Sur",
+  campeche: "Campeche",
+  chiapas: "Chiapas",
+  chihuahua: "Chihuahua",
+  cdmx: "Ciudad de México",
+  coahuila: "Coahuila",
+  colima: "Colima",
+  durango: "Durango",
+  edomex: "Estado de México",
+  guanajuato: "Guanajuato",
+  guerrero: "Guerrero",
+  hidalgo: "Hidalgo",
+  jalisco: "Jalisco",
+  michoacan: "Michoacán",
+  morelos: "Morelos",
+  nayarit: "Nayarit",
+  "nuevo-leon": "Nuevo León",
+  oaxaca: "Oaxaca",
+  puebla: "Puebla",
+  queretaro: "Querétaro",
+  "quintana-roo": "Quintana Roo",
+  "san-luis-potosi": "San Luis Potosí",
+  sinaloa: "Sinaloa",
+  sonora: "Sonora",
+  tabasco: "Tabasco",
+  tamaulipas: "Tamaulipas",
+  tlaxcala: "Tlaxcala",
+  veracruz: "Veracruz",
+  yucatan: "Yucatán",
+  zacatecas: "Zacatecas",
+} as const;
+export type Estado = keyof typeof ESTADOS;
+
+/** Zonas de una vacante: los estados de México donde está, más "cajeme" (Cd. Obregón). */
+export const ZONAS = ["cajeme", ...(Object.keys(ESTADOS) as Estado[])] as const;
+export type Zona = "cajeme" | Estado;
+export const NOMBRE_ZONA: Record<Zona, string> = { cajeme: "Cd. Obregón (Cajeme)", ...ESTADOS };
 
 export const CATEGORIAS = [
   "agro",

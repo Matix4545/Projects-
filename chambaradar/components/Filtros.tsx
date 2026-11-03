@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CATEGORIAS, NIVELES, NOMBRE_CATEGORIA, NOMBRE_NIVEL, PAISES } from "@/lib/tipos";
+import { CATEGORIAS, ESTADOS, NIVELES, NOMBRE_CATEGORIA, NOMBRE_NIVEL, PAISES } from "@/lib/tipos";
 import type { Filtros as TFiltros } from "@/lib/vacantes";
 import { Ajustes, Lupa } from "./Iconos";
 import { Modal } from "./Modal";
@@ -54,9 +54,14 @@ function FormFiltros({ f, alCambiar, pie }: { f: TFiltros; alCambiar: boolean; p
           <option value="todo">Todo México y LATAM</option>
           <option value="remoto">Remoto / home office</option>
           <option value="mx">En México</option>
-          <option value="sonora">En Sonora</option>
           {f.local && <option value="cajeme">En Cd. Obregón (Cajeme)</option>}
-          {f.local && <option value="cerca">Cerca de ti: Sonora y home office</option>}
+          <optgroup label="Por estado">
+            {Object.entries(ESTADOS).map(([slug, nombre]) => (
+              <option key={slug} value={slug}>
+                {nombre}
+              </option>
+            ))}
+          </optgroup>
         </select>
       </Campo>
       {f.alcance === "todo" && (
