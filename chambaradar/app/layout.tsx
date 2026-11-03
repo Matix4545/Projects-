@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Contador } from "@/components/Contador";
+import { MetaPixel } from "@/components/MetaPixel";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { urlSitio } from "@/lib/sitio";
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <Suspense fallback={null}>
           <Contador />
+          <MetaPixel />
         </Suspense>
       </body>
     </html>

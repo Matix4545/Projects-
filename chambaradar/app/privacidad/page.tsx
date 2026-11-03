@@ -119,8 +119,11 @@ export default async function Privacidad() {
 
         <h2>7. Cookies</h2>
         <p>
-          Usamos solo las cookies necesarias para mantener tu sesión iniciada. No usamos cookies de publicidad ni de rastreo de terceros. Si
-          las bloqueas en tu navegador, podrás ver la vista previa pero no iniciar sesión.
+          Usamos las cookies necesarias para mantener tu sesión iniciada; si las bloqueas, podrás ver la vista previa pero no iniciar sesión.
+          Además, solo si las aceptas en el aviso que aparece en el sitio, usamos las cookies del píxel de Meta (Facebook e Instagram) para
+          medir nuestros anuncios: Meta recibe qué páginas visitas en ChambaRadar, si tocas “Aplicar” o “Pagar” y si completaste un pago (sin
+          tus datos de tarjeta). Si las rechazas, no se carga nada de Meta. Puedes cambiar tu decisión borrando los datos del sitio en tu
+          navegador.
         </p>
 
         <h2>8. Cuánto tiempo guardamos tus datos</h2>

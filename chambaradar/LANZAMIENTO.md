@@ -38,6 +38,8 @@ Estado: **cobro activo en modo real** (cuenta Stripe "ChambaRadar", `acct_1UXVQR
 ## 5. Opcionales
 
 - **Correos (listo):** Resend con el dominio chambaradar.com (DNS en Cloudflare). Supabase usa SMTP de Resend (`smtp.resend.com:465`, usuario `resend`, remitente `hola@chambaradar.com`) para el enlace de entrar; Netlify tiene `RESEND_API_KEY` y `CORREO_REMITENTE = ChambaRadar <alertas@chambaradar.com>` para las alertas. Plantillas en español en Supabase → Authentication → Emails → Templates.
+- **Píxel de Meta (listo, apagado):** crear el píxel en Meta Events Manager y poner su ID en Netlify como `NEXT_PUBLIC_META_PIXEL_ID`, luego volver a desplegar. Aparece el aviso de cookies; solo con "Aceptar" se carga el píxel. Eventos: PageView, Lead ("Aplicar" con candado), InitiateCheckout ("Pagar", con el precio) y Purchase (regreso de Stripe).
+- **Anuncios:** usar enlaces con `?utm_source=facebook&utm_campaign=nombre`; se ven en Panel → Tráfico → Campañas.
 - **Despliegue automático:** Netlify → proyecto chambaradar → Link repository → GitHub `Matix4545/Projects-`, rama `main`, base directory `chambaradar`.
 - **Legal:** ciudad y estado en `lib/legal.ts` (`DOMICILIO`).
 - **Difusión:** compartir `https://chambaradar.com` en los grupos de empleo de Obregón en Facebook.

@@ -62,7 +62,7 @@ export default async function Precios({ searchParams }: Props) {
                 <li>✓ Descripción completa</li>
                 <li>✓ Buscar por empresa</li>
               </ul>
-              <button className={`mt-6 w-full ${p.destacado ? "boton" : "boton-secundario"} disabled:opacity-50`} disabled={!activos}>
+              <button className={`mt-6 w-full ${p.destacado ? "boton" : "boton-secundario"} disabled:opacity-50`} disabled={!activos} data-meta="InitiateCheckout" data-meta-valor={p.precio}>
                 {!activos ? "Próximamente" : "Pagar"}
               </button>
             </form>
