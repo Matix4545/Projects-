@@ -435,7 +435,7 @@ Mosaic | global | mosaic, mosaicco
 Yara | global | yara, yarainternational
 UPL | global | upl, uplltd, upl-corp
 Nufarm | global | nufarm
-FMC | global | fmc, fmccorp, fmccorporation
+FMC | global | fmccorp, fmccorporation  # "fmc" en Teamtailor es otra empresa (peritos marinos)
 Koppert | global | koppert
 Biobest | global | biobest, biobestgroup
 Driscoll's | global | driscolls, driscollsinc
@@ -451,7 +451,7 @@ Valmont | global | valmont
 AGCO | global | agco, agcocorp
 CNH Industrial | global | cnh, cnhindustrial
 Kubota | global | kubota
-Indigo Ag | global | indigo, indigoag
+Indigo Ag | global | indigoag  # "indigo" en Greenhouse es una aseguradora
 Pivot Bio | global | pivotbio
 Farmers Business Network | global | fbn, farmersbusinessnetwork
 Bioceres | global | bioceres
