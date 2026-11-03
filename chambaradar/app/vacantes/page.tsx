@@ -11,15 +11,23 @@ import { numero } from "@/lib/formato";
 import { pagosActivos } from "@/lib/planes";
 import { accesoLocal, usuarioActual } from "@/lib/supabase/servidor";
 import { visitanteLocal } from "@/lib/ubicacion";
-import { NOMBRE_CATEGORIA, NOMBRE_ZONA, PAISES } from "@/lib/tipos";
+import { descripcionDeFiltros, indexable, rutaCanonica, tituloDeFiltros } from "@/lib/seo";
 import { buscarVacantes, leerFiltros, POR_PAGINA, resumen } from "@/lib/vacantes";
 
-export const metadata: Metadata = {
-  title: "Vacantes",
-  description: "Vacantes en México y LATAM, y trabajos remotos (home office) en pesos y dólares, sacadas directo de las páginas de empleo de las empresas.",
-};
-
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+
+/** Título, descripción y canónica según los filtros (Google ve una página por área y lugar). */
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const f = leerFiltros(params);
+  const pagina = f.pagina > 1 ? ` · página ${f.pagina}` : "";
+  return {
+    title: `${tituloDeFiltros(f)}${pagina}`,
+    description: descripcionDeFiltros(f),
+    alternates: { canonical: rutaCanonica(f) },
+    robots: indexable(f, params) ? undefined : { index: false, follow: true },
+  };
+}
 
 export default async function Vacantes({ searchParams }: Props) {
   const params = await searchParams;
@@ -43,23 +51,7 @@ export default async function Vacantes({ searchParams }: Props) {
     resumen: `${numero(r.total)} vacantes de ${numero(r.empresas)} empresas`,
   };
 
-  // Título según lo que se está viendo: "Software e ingeniería en México"
-  const lugar = f.zona
-    ? `en ${NOMBRE_ZONA[f.zona]}`
-    : f.modalidad === "remoto"
-      ? "home office"
-      : f.alcance === "cerca"
-        ? "cerca de ti"
-        : f.pais
-          ? `en ${PAISES[f.pais]}`
-          : "en todo México y LATAM";
-  const titulo = f.categoria
-    ? `${NOMBRE_CATEGORIA[f.categoria]}${lugar ? (lugar === "home office" ? " · home office" : ` ${lugar}`) : ""}`
-    : lugar === "home office"
-      ? "Home office / remoto"
-      : lugar
-        ? `Vacantes ${lugar}`
-        : "Todas las vacantes";
+  const titulo = tituloDeFiltros(f);
 
   return (
     <>
