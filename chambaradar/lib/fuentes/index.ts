@@ -406,6 +406,15 @@ function lugarDeRuta(ruta: string): string {
   return partes.length >= 3 ? decodeURIComponent(partes[1]).replace(/-/g, " ") : "";
 }
 
+/**
+ * Id de la vacante en Workday: el primer "bullet" suele ser el número de
+ * requisición (R123456, JR-001…), pero algunos portales ponen ahí la ciudad.
+ * Si no parece un número de vacante, se usa la ruta, que siempre es única.
+ */
+export function idWorkday(bullet: string | undefined, ruta: string): string {
+  return bullet && /\d/.test(bullet) && !/\s/.test(bullet.trim()) ? bullet.trim() : ruta;
+}
+
 async function workday(board: string): Promise<VacanteCruda[]> {
   const [inquilino, servidor, sitio] = board.split("|");
   if (!inquilino || !servidor || !sitio) throw new Error(`Board de Workday inválido: ${board} (usa "inquilino|wdN|sitio")`);
@@ -442,7 +451,7 @@ async function workday(board: string): Promise<VacanteCruda[]> {
     // Ya filtramos por México: si la ubicación no dice el país, se agrega
     if (mx) ubicaciones = ubicaciones.map((u) => (/m[eé]xico|\bmx\b/i.test(u) ? u : `${u}, México`));
     return {
-      idExterno: j.bulletFields?.[0] ?? j.externalPath,
+      idExterno: idWorkday(j.bulletFields?.[0], j.externalPath),
       titulo: j.title,
       url: `${base}/${sitio}${j.externalPath}`,
       ubicaciones,

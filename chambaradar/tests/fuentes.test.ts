@@ -43,3 +43,11 @@ test("SuccessFactors: total de resultados en inglés y en español", async () =>
   assert.equal(totalSuccessFactors("Resultados <b>1 – 25</b> de <b>318</b>"), 318);
   assert.equal(totalSuccessFactors("<p>nada</p>"), 0);
 });
+
+test("Workday: el id es el número de vacante, o la ruta si el portal pone ahí la ciudad", async () => {
+  const { idWorkday } = await import("../lib/fuentes/index.ts");
+  assert.equal(idWorkday("R0123456", "/job/Mexico-City/Analyst_R0123456"), "R0123456");
+  assert.equal(idWorkday("JR-2041", "/job/x_JR-2041"), "JR-2041");
+  assert.equal(idWorkday("Mexico City", "/job/Mexico-City/Software-Engineer_JREQ190"), "/job/Mexico-City/Software-Engineer_JREQ190");
+  assert.equal(idWorkday(undefined, "/job/a_1"), "/job/a_1");
+});
