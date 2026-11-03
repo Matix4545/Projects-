@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { Contador } from "@/components/Contador";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { urlSitio } from "@/lib/sitio";
@@ -22,7 +24,12 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es-MX" className={inter.variable}>
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen antialiased">
+        {children}
+        <Suspense fallback={null}>
+          <Contador />
+        </Suspense>
+      </body>
     </html>
   );
 }

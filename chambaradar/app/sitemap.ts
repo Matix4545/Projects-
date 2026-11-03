@@ -18,11 +18,14 @@ const PAGINAS: { ruta: string; prioridad: number; frecuencia: MetadataRoute.Site
   { ruta: "/terminos", prioridad: 0.2, frecuencia: "yearly" },
 ];
 
+/** Next.js no escapa la URL al escribir el XML: un "&" suelto deja el sitemap inválido para Google. */
+const xml = (url: string) => url.replace(/&/g, "&amp;");
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const sitio = urlSitio();
   const hoy = new Date();
   return [
     ...PAGINAS.map((p) => ({ url: `${sitio}${p.ruta}`, lastModified: hoy, changeFrequency: p.frecuencia, priority: p.prioridad })),
-    ...busquedasSitemap().map((ruta) => ({ url: `${sitio}${ruta}`, lastModified: hoy, changeFrequency: "daily" as const, priority: 0.6 })),
+    ...busquedasSitemap().map((ruta) => ({ url: xml(`${sitio}${ruta}`), lastModified: hoy, changeFrequency: "daily" as const, priority: 0.6 })),
   ];
 }

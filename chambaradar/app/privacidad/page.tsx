@@ -41,6 +41,11 @@ export default async function Privacidad() {
             fecha y hora) que generan automáticamente nuestros proveedores de alojamiento por seguridad.
           </li>
           <li>
+            <strong>Estadísticas de uso (anónimas):</strong> qué páginas se visitan, las búsquedas, los clics en “Aplicar”, el estado o país
+            aproximado, si usas celular o computadora y de qué sitio llegaste. No usamos cookies para esto ni guardamos tu dirección IP: para
+            contar visitantes usamos un código anónimo que cambia cada día y no permite identificarte. Se guardan 13 meses.
+          </li>
+          <li>
             <strong>Tu CV (opcional):</strong> si usas “Haz tu CV” con tu sesión iniciada, guardamos lo que escribes (nombre, contacto,
             experiencia, estudios, habilidades e idiomas) para que puedas volver a abrirlo. Sin sesión, se queda solo en tu navegador y no
             nos llega. Nadie más lo ve: no lo compartimos con empresas ni lo usamos para otra cosa.

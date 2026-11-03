@@ -27,5 +27,5 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Todo menos archivos estáticos y el webhook de Stripe
-  matcher: ["/((?!_next/static|_next/image|favicon|icono|api/stripe|.*\\.(?:svg|png|jpg|ico|webmanifest)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon|icono|api/stripe|api/evento|.*\\.(?:svg|png|jpg|ico|webmanifest)$).*)"],
 };

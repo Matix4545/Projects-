@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FormVacante } from "@/components/FormVacante";
 import { Encabezado, Pie } from "@/components/Marco";
@@ -84,7 +85,12 @@ export default async function Panel({ searchParams }: Props) {
     <>
       <Encabezado usuario={usuario} />
       <main className="contenedor max-w-4xl space-y-10 py-8">
-        <h1 className="text-3xl font-extrabold tracking-tight">Panel</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-3xl font-extrabold tracking-tight">Panel</h1>
+          <Link href="/panel/trafico" className="boton px-4 py-2 text-sm">
+            Ver tráfico del sitio
+          </Link>
+        </div>
         {error && <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-800">{error}</p>}
         {publicada && <p className="rounded-2xl bg-radar-claro p-4 text-sm text-radar-oscuro">Publicada. Ya aparece en Vacantes (primero en Obregón).</p>}
 

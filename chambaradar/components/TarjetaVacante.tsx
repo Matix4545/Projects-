@@ -165,11 +165,11 @@ function VentanaMas({ v, alAplicar }: { v: VacanteVista; alAplicar: (o: VacanteV
 
 function BotonAplicar({ v, alAplicar }: { v: VacanteVista; alAplicar: (v: VacanteVista) => void }) {
   return v.bloqueada || !v.url ? (
-    <button onClick={() => alAplicar(v)} className="boton-oscuro">
+    <button onClick={() => alAplicar(v)} className="boton-oscuro" data-evento="aplicar_bloqueada" data-vacante={v.id}>
       <Candado className="size-3.5" /> Aplicar
     </button>
   ) : (
-    <a href={v.url} target="_blank" rel="noopener noreferrer nofollow" className="boton-oscuro">
+    <a href={v.url} target="_blank" rel="noopener noreferrer nofollow" className="boton-oscuro" data-evento="aplicar" data-vacante={v.id} data-empresa={v.empresa_nombre}>
       Aplicar <Flecha className="size-3.5" />
     </a>
   );
