@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { VerificarUbicacion } from "@/components/VerificarUbicacion";
 import { useCallback, useEffect, useState } from "react";
 import { enviarEnlace } from "@/app/entrar/acciones";
 import type { VacanteVista } from "@/lib/muro";
@@ -58,6 +59,18 @@ function Empresa({ v }: { v: VacanteVista }) {
   );
 }
 
+/** Quien vive en Sonora no paga: si su internet sale como de otro estado, verifica con el GPS. */
+function EnSonora() {
+  return (
+    <div className="border-t border-borde pt-4">
+      <p className="mb-2 text-sm text-gris">
+        <strong className="text-tinta">¿Vives en Sonora?</strong> Para ti es gratis.
+      </p>
+      <VerificarUbicacion compacto />
+    </div>
+  );
+}
+
 /** Contenido de la ventana cuando alguien sin acceso toca "Aplicar". */
 function VentanaDesbloquear({ ctx }: { ctx: ContextoTarjeta }) {
   if (!ctx.conSesion) {
@@ -72,6 +85,7 @@ function VentanaDesbloquear({ ctx }: { ctx: ContextoTarjeta }) {
           <button className="boton w-full">Crear mi cuenta gratis</button>
         </form>
         <p className="text-center text-sm text-gris">{ctx.resumen} revisadas hoy</p>
+        <EnSonora />
       </div>
     );
   }
@@ -83,6 +97,7 @@ function VentanaDesbloquear({ ctx }: { ctx: ContextoTarjeta }) {
           <Link href="/precios" className="boton w-full">
             Ver planes <Flecha className="size-4" />
           </Link>
+          <EnSonora />
         </>
       ) : (
         <>
