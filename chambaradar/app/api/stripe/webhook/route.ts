@@ -33,7 +33,11 @@ export async function POST(request: NextRequest) {
 
   const sesion = evento.data.object as Stripe.Checkout.Session;
   const usuario = sesion.client_reference_id;
-  const plan = planPorMonto(sesion.amount_total);
+  // Si Stripe le cobró en otra moneda (p. ej. USD a alguien fuera de México),
+  // el monto original en pesos viene en currency_conversion
+  const conversion = sesion.currency_conversion;
+  const montoMxn = conversion?.source_currency === "mxn" ? conversion.amount_total : sesion.currency === "mxn" ? sesion.amount_total : null;
+  const plan = planPorMonto(montoMxn);
   // Sin usuario no hay a quién darle acceso (p. ej. alguien abrió el enlace directo): se avisa a Stripe
   if (!usuario || !plan) return NextResponse.json({ error: "Pago sin usuario o con monto desconocido" }, { status: 422 });
 
@@ -44,8 +48,8 @@ export async function POST(request: NextRequest) {
     p_usuario: usuario,
     p_plan: plan.id,
     p_dias: plan.dias,
-    p_monto: sesion.amount_total ?? plan.precio * 100,
-    p_moneda: sesion.currency ?? "mxn",
+    p_monto: montoMxn ?? plan.precio * 100,
+    p_moneda: "mxn",
   });
   // Si falla, Stripe reintenta el webhook más tarde
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
