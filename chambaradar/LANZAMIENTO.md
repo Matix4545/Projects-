@@ -37,7 +37,7 @@ Estado: **cobro activo en modo real** (cuenta Stripe "ChambaRadar", `acct_1UXVQR
 
 ## 5. Opcionales
 
-- **Correos de alertas:** cuenta en resend.com con un dominio propio → variables `RESEND_API_KEY` y `CORREO_REMITENTE` en Netlify.
+- **Correos (listo):** Resend con el dominio chambaradar.com (DNS en Cloudflare). Supabase usa SMTP de Resend (`smtp.resend.com:465`, usuario `resend`, remitente `hola@chambaradar.com`) para el enlace de entrar; Netlify tiene `RESEND_API_KEY` y `CORREO_REMITENTE = ChambaRadar <alertas@chambaradar.com>` para las alertas. Plantillas en español en Supabase → Authentication → Emails → Templates.
 - **Despliegue automático:** Netlify → proyecto chambaradar → Link repository → GitHub `Matix4545/Projects-`, rama `main`, base directory `chambaradar`.
 - **Legal:** ciudad y estado en `lib/legal.ts` (`DOMICILIO`).
 - **Difusión:** compartir `https://chambaradar.com` en los grupos de empleo de Obregón en Facebook.
