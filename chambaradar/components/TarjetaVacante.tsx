@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { enviarEnlace } from "@/app/entrar/acciones";
 import type { VacanteVista } from "@/lib/muro";
 import { formatoSueldo, haceCuanto } from "@/lib/formato";
 import { NOMBRE_CATEGORIA, NOMBRE_NIVEL, PAISES } from "@/lib/tipos";
@@ -60,29 +59,23 @@ function Empresa({ v }: { v: VacanteVista }) {
 
 /** Contenido de la ventana cuando alguien sin acceso toca "Aplicar". */
 function VentanaDesbloquear({ ctx }: { ctx: ContextoTarjeta }) {
-  if (!ctx.conSesion) {
-    return (
-      <div className="space-y-4">
-        <p className="text-gris">
-          Te mandamos un enlace a tu correo para entrar, sin contraseña. Después eliges tu plan y ves qué empresa es y su enlace para aplicar directo.
-        </p>
-        <form action={enviarEnlace} className="space-y-3">
-          <input type="hidden" name="siguiente" value="/precios" />
-          <input type="email" name="email" required autoComplete="email" placeholder="tu@correo.com" className="campo py-3 text-base" aria-label="Correo electrónico" />
-          <button className="boton w-full">Crear mi cuenta gratis</button>
-        </form>
-        <p className="text-center text-sm text-gris">{ctx.resumen} revisadas hoy</p>
-      </div>
-    );
-  }
   return (
     <div className="space-y-4">
       {ctx.pagosActivos ? (
         <>
           <p className="text-gris">Con un plan desde $49 MXN ves la empresa, la descripción completa y el enlace para aplicar directo en todas las vacantes.</p>
           <Link href="/precios" className="boton w-full">
-            Ver planes <Flecha className="size-4" />
+            Ver planes y pagar <Flecha className="size-4" />
           </Link>
+          <p className="text-center text-xs text-gris">Pago único con tarjeta u OXXO. No necesitas crear cuenta antes: tu acceso queda en el correo con el que pagues.</p>
+          {!ctx.conSesion && (
+            <p className="text-center text-sm text-gris">
+              ¿Ya pagaste?{" "}
+              <Link href="/entrar?siguiente=/vacantes" className="font-semibold text-radar-oscuro hover:underline">
+                Entra con tu correo
+              </Link>
+            </p>
+          )}
         </>
       ) : (
         <>

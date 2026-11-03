@@ -63,7 +63,7 @@ export default async function Precios({ searchParams }: Props) {
                 <li>✓ Buscar por empresa</li>
               </ul>
               <button className={`mt-6 w-full ${p.destacado ? "boton" : "boton-secundario"} disabled:opacity-50`} disabled={!activos}>
-                {!activos ? "Próximamente" : usuario ? "Pagar" : "Crear cuenta y pagar"}
+                {!activos ? "Próximamente" : "Pagar"}
               </button>
             </form>
           ))}

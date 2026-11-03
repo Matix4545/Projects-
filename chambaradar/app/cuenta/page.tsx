@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Encabezado, Pie } from "@/components/Marco";
 import { borrarAlerta } from "@/app/alertas/acciones";
+import { enviarEnlace } from "@/app/entrar/acciones";
 import { describirFiltros, enlaceBusqueda, type FiltrosAlerta } from "@/lib/alertas";
 import { supabaseSesion, usuarioActual } from "@/lib/supabase/servidor";
 
@@ -10,9 +11,38 @@ export const metadata: Metadata = { title: "Mi cuenta", robots: { index: false }
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 
+/** Después de pagar sin haber entrado: el acceso quedó en el correo que puso en Stripe. */
+function PagoRecibido() {
+  return (
+    <>
+      <Encabezado usuario={null} />
+      <main className="contenedor max-w-xl space-y-5 py-10">
+        <div className="rounded-3xl border border-borde bg-white p-6 sm:p-8">
+          <p className="text-4xl">🎉</p>
+          <h1 className="mt-3 text-2xl font-extrabold tracking-tight">¡Pago recibido!</h1>
+          <p className="mt-2 text-gris">
+            Tu acceso quedó en el <strong className="text-tinta">correo que pusiste al pagar</strong>. Escríbelo aquí y te mandamos un enlace para entrar, sin
+            contraseña. También te enviamos un correo con el enlace.
+          </p>
+          <form action={enviarEnlace} className="mt-5 space-y-3">
+            <input type="hidden" name="siguiente" value="/vacantes" />
+            <input type="email" name="email" required autoComplete="email" placeholder="el-correo-con-el-que-pagaste@gmail.com" className="campo py-3 text-base" aria-label="Correo electrónico" />
+            <button className="boton w-full">Entrar y ver las vacantes</button>
+          </form>
+          <p className="mt-4 text-sm text-gris">
+            ¿Pagaste con OXXO? Tu acceso se activa cuando pagues la ficha en tienda; puede tardar unas horas.
+          </p>
+        </div>
+      </main>
+      <Pie />
+    </>
+  );
+}
+
 export default async function Cuenta({ searchParams }: Props) {
   const { pago } = await searchParams;
   const usuario = await usuarioActual();
+  if (!usuario && pago === "ok") return <PagoRecibido />;
   if (!usuario) redirect("/entrar?siguiente=/cuenta");
 
   // La política de la tabla solo devuelve las alertas propias
