@@ -4,5 +4,5 @@
 export const RESPONSABLE = "Spencer Machuca";
 export const CORREO_CONTACTO = "spencer.machuca@gmail.com";
 /** Ciudad y estado del domicilio del responsable. PENDIENTE: completar. */
-export const DOMICILIO = "[Ciudad, Estado]";
+export const DOMICILIO = "Cd. Obregón, Sonora, México";
 export const ULTIMA_ACTUALIZACION = "2 de noviembre de 2026";
