@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { leerGeo } from "@/lib/geo";
-import { dispositivoDe, esBot, limpiarRuta, origenDe, rutaContable, visitanteDelDia, zonaDeGeo, type TipoEvento } from "@/lib/estadisticas";
+import { dispositivoDe, esBot, limpiarCampana, limpiarRuta, origenDe, rutaContable, visitanteDelDia, zonaDeGeo, type TipoEvento } from "@/lib/estadisticas";
 
 const TIPOS: TipoEvento[] = ["vista", "aplicar", "aplicar_bloqueada"];
 const nada = () => new NextResponse(null, { status: 204 });
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   const ua = request.headers.get("user-agent") ?? "";
   if (esBot(ua)) return nada();
 
-  let d: { tipo?: string; ruta?: string; ref?: string; vacante?: string; empresa?: string };
+  let d: { tipo?: string; ruta?: string; ref?: string; vacante?: string; empresa?: string; campana?: string };
   try {
     const texto = await request.text();
     if (texto.length > 2000) return nada();
@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
       visitante: await visitanteDelDia(ip, ua, fecha, clave),
       vacante: typeof d.vacante === "string" ? d.vacante.slice(0, 120) : null,
       empresa: tipo === "aplicar" && typeof d.empresa === "string" ? d.empresa.slice(0, 120) : null,
+      campana: limpiarCampana(d.campana),
     },
   });
   return nada();

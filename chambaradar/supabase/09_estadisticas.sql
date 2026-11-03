@@ -28,10 +28,11 @@ create or replace function public.registrar_evento(p_clave text, p_datos jsonb)
 returns void language plpgsql security definer set search_path = public as $$
 begin
   if not clave_valida(p_clave) then raise exception 'clave inválida'; end if;
-  insert into eventos (tipo, ruta, busqueda, zona, dispositivo, origen, visitante, vacante, empresa)
+  insert into eventos (tipo, ruta, busqueda, zona, dispositivo, origen, visitante, vacante, empresa, campana)
   values (p_datos->>'tipo', left(coalesce(p_datos->>'ruta', '/'), 120), nullif(left(p_datos->>'busqueda', 60), ''),
           p_datos->>'zona', p_datos->>'dispositivo', left(coalesce(p_datos->>'origen', 'directo'), 60),
-          left(p_datos->>'visitante', 32), nullif(left(p_datos->>'vacante', 120), ''), nullif(left(p_datos->>'empresa', 120), ''));
+          left(p_datos->>'visitante', 32), nullif(left(p_datos->>'vacante', 120), ''), nullif(left(p_datos->>'empresa', 120), ''),
+          nullif(left(p_datos->>'campana', 60), ''));
   -- Los eventos se guardan 13 meses
   if random() < 0.001 then delete from eventos where creado < now() - interval '13 months'; end if;
 end $$;
@@ -73,7 +74,14 @@ begin
     'paginas', coalesce((select jsonb_agg(jsonb_build_object('clave', ruta, 'n', n) order by n desc) from (
         select ruta, count(*) n from e where tipo = 'vista' group by ruta order by 2 desc limit 15) t), '[]'::jsonb),
     'empresas', coalesce((select jsonb_agg(jsonb_build_object('clave', empresa, 'n', n) order by n desc) from (
-        select empresa, count(*) n from e where tipo = 'aplicar' and empresa is not null group by empresa order by 2 desc limit 15) t), '[]'::jsonb)
+        select empresa, count(*) n from e where tipo = 'aplicar' and empresa is not null group by empresa order by 2 desc limit 15) t), '[]'::jsonb),
+    -- Por campaña: los visitantes que llegaron con ella y lo que hicieron ese mismo día
+    'campanas', coalesce((select jsonb_agg(jsonb_build_object('clave', c.campana, 'visitantes', c.v, 'aplicar', c.a) order by c.v desc) from (
+        select l.campana, count(distinct (l.dia, l.visitante)) v,
+               count(*) filter (where x.tipo = 'aplicar') a
+          from (select distinct dia, visitante, campana from e where campana is not null) l
+          left join e x on x.dia = l.dia and x.visitante = l.visitante and x.tipo = 'aplicar'
+         group by l.campana order by 2 desc limit 15) c), '[]'::jsonb)
   ) into r;
   return r;
 end $$;

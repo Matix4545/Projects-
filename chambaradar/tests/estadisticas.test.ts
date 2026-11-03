@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { dispositivoDe, esBot, limpiarRuta, origenDe, rutaContable, visitanteDelDia, zonaDeGeo } from "../lib/estadisticas.ts";
+import { dispositivoDe, esBot, limpiarCampana, limpiarRuta, origenDe, rutaContable, visitanteDelDia, zonaDeGeo } from "../lib/estadisticas.ts";
 
 test("zona de la visita", () => {
   const mx = { country: { code: "MX" } };
@@ -36,4 +36,11 @@ test("el código del visitante cambia cada día", async () => {
   assert.equal(a, await visitanteDelDia("1.2.3.4", "ua", "2026-11-03", "sal"));
   assert.notEqual(a, await visitanteDelDia("1.2.3.4", "ua", "2026-11-04", "sal"));
   assert.equal(a.length, 16);
+});
+
+test("campaña de anuncio", () => {
+  assert.equal(limpiarCampana("Facebook/Lanzamiento CO"), "facebook/lanzamiento-co");
+  assert.equal(limpiarCampana("<script>"), "script");
+  assert.equal(limpiarCampana(""), null);
+  assert.equal(limpiarCampana(5), null);
 });

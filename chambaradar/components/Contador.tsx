@@ -26,7 +26,9 @@ export function Contador() {
 
   useEffect(() => {
     // La primera vista guarda de dónde llegó la persona; las siguientes son navegación interna
-    enviar({ tipo: "vista", ruta: `${ruta}${consulta ? `?${consulta}` : ""}`, ref: primera ? document.referrer : location.origin });
+    // La campaña del anuncio (utm_source/utm_campaign) solo cuenta en la primera vista
+    const utm = primera ? [params.get("utm_source"), params.get("utm_campaign")].filter(Boolean).join("/") : "";
+    enviar({ tipo: "vista", ruta: `${ruta}${consulta ? `?${consulta}` : ""}`, ref: primera ? document.referrer : location.origin, campana: utm || undefined });
     primera = false;
   }, [ruta, consulta]);
 

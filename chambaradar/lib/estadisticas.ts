@@ -87,3 +87,10 @@ export async function visitanteDelDia(ip: string, ua: string, fecha: string, sal
   const h = new Uint8Array(await crypto.subtle.digest("SHA-256", datos));
   return [...h.slice(0, 8)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+/** Campaña de anuncio ("facebook/lanzamiento-co"): solo letras, números y - _ / . (máx. 60). */
+export function limpiarCampana(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const c = valor.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9_\-/.]/g, "").slice(0, 60);
+  return c || null;
+}

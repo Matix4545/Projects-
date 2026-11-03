@@ -29,6 +29,7 @@ interface Datos {
   busquedas: Fila[];
   paginas: Fila[];
   empresas: Fila[];
+  campanas: Fila[];
 }
 
 const PERIODOS = [7, 30, 90] as const;
@@ -175,6 +176,12 @@ export default async function Trafico({ searchParams }: Props) {
           <Lista titulo="Lo más buscado" filas={d.busquedas.map(n)} vacio="Todavía no hay búsquedas." />
           <Lista titulo="Páginas más vistas" filas={d.paginas.map(n)} />
           <Lista titulo="Dispositivo" filas={d.por_dispositivo.map(n)} nombre={(c) => NOMBRE_DISPOSITIVO[c] ?? c} />
+          <Lista
+            titulo="Campañas de anuncios (visitantes)"
+            filas={(d.campanas ?? []).map((f) => ({ clave: f.clave, n: f.visitantes ?? 0 }))}
+            vacio="Todavía no llega nadie desde un anuncio. Pon ?utm_source=facebook&utm_campaign=nombre en el enlace del anuncio."
+          />
+          <Lista titulo="Campañas: clics en Aplicar" filas={(d.campanas ?? []).filter((f) => (f.aplicar ?? 0) > 0).map((f) => ({ clave: f.clave, n: f.aplicar ?? 0 }))} vacio="Sin clics en Aplicar desde anuncios todavía." />
         </div>
       </main>
       <Pie />
