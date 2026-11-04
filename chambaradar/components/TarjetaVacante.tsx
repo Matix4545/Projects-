@@ -6,6 +6,7 @@ import type { VacanteVista } from "@/lib/muro";
 import { formatoSueldo, haceCuanto } from "@/lib/formato";
 import { NOMBRE_CATEGORIA, NOMBRE_NIVEL, PAISES } from "@/lib/tipos";
 import { Candado, Capas, Dinero, Flecha, Reloj, Ubicacion } from "./Iconos";
+import { BotonPagarSemana } from "./Desbloquear";
 import { Modal } from "./Modal";
 
 const MODALIDAD = { remoto: "Remoto", hibrido: "Híbrido", presencial: "Presencial" } as const;
@@ -69,11 +70,12 @@ function VentanaDesbloquear({ ctx }: { ctx: ContextoTarjeta }) {
     <div className="space-y-4">
       {ctx.pagosActivos ? (
         <>
-          <p className="text-gris">Con un plan desde $49 MXN ves la empresa, la descripción completa y el enlace para aplicar directo en todas las vacantes.</p>
-          <Link href="/precios" className="boton w-full">
-            Ver planes y pagar <Flecha className="size-4" />
+          <p className="text-gris">Por $49 MXN ves la empresa, la descripción completa y el enlace para aplicar directo, en esta y en todas las vacantes, durante 1 semana.</p>
+          <BotonPagarSemana className="boton w-full" />
+          <Link href="/precios" className="boton-secundario w-full">
+            Ver otros planes (1 mes $129) <Flecha className="size-4" />
           </Link>
-          <p className="text-center text-xs text-gris">Pago único con tarjeta u OXXO. No necesitas crear cuenta antes: tu acceso queda en el correo con el que pagues.</p>
+          <p className="text-center text-xs text-gris">Pago único con tarjeta u OXXO, no se renueva solo. No necesitas crear cuenta antes: tu acceso queda en el correo con el que pagues.</p>
           {!ctx.conSesion && (
             <p className="text-center text-sm text-gris">
               ¿Ya pagaste?{" "}
@@ -210,7 +212,7 @@ export function TarjetaVacante({ v, ctx }: { v: VacanteVista; ctx: ContextoTarje
       <Modal abierto={modo === "mas"} alCerrar={cerrar} titulo="Detalles de la vacante">
         <VentanaMas v={v} alAplicar={abrirAplicar} />
       </Modal>
-      <Modal abierto={modo === "aplicar"} alCerrar={cerrar} titulo={ctx.conSesion ? "Desbloquea esta vacante" : "Crea tu cuenta para aplicar"} ancho="sm:max-w-md">
+      <Modal abierto={modo === "aplicar"} alCerrar={cerrar} titulo="Desbloquea esta vacante" ancho="sm:max-w-md">
         <VentanaDesbloquear ctx={ctx} />
       </Modal>
     </article>

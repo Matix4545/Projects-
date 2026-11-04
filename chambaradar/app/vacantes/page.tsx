@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { IMAGEN_OG, IMAGEN_X } from "@/lib/compartir";
 import Link from "next/link";
+import { Fragment } from "react";
 import { BotonAlerta } from "@/components/BotonAlerta";
+import { BarraDesbloquear, BloqueDesbloquear } from "@/components/Desbloquear";
 import { Buscador, FiltrosLaterales, FiltrosMovil } from "@/components/Filtros";
 import { Candado } from "@/components/Iconos";
 import { Encabezado, Pie } from "@/components/Marco";
@@ -49,6 +51,14 @@ async function textoParaCompartir(f: ReturnType<typeof leerFiltros>): Promise<{ 
   return { titulo: `${tituloDeFiltros(f)} · ChambaRadar`, descripcion: descripcionDeFiltros(f) };
 }
 
+/** "621 vacantes home office que aceptan gente de México", "71 vacantes en Sonora"… */
+function titularVenta(f: ReturnType<typeof leerFiltros>, total: number, titulo: string): string {
+  const n = numero(total);
+  if (f.aceptaMx && !f.categoria) return `${n} vacantes home office que aceptan gente de México`;
+  if (titulo.startsWith("Vacantes ")) return `${n} vacantes ${titulo.slice("Vacantes ".length)}`;
+  return `${n} vacantes de ${titulo.charAt(0).toLowerCase()}${titulo.slice(1)}`;
+}
+
 export default async function Vacantes({ searchParams }: Props) {
   const params = await searchParams;
   const local = await visitanteLocal();
@@ -72,6 +82,14 @@ export default async function Vacantes({ searchParams }: Props) {
   };
 
   const titulo = tituloDeFiltros(f);
+  const alerta = (
+    <BotonAlerta
+      filtros={filtrosParaAlerta(f)}
+      vuelta={enlacePagina(1)}
+      estado={typeof params.alerta === "string" ? params.alerta : undefined}
+      correoActivo={correoConfigurado()}
+    />
+  );
 
   return (
     <>
@@ -101,7 +119,9 @@ export default async function Vacantes({ searchParams }: Props) {
             </p>
           )}
 
-          {!acceso && (
+          {!acceso && ctx.pagosActivos && <BloqueDesbloquear titular={titularVenta(f, total, titulo)} conSesion={Boolean(usuario)} />}
+
+          {!acceso && !ctx.pagosActivos && (
             <Link href="/precios" className="flex items-center gap-3 rounded-2xl bg-noche px-4 py-3 text-sm text-white transition hover:bg-noche-2 sm:px-5">
               <Candado className="size-4 shrink-0 text-radar" />
               <span className="flex-1">
@@ -111,12 +131,7 @@ export default async function Vacantes({ searchParams }: Props) {
             </Link>
           )}
 
-          <BotonAlerta
-            filtros={filtrosParaAlerta(f)}
-            vuelta={enlacePagina(1)}
-            estado={typeof params.alerta === "string" ? params.alerta : undefined}
-            correoActivo={correoConfigurado()}
-          />
+          {(acceso || !ctx.pagosActivos) && alerta}
 
           {vacantes.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-borde bg-white p-10 text-center text-gris">
@@ -131,8 +146,11 @@ export default async function Vacantes({ searchParams }: Props) {
             </div>
           ) : (
             <div className="space-y-4">
-              {vacantes.map((v) => (
-                <TarjetaVacante key={v.id} v={v} ctx={ctx} />
+              {vacantes.map((v, i) => (
+                <Fragment key={v.id}>
+                  <TarjetaVacante v={v} ctx={ctx} />
+                  {!acceso && ctx.pagosActivos && i === Math.min(2, vacantes.length - 1) && alerta}
+                </Fragment>
               ))}
             </div>
           )}
@@ -161,6 +179,13 @@ export default async function Vacantes({ searchParams }: Props) {
         </section>
       </main>
       <Pie />
+      {!acceso && ctx.pagosActivos && (
+        <>
+          {/* Espacio para que la barra fija no tape el final del pie */}
+          <div className="h-16 bg-noche lg:hidden" aria-hidden />
+          <BarraDesbloquear />
+        </>
+      )}
     </>
   );
 }
