@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Encabezado, Pie } from "@/components/Marco";
-import { PLANES, pagosActivos } from "@/lib/planes";
+import { ahorroMes, PLANES, pagosActivos } from "@/lib/planes";
 import { usuarioActual } from "@/lib/supabase/servidor";
 import { aproximadoLocal, nombreMoneda } from "@/lib/monedas";
 import { paisVisitante } from "@/lib/ubicacion";
@@ -18,6 +18,7 @@ export default async function Precios({ searchParams }: Props) {
   const enMexico = !pais || pais === "MX";
   const locales = await Promise.all(PLANES.map((p) => aproximadoLocal(pais, p.precio)));
   const moneda = nombreMoneda(pais);
+  const ahorro = ahorroMes();
 
   return (
     <>
@@ -58,6 +59,11 @@ export default async function Precios({ searchParams }: Props) {
             >
               <input type="hidden" name="plan" value={p.id} />
               <p className="text-sm font-semibold text-radar-oscuro">{p.nota}</p>
+              {p.id === "mes" && (
+                <p className="mt-1 w-fit rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+                  {enMexico ? `Ahorras $${ahorro.pesos} frente a 4 semanas de $${PLANES[0].precio}` : `Ahorras ${ahorro.porcentaje} % frente a pagar por semana`}
+                </p>
+              )}
               <h2 className="mt-1 text-xl font-bold">{p.nombre}</h2>
               <p className="mt-4">
                 <span className="text-4xl font-extrabold">${p.precio}</span> <span className="text-gris">MXN</span>

@@ -76,7 +76,7 @@ function VentanaDesbloquear({ ctx }: { ctx: ContextoTarjeta }) {
           <p className="text-gris">Por {(ctx.precios ?? PRECIOS_MX).semana}{(ctx.precios ?? PRECIOS_MX).oxxo ? " MXN" : ""} ves la empresa, la descripción completa y el enlace para aplicar directo, en esta y en todas las vacantes, durante 1 semana.</p>
           <BotonPagarSemana className="boton w-full" precio={(ctx.precios ?? PRECIOS_MX).semana} />
           <Link href="/precios" className="boton-secundario w-full">
-            Ver otros planes (1 mes {(ctx.precios ?? PRECIOS_MX).mes}) <Flecha className="size-4" />
+            1 mes por {(ctx.precios ?? PRECIOS_MX).mes} ({(ctx.precios ?? PRECIOS_MX).ahorroMes}) <Flecha className="size-4" />
           </Link>
           {ctx.precios?.nota && <p className="text-center text-xs text-gris">Precio aproximado: el plan es de {ctx.precios.nota}.</p>}
           <p className="text-center text-xs text-gris">Pago único {(ctx.precios ?? PRECIOS_MX).oxxo ? "con tarjeta u OXXO" : "con tarjeta"}, no se renueva solo. No necesitas crear cuenta antes: tu acceso queda en el correo con el que pagues.</p>

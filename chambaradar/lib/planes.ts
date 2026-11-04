@@ -17,6 +17,14 @@ export const PLANES: Plan[] = [
   { id: "anio", nombre: "1 año", precio: 699, dias: 365, nota: "Ahorras 55 %" },
 ];
 
+/** Lo que te ahorras con el plan de 1 mes frente a pagar 4 semanas sueltas: en pesos y en porcentaje. */
+export function ahorroMes(): { pesos: number; porcentaje: number } {
+  const semana = PLANES.find((p) => p.id === "semana")!.precio;
+  const mes = PLANES.find((p) => p.id === "mes")!.precio;
+  const cuatro = semana * 4;
+  return { pesos: cuatro - mes, porcentaje: Math.round((1 - mes / cuatro) * 100) };
+}
+
 export function buscarPlan(id: string | null | undefined): Plan | undefined {
   return PLANES.find((p) => p.id === id);
 }

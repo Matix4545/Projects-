@@ -15,3 +15,8 @@ test("moneda más usada por país", () => {
   assert.equal(MONEDA_PAIS.GT, "GTQ");
   assert.equal(MONEDA_PAIS.HN, "HNL");
 });
+
+test("ahorro del plan de 1 mes frente a 4 semanas", async () => {
+  const { ahorroMes } = await import("../lib/planes.ts");
+  assert.deepEqual(ahorroMes(), { pesos: 67, porcentaje: 34 });
+});

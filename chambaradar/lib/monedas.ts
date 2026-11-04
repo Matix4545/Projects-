@@ -93,17 +93,21 @@ export interface PreciosLocales {
   nota: string;
   /** ¿Hay OXXO? (solo México) */
   oxxo: boolean;
+  /** "ahorras $67" en México, "ahorras 34 %" afuera (el plan de 1 mes frente a 4 semanas) */
+  ahorroMes: string;
 }
 
 /** Precios para mostrar a un visitante de `pais` (null o México: en pesos, con OXXO). */
 export async function preciosPara(pais: string | null | undefined, semanaMxn: number, mesMxn: number): Promise<PreciosLocales> {
   const moneda = pais ? MONEDA_PAIS[pais] : undefined;
-  if (!pais || pais === "MX" || !moneda) return { semana: `$${semanaMxn}`, mes: `$${mesMxn}`, nota: "", oxxo: true };
+  const ahorroPesos = semanaMxn * 4 - mesMxn;
+  const ahorroPct = `ahorras ${Math.round((ahorroPesos / (semanaMxn * 4)) * 100)} %`;
+  if (!pais || pais === "MX" || !moneda) return { semana: `$${semanaMxn}`, mes: `$${mesMxn}`, nota: "", oxxo: true, ahorroMes: `ahorras $${ahorroPesos}` };
   const tasa = (await tipos())[moneda];
-  if (!tasa) return { semana: `$${semanaMxn} MXN`, mes: `$${mesMxn} MXN`, nota: "", oxxo: false };
+  if (!tasa) return { semana: `$${semanaMxn} MXN`, mes: `$${mesMxn} MXN`, nota: "", oxxo: false, ahorroMes: ahorroPct };
   const local = (mxn: number) => `≈ ${formatoMoneda(mxn * tasa * MARGEN, moneda)}`;
   const nota = STRIPE_EN_MONEDA_LOCAL.has(pais)
     ? `$${semanaMxn} pesos mexicanos; pagas en ${NOMBRE_MONEDA[moneda] ?? moneda}`
     : `$${semanaMxn} pesos mexicanos; tu banco lo convierte a ${NOMBRE_MONEDA[moneda] ?? moneda}`;
-  return { semana: local(semanaMxn), mes: local(mesMxn), nota, oxxo: false };
+  return { semana: local(semanaMxn), mes: local(mesMxn), nota, oxxo: false, ahorroMes: ahorroPct };
 }

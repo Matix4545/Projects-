@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { PreciosLocales } from "@/lib/monedas";
-import { PLANES } from "@/lib/planes";
+import { ahorroMes, PLANES } from "@/lib/planes";
 import { Candado, Flecha, Palomita } from "./Iconos";
 
 // Bloques de venta para quien llega sin plan (por ejemplo, desde un anuncio).
@@ -11,7 +11,13 @@ import { Candado, Flecha, Palomita } from "./Iconos";
 const SEMANA = PLANES.find((p) => p.id === "semana")!;
 
 /** Precios de México, para donde no se sabe el país. */
-export const PRECIOS_MX: PreciosLocales = { semana: `$${SEMANA.precio}`, mes: `$${PLANES.find((p) => p.id === "mes")!.precio}`, nota: "", oxxo: true };
+export const PRECIOS_MX: PreciosLocales = {
+  semana: `$${SEMANA.precio}`,
+  mes: `$${PLANES.find((p) => p.id === "mes")!.precio}`,
+  nota: "",
+  oxxo: true,
+  ahorroMes: `ahorras $${ahorroMes().pesos}`,
+};
 
 /** Botón que abre el pago de Stripe del plan de 1 semana. */
 export function BotonPagarSemana({ className = "boton w-full sm:w-auto", texto, precio = PRECIOS_MX.semana }: { className?: string; texto?: string; precio?: string }) {
@@ -56,7 +62,8 @@ export function BloqueDesbloquear({ titular, conSesion, pais, precios }: { titul
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
           <BotonPagarSemana precio={precios.semana} />
           <Link href="/precios" className="text-center text-sm font-semibold text-radar-oscuro hover:underline sm:text-left">
-            O 1 mes por {precios.mes} <Flecha className="inline size-3.5" />
+            O 1 mes por {precios.mes} <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">{precios.ahorroMes}</span>{" "}
+            <Flecha className="inline size-3.5" />
           </Link>
         </div>
         {precios.nota && <p className="text-center text-xs text-gris sm:text-left">Precio aproximado: el plan es de {precios.nota}.</p>}
