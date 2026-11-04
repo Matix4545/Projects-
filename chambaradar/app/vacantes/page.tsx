@@ -13,7 +13,8 @@ import { correoConfigurado } from "@/lib/correo";
 import { numero } from "@/lib/formato";
 import { pagosActivos } from "@/lib/planes";
 import { accesoLocal, usuarioActual } from "@/lib/supabase/servidor";
-import { visitanteLocal } from "@/lib/ubicacion";
+import { paisVisitante, visitanteLocal } from "@/lib/ubicacion";
+import { PAISES } from "@/lib/tipos";
 import { descripcionDeFiltros, indexable, rutaCanonica, tituloDeFiltros } from "@/lib/seo";
 import { buscarVacantes, leerFiltros, POR_PAGINA, resumen } from "@/lib/vacantes";
 
@@ -45,6 +46,10 @@ async function textoParaCompartir(f: ReturnType<typeof leerFiltros>): Promise<{ 
       return { titulo: `${numero(r.enSonora)} vacantes en Sonora · ChambaRadar`, descripcion: "Empleos en Hermosillo, Cd. Obregón, Navojoa, Guaymas y todo Sonora, directo de las páginas de las empresas. Actualizado todos los días." };
     if (f.zona === "cajeme" && r)
       return { titulo: `${numero(r.enCajeme)} vacantes en Cd. Obregón · ChambaRadar`, descripcion: "Empleos en Ciudad Obregón (Cajeme), directo de las páginas de las empresas. Actualizado todos los días." };
+    if (f.aceptaPais && f.aceptaPais !== "MX") {
+      const nombre = PAISES[f.aceptaPais];
+      return { titulo: `Vacantes home office para ${nombre} · ChambaRadar`, descripcion: `Trabajos 100 % remotos que aceptan gente de ${nombre}, de empresas de LATAM y del mundo. Directo de las páginas de empleo de las empresas.` };
+    }
     if (r)
       return { titulo: `${numero(r.remotas)} vacantes home office para México · ChambaRadar`, descripcion: "Trabajos 100 % remotos que aceptan gente en México y LATAM, de empresas mexicanas y extranjeras. Los que son solo para EE. UU. no aparecen." };
   }
@@ -54,15 +59,17 @@ async function textoParaCompartir(f: ReturnType<typeof leerFiltros>): Promise<{ 
 /** "621 vacantes home office que aceptan gente de México", "71 vacantes en Sonora"… */
 function titularVenta(f: ReturnType<typeof leerFiltros>, total: number, titulo: string): string {
   const n = numero(total);
-  if (f.aceptaMx && !f.categoria) return `${n} vacantes home office que aceptan gente de México`;
+  if (f.aceptaPais && !f.categoria) return `${n} vacantes home office que aceptan gente de ${PAISES[f.aceptaPais] ?? "México"}`;
   if (titulo.startsWith("Vacantes ")) return `${n} vacantes ${titulo.slice("Vacantes ".length)}`;
   return `${n} vacantes de ${titulo.charAt(0).toLowerCase()}${titulo.slice(1)}`;
 }
 
 export default async function Vacantes({ searchParams }: Props) {
   const params = await searchParams;
-  const local = await visitanteLocal();
-  const f = leerFiltros(params, local);
+  const [local, pais] = await Promise.all([visitanteLocal(), paisVisitante()]);
+  const f = leerFiltros(params, local, pais);
+  // OXXO solo existe en México; afuera se paga con tarjeta (Stripe cobra en la moneda local)
+  const enMexico = !pais || pais === "MX";
   const usuario = await usuarioActual();
   const [{ vacantes, total, acceso }, r] = await Promise.all([buscarVacantes(f, await accesoLocal(usuario)), resumen()]);
   const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
@@ -78,6 +85,7 @@ export default async function Vacantes({ searchParams }: Props) {
   const ctx: ContextoTarjeta = {
     conSesion: Boolean(usuario),
     pagosActivos: pagosActivos(),
+    oxxo: enMexico,
     resumen: `${numero(r.total)} vacantes de ${numero(r.empresas)} empresas`,
   };
 
@@ -119,7 +127,7 @@ export default async function Vacantes({ searchParams }: Props) {
             </p>
           )}
 
-          {!acceso && ctx.pagosActivos && <BloqueDesbloquear titular={titularVenta(f, total, titulo)} conSesion={Boolean(usuario)} />}
+          {!acceso && ctx.pagosActivos && <BloqueDesbloquear titular={titularVenta(f, total, titulo)} conSesion={Boolean(usuario)} pais={f.aceptaPais || pais || "MX"} oxxo={enMexico} />}
 
           {!acceso && !ctx.pagosActivos && (
             <Link href="/precios" className="flex items-center gap-3 rounded-2xl bg-noche px-4 py-3 text-sm text-white transition hover:bg-noche-2 sm:px-5">
@@ -183,7 +191,7 @@ export default async function Vacantes({ searchParams }: Props) {
         <>
           {/* Espacio para que la barra fija no tape el final del pie */}
           <div className="h-16 bg-noche lg:hidden" aria-hidden />
-          <BarraDesbloquear />
+          <BarraDesbloquear oxxo={enMexico} />
         </>
       )}
     </>

@@ -21,8 +21,11 @@ export interface Filtros {
   alcance: "cerca" | "todo";
   /** El visitante está en Sonora: ve las opciones locales y todo gratis */
   local: boolean;
-  /** "Home office" (donde=remoto): solo las remotas que aceptan gente en México (o de cualquier país) */
-  aceptaMx: boolean;
+  /**
+   * "Home office" (donde=remoto): solo las remotas que aceptan gente de este país
+   * (abiertas a cualquier país o que lo incluyen). Viene de ?pais= o del país del visitante; México por defecto.
+   */
+  aceptaPais: string;
   conSueldo: boolean;
   dias: number;
   pagina: number;
@@ -32,8 +35,14 @@ type Params = Record<string, string | string[] | undefined>;
 
 const uno = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
-/** Lee los filtros de la URL y descarta valores inválidos. `local`: el visitante está en Sonora. */
-export function leerFiltros(p: Params, local = false): Filtros {
+/** País para "Home office": el de la URL, si no el del visitante, si no México (Brasil no está en el catálogo). */
+function paisHomeOffice(deUrl: string, visitante: string | null | undefined): string {
+  for (const c of [deUrl.toUpperCase(), (visitante ?? "").toUpperCase()]) if (c in PAISES && c !== "BR") return c;
+  return "MX";
+}
+
+/** Lee los filtros de la URL y descarta valores inválidos. `local`: el visitante está en Sonora. `paisVisitante`: su país según la IP. */
+export function leerFiltros(p: Params, local = false, paisVisitante?: string | null): Filtros {
   const categoria = uno(p.categoria);
   const modalidad = uno(p.modalidad);
   const nivel = uno(p.nivel);
@@ -57,7 +66,7 @@ export function leerFiltros(p: Params, local = false): Filtros {
     // Todos ven por defecto el catálogo completo (México y LATAM)
     alcance: donde === "cerca" ? "cerca" : "todo",
     local,
-    aceptaMx: donde === "remoto",
+    aceptaPais: donde === "remoto" ? paisHomeOffice(uno(p.pais), paisVisitante) : "",
     conSueldo: uno(p.sueldo) === "1",
     dias: [1, 7, 30].includes(dias) ? dias : 0,
     pagina: Math.min(Math.max(1, Math.floor(Number(uno(p.pagina))) || 1), 500),
@@ -93,7 +102,7 @@ export async function buscarVacantes(f: Filtros, accesoEnLocal: boolean): Promis
     p_zona: f.zona,
     p_cerca: f.alcance === "cerca",
     // Solo cuando hace falta: así las demás búsquedas no dependen de 15_home_office_mexico.sql
-    ...(f.aceptaMx ? { p_acepta_mx: true } : {}),
+    ...(f.aceptaPais ? { p_acepta_pais: f.aceptaPais } : {}),
   });
   if (error) throw new Error(`Error buscando vacantes: ${error.message}`);
   const r = data as { total: number; acceso: boolean; vacantes: FilaBase[] };
@@ -135,7 +144,7 @@ async function buscarEnArchivo(f: Filtros, acceso: boolean): Promise<Resultado> 
       (!f.nivel || v.nivel === f.nivel) &&
       (!f.tipo || v.empresa_tipo === f.tipo) &&
       (!f.zona || (v.zonas ?? []).includes(f.zona)) &&
-      (!f.aceptaMx || v.paises.length === 0 || v.paises.includes("MX")) &&
+      (!f.aceptaPais || v.paises.length === 0 || v.paises.includes(f.aceptaPais)) &&
       (f.alcance === "todo" || esRelevanteObregon(v)) &&
       (!f.conSueldo || v.sueldo_max != null) &&
       (!limite || v.publicada >= limite),

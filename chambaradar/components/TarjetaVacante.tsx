@@ -15,6 +15,8 @@ const IDIOMA = { es: "español", pt: "portugués", en: "inglés" } as const;
 export interface ContextoTarjeta {
   conSesion: boolean;
   pagosActivos: boolean;
+  /** ¿Se ofrece OXXO? (solo en México) */
+  oxxo?: boolean;
   /** "3,177 vacantes de 129 empresas" para la ventana de registro */
   resumen: string;
 }
@@ -71,11 +73,11 @@ function VentanaDesbloquear({ ctx }: { ctx: ContextoTarjeta }) {
       {ctx.pagosActivos ? (
         <>
           <p className="text-gris">Por $49 MXN ves la empresa, la descripción completa y el enlace para aplicar directo, en esta y en todas las vacantes, durante 1 semana.</p>
-          <BotonPagarSemana className="boton w-full" />
+          <BotonPagarSemana className="boton w-full" mxn={ctx.oxxo === false} />
           <Link href="/precios" className="boton-secundario w-full">
             Ver otros planes (1 mes $129) <Flecha className="size-4" />
           </Link>
-          <p className="text-center text-xs text-gris">Pago único con tarjeta u OXXO, no se renueva solo. No necesitas crear cuenta antes: tu acceso queda en el correo con el que pagues.</p>
+          <p className="text-center text-xs text-gris">Pago único {ctx.oxxo === false ? "con tarjeta (en tu moneda)" : "con tarjeta u OXXO"}, no se renueva solo. No necesitas crear cuenta antes: tu acceso queda en el correo con el que pagues.</p>
           {!ctx.conSesion && (
             <p className="text-center text-sm text-gris">
               ¿Ya pagaste?{" "}

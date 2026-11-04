@@ -10,26 +10,29 @@ const SEMANA = PLANES.find((p) => p.id === "semana")!;
 const MES = PLANES.find((p) => p.id === "mes")!;
 
 /** Botón que abre el pago de Stripe del plan de 1 semana. */
-export function BotonPagarSemana({ className = "boton w-full sm:w-auto", texto }: { className?: string; texto?: string }) {
+export function BotonPagarSemana({ className = "boton w-full sm:w-auto", texto, mxn = false }: { className?: string; texto?: string; mxn?: boolean }) {
   return (
     <form action="/api/pago" method="post" className="contents">
       <input type="hidden" name="plan" value={SEMANA.id} />
       <button className={className} data-meta="InitiateCheckout" data-meta-valor={SEMANA.precio}>
-        <Candado className="size-4" /> {texto ?? `Desbloquear todo por $${SEMANA.precio}`}
+        <Candado className="size-4" /> {texto ?? `Desbloquear todo por $${SEMANA.precio}${mxn ? " MXN" : ""}`}
       </button>
     </form>
   );
 }
 
 /** Arriba del listado: qué es, qué ves gratis y qué obtienes por $49. */
-export function BloqueDesbloquear({ titular, conSesion }: { titular: string; conSesion: boolean }) {
+/** El portal grande con el que se compara, según el país ("OCC" solo existe en México). */
+const portal = (pais: string) => (pais === "MX" ? "LinkedIn ni OCC" : "LinkedIn ni Computrabajo");
+
+export function BloqueDesbloquear({ titular, conSesion, pais, oxxo }: { titular: string; conSesion: boolean; pais: string; oxxo: boolean }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-radar/30 bg-white shadow-sm">
       <div className="space-y-3 p-4 sm:p-6">
         <p className="text-base font-extrabold leading-snug tracking-tight sm:text-xl">{titular}</p>
         <ul className="hidden space-y-1.5 text-sm text-slate-700 sm:block">
           {[
-            "Directo de las páginas de empleo de las empresas, no de LinkedIn ni OCC",
+            `Directo de las páginas de empleo de las empresas, no de ${portal(pais)}`,
             "Menos competencia: casi nadie busca ahí",
             "Revisadas todos los días: las cerradas desaparecen",
           ].map((t) => (
@@ -42,17 +45,19 @@ export function BloqueDesbloquear({ titular, conSesion }: { titular: string; con
           ))}
         </ul>
         <p className="text-sm text-slate-700 sm:rounded-xl sm:bg-fondo sm:px-3 sm:py-2.5">
-          <span className="sm:hidden">Directo de las páginas de las empresas, no de LinkedIn ni OCC. </span><strong>Gratis</strong> ves puesto y sueldo; <strong>por ${SEMANA.precio} MXN</strong> ves
+          <span className="sm:hidden">Directo de las páginas de las empresas, no de {portal(pais)}. </span><strong>Gratis</strong> ves puesto y sueldo; <strong>por ${SEMANA.precio} MXN</strong>{oxxo ? "" : " (se cobra en tu moneda)"} ves
           la empresa y el enlace para aplicar, en todas.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-          <BotonPagarSemana />
+          {/* Fuera de México "$49" se puede leer como dólares: se aclara MXN */}
+          <BotonPagarSemana mxn={!oxxo} />
           <Link href="/precios" className="text-center text-sm font-semibold text-radar-oscuro hover:underline sm:text-left">
-            O 1 mes por ${MES.precio} <Flecha className="inline size-3.5" />
+            O 1 mes por ${MES.precio}
+            {oxxo ? "" : " MXN"} <Flecha className="inline size-3.5" />
           </Link>
         </div>
         <p className="hidden text-xs text-gris sm:block">
-          Pago único, no se renueva solo · Tarjeta u OXXO · No necesitas crear cuenta: tu acceso queda en el correo con el que pagas.
+          Pago único, no se renueva solo · {oxxo ? "Tarjeta u OXXO" : "Con tarjeta, en tu moneda"} · No necesitas crear cuenta: tu acceso queda en el correo con el que pagas.
           {!conSesion && (
             <>
               {" "}
@@ -70,14 +75,14 @@ export function BloqueDesbloquear({ titular, conSesion }: { titular: string; con
 }
 
 /** Barra fija abajo en el celular: el botón de pago siempre a la mano mientras ven vacantes. */
-export function BarraDesbloquear() {
+export function BarraDesbloquear({ oxxo }: { oxxo: boolean }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-borde bg-white/95 px-4 py-2.5 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
       <div className="mx-auto flex max-w-xl items-center gap-3">
         <p className="min-w-0 flex-1 text-xs leading-snug text-slate-600">
-          <span className="font-semibold text-tinta">Empresa y enlace ocultos.</span> Pago único, tarjeta u OXXO.
+          <span className="font-semibold text-tinta">Empresa y enlace ocultos.</span> Pago único, {oxxo ? "tarjeta u OXXO" : "con tarjeta"}.
         </p>
-        <BotonPagarSemana className="boton shrink-0 px-4 py-2.5 text-sm" texto={`Ver todo $${SEMANA.precio}`} />
+        <BotonPagarSemana className="boton shrink-0 px-4 py-2.5 text-sm" texto={`Ver todo $${SEMANA.precio}${oxxo ? "" : " MXN"}`} />
       </div>
     </div>
   );
