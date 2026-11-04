@@ -388,10 +388,14 @@ export function idiomaDelTitulo(titulo: string, paises: string[]): "es" | "pt" |
   return "en";
 }
 
-function resumirUbicacion(ubicaciones: string[]): string {
-  // Primero las ubicaciones de LATAM, que son las que le importan al usuario
-  // Primero Cd. Obregón/Sonora, luego el resto de LATAM y al final lo demás
-  const peso = (u: string) => (detectarZonas(u).includes("cajeme") ? 3 : detectarZonas(u).length ? 2 : detectarPaises(u).length ? 1 : 0);
+export function resumirUbicacion(ubicaciones: string[]): string {
+  // Primero Cd. Obregón/Sonora, luego México, luego el resto de LATAM y al final lo demás.
+  // Así "Brazil · Peru · Colombia y 19 más" no esconde que también es en México.
+  const peso = (u: string) => {
+    const zonas = detectarZonas(u);
+    const paises = detectarPaises(u);
+    return zonas.includes("cajeme") ? 4 : zonas.length ? 3 : paises.includes("MX") ? 2 : paises.length ? 1 : 0;
+  };
   const unicas = [...new Set(ubicaciones.map((u) => u.replace(/(\s*,\s*)+/g, ", ").replace(/^, |, $/g, "").trim()).filter(Boolean))].sort((a, b) => peso(b) - peso(a));
   if (unicas.length === 0) return "Sin ubicación";
   if (unicas.length <= 3) return unicas.join(" · ");

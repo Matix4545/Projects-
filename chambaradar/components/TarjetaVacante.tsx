@@ -22,6 +22,12 @@ function fechaCorta(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Mexico_City" });
 }
 
+/** "Brazil · Peru · Colombia y 19 más" → "México · Brazil · Peru…" cuando la vacante también es en México. */
+function ubicacionVisible(v: VacanteVista): string {
+  if (v.paises.includes("MX") && v.paises.length > 1 && !/m[eé]xic|cdmx/i.test(v.ubicacion)) return `México · ${v.ubicacion}`;
+  return v.ubicacion;
+}
+
 /** Renglones de datos de la tarjeta: sueldo, ubicación y fecha, cada uno con su ícono. */
 function Datos({ v, compacto = false }: { v: VacanteVista; compacto?: boolean }) {
   const sueldo = formatoSueldo(v.sueldo_min, v.sueldo_max, v.moneda, v.periodo);
@@ -36,7 +42,7 @@ function Datos({ v, compacto = false }: { v: VacanteVista; compacto?: boolean })
       {!compacto && (
         <p className="flex items-center gap-1.5 text-slate-600">
           <Ubicacion className="size-4 shrink-0" />
-          <span className="truncate">{v.ubicacion}</span>
+          <span className="truncate">{ubicacionVisible(v)}</span>
         </p>
       )}
       <p className="flex items-center gap-1.5 text-slate-500" suppressHydrationWarning>

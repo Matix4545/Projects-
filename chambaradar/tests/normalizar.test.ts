@@ -254,3 +254,9 @@ test("Americas cuenta como abierto; AMER con EE. UU. no", async () => {
   assert.equal(soloEeuu("Remote, United States; Remote, Americas"), false);
   assert.equal(soloEeuu("Remote, New York, United States, AMER"), true);
 });
+
+test("el resumen de ubicación pone México antes que otros países", async () => {
+  const { resumirUbicacion } = await import("../lib/normalizar.ts");
+  assert.equal(resumirUbicacion(["Brazil", "Peru", "Colombia", "Mexico", "Chile"]), "Mexico · Brazil · Peru y 2 más");
+  assert.match(resumirUbicacion(["Lima, Peru", "Hermosillo, Sonora, Mexico", "Mexico City"]), /^Hermosillo/);
+});
