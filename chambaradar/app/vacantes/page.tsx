@@ -11,7 +11,8 @@ import { TarjetaVacante, type ContextoTarjeta } from "@/components/TarjetaVacant
 import { filtrosParaAlerta } from "@/lib/alertas";
 import { correoConfigurado } from "@/lib/correo";
 import { numero } from "@/lib/formato";
-import { pagosActivos } from "@/lib/planes";
+import { pagosActivos, PLANES } from "@/lib/planes";
+import { preciosPara } from "@/lib/monedas";
 import { accesoLocal, usuarioActual } from "@/lib/supabase/servidor";
 import { paisVisitante, visitanteLocal } from "@/lib/ubicacion";
 import { PAISES } from "@/lib/tipos";
@@ -68,8 +69,8 @@ export default async function Vacantes({ searchParams }: Props) {
   const params = await searchParams;
   const [local, pais] = await Promise.all([visitanteLocal(), paisVisitante()]);
   const f = leerFiltros(params, local, pais);
-  // OXXO solo existe en México; afuera se paga con tarjeta (Stripe cobra en la moneda local)
-  const enMexico = !pais || pais === "MX";
+  // Precio en la moneda del visitante (solo se muestra; el cobro sigue en MXN). OXXO solo en México.
+  const precios = await preciosPara(pais, PLANES.find((p) => p.id === "semana")!.precio, PLANES.find((p) => p.id === "mes")!.precio);
   const usuario = await usuarioActual();
   const [{ vacantes, total, acceso }, r] = await Promise.all([buscarVacantes(f, await accesoLocal(usuario)), resumen()]);
   const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
@@ -85,7 +86,7 @@ export default async function Vacantes({ searchParams }: Props) {
   const ctx: ContextoTarjeta = {
     conSesion: Boolean(usuario),
     pagosActivos: pagosActivos(),
-    oxxo: enMexico,
+    precios,
     resumen: `${numero(r.total)} vacantes de ${numero(r.empresas)} empresas`,
   };
 
@@ -127,7 +128,7 @@ export default async function Vacantes({ searchParams }: Props) {
             </p>
           )}
 
-          {!acceso && ctx.pagosActivos && <BloqueDesbloquear titular={titularVenta(f, total, titulo)} conSesion={Boolean(usuario)} pais={f.aceptaPais || pais || "MX"} oxxo={enMexico} />}
+          {!acceso && ctx.pagosActivos && <BloqueDesbloquear titular={titularVenta(f, total, titulo)} conSesion={Boolean(usuario)} pais={f.aceptaPais || pais || "MX"} precios={precios} />}
 
           {!acceso && !ctx.pagosActivos && (
             <Link href="/precios" className="flex items-center gap-3 rounded-2xl bg-noche px-4 py-3 text-sm text-white transition hover:bg-noche-2 sm:px-5">
@@ -191,7 +192,7 @@ export default async function Vacantes({ searchParams }: Props) {
         <>
           {/* Espacio para que la barra fija no tape el final del pie */}
           <div className="h-16 bg-noche lg:hidden" aria-hidden />
-          <BarraDesbloquear oxxo={enMexico} />
+          <BarraDesbloquear precios={precios} />
         </>
       )}
     </>

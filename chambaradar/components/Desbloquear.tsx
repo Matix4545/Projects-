@@ -1,31 +1,35 @@
 import Link from "next/link";
+import type { PreciosLocales } from "@/lib/monedas";
 import { PLANES } from "@/lib/planes";
 import { Candado, Flecha, Palomita } from "./Iconos";
 
 // Bloques de venta para quien llega sin plan (por ejemplo, desde un anuncio).
-// El botón principal manda directo al pago de 1 semana ($49): un clic menos
-// que pasar por /precios. El pago y su lógica no cambian (POST /api/pago).
+// El botón principal manda directo al pago de 1 semana: un clic menos que pasar
+// por /precios. El pago y su lógica no cambian (POST /api/pago, plan en MXN);
+// fuera de México solo se MUESTRA el precio aproximado en la moneda local.
 
 const SEMANA = PLANES.find((p) => p.id === "semana")!;
-const MES = PLANES.find((p) => p.id === "mes")!;
+
+/** Precios de México, para donde no se sabe el país. */
+export const PRECIOS_MX: PreciosLocales = { semana: `$${SEMANA.precio}`, mes: `$${PLANES.find((p) => p.id === "mes")!.precio}`, nota: "", oxxo: true };
 
 /** Botón que abre el pago de Stripe del plan de 1 semana. */
-export function BotonPagarSemana({ className = "boton w-full sm:w-auto", texto, mxn = false }: { className?: string; texto?: string; mxn?: boolean }) {
+export function BotonPagarSemana({ className = "boton w-full sm:w-auto", texto, precio = PRECIOS_MX.semana }: { className?: string; texto?: string; precio?: string }) {
   return (
     <form action="/api/pago" method="post" className="contents">
       <input type="hidden" name="plan" value={SEMANA.id} />
       <button className={className} data-meta="InitiateCheckout" data-meta-valor={SEMANA.precio}>
-        <Candado className="size-4" /> {texto ?? `Desbloquear todo por $${SEMANA.precio}${mxn ? " MXN" : ""}`}
+        <Candado className="size-4" /> {texto ?? `Desbloquear todo por ${precio}`}
       </button>
     </form>
   );
 }
 
-/** Arriba del listado: qué es, qué ves gratis y qué obtienes por $49. */
 /** El portal grande con el que se compara, según el país ("OCC" solo existe en México). */
 const portal = (pais: string) => (pais === "MX" ? "LinkedIn ni OCC" : "LinkedIn ni Computrabajo");
 
-export function BloqueDesbloquear({ titular, conSesion, pais, oxxo }: { titular: string; conSesion: boolean; pais: string; oxxo: boolean }) {
+/** Arriba del listado: qué es, qué ves gratis y qué obtienes por el plan de 1 semana. */
+export function BloqueDesbloquear({ titular, conSesion, pais, precios }: { titular: string; conSesion: boolean; pais: string; precios: PreciosLocales }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-radar/30 bg-white shadow-sm">
       <div className="space-y-3 p-4 sm:p-6">
@@ -45,19 +49,19 @@ export function BloqueDesbloquear({ titular, conSesion, pais, oxxo }: { titular:
           ))}
         </ul>
         <p className="text-sm text-slate-700 sm:rounded-xl sm:bg-fondo sm:px-3 sm:py-2.5">
-          <span className="sm:hidden">Directo de las páginas de las empresas, no de {portal(pais)}. </span><strong>Gratis</strong> ves puesto y sueldo; <strong>por ${SEMANA.precio} MXN</strong>{oxxo ? "" : " (se cobra en tu moneda)"} ves
-          la empresa y el enlace para aplicar, en todas.
+          <span className="sm:hidden">Directo de las páginas de las empresas, no de {portal(pais)}. </span>
+          <strong>Gratis</strong> ves puesto y sueldo; <strong>por {precios.semana}</strong>
+          {precios.oxxo ? " MXN" : ""} ves la empresa y el enlace para aplicar, en todas.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-          {/* Fuera de México "$49" se puede leer como dólares: se aclara MXN */}
-          <BotonPagarSemana mxn={!oxxo} />
+          <BotonPagarSemana precio={precios.semana} />
           <Link href="/precios" className="text-center text-sm font-semibold text-radar-oscuro hover:underline sm:text-left">
-            O 1 mes por ${MES.precio}
-            {oxxo ? "" : " MXN"} <Flecha className="inline size-3.5" />
+            O 1 mes por {precios.mes} <Flecha className="inline size-3.5" />
           </Link>
         </div>
+        {precios.nota && <p className="text-center text-xs text-gris sm:text-left">Precio aproximado: el plan es de {precios.nota}.</p>}
         <p className="hidden text-xs text-gris sm:block">
-          Pago único, no se renueva solo · {oxxo ? "Tarjeta u OXXO" : "Con tarjeta, en tu moneda"} · No necesitas crear cuenta: tu acceso queda en el correo con el que pagas.
+          Pago único, no se renueva solo · {precios.oxxo ? "Tarjeta u OXXO" : "Con tarjeta"} · No necesitas crear cuenta: tu acceso queda en el correo con el que pagas.
           {!conSesion && (
             <>
               {" "}
@@ -75,14 +79,14 @@ export function BloqueDesbloquear({ titular, conSesion, pais, oxxo }: { titular:
 }
 
 /** Barra fija abajo en el celular: el botón de pago siempre a la mano mientras ven vacantes. */
-export function BarraDesbloquear({ oxxo }: { oxxo: boolean }) {
+export function BarraDesbloquear({ precios }: { precios: PreciosLocales }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-borde bg-white/95 px-4 py-2.5 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
       <div className="mx-auto flex max-w-xl items-center gap-3">
         <p className="min-w-0 flex-1 text-xs leading-snug text-slate-600">
-          <span className="font-semibold text-tinta">Empresa y enlace ocultos.</span> Pago único, {oxxo ? "tarjeta u OXXO" : "con tarjeta"}.
+          <span className="font-semibold text-tinta">Empresa y enlace ocultos.</span> Pago único, {precios.oxxo ? "tarjeta u OXXO" : "con tarjeta"}.
         </p>
-        <BotonPagarSemana className="boton shrink-0 px-4 py-2.5 text-sm" texto={`Ver todo $${SEMANA.precio}${oxxo ? "" : " MXN"}`} />
+        <BotonPagarSemana className="boton shrink-0 px-4 py-2.5 text-sm" texto={`Ver todo ${precios.semana}`} />
       </div>
     </div>
   );

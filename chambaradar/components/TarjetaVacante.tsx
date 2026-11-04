@@ -6,7 +6,8 @@ import type { VacanteVista } from "@/lib/muro";
 import { formatoSueldo, haceCuanto } from "@/lib/formato";
 import { NOMBRE_CATEGORIA, NOMBRE_NIVEL, PAISES } from "@/lib/tipos";
 import { Candado, Capas, Dinero, Flecha, Reloj, Ubicacion } from "./Iconos";
-import { BotonPagarSemana } from "./Desbloquear";
+import type { PreciosLocales } from "@/lib/monedas";
+import { BotonPagarSemana, PRECIOS_MX } from "./Desbloquear";
 import { Modal } from "./Modal";
 
 const MODALIDAD = { remoto: "Remoto", hibrido: "Híbrido", presencial: "Presencial" } as const;
@@ -15,8 +16,8 @@ const IDIOMA = { es: "español", pt: "portugués", en: "inglés" } as const;
 export interface ContextoTarjeta {
   conSesion: boolean;
   pagosActivos: boolean;
-  /** ¿Se ofrece OXXO? (solo en México) */
-  oxxo?: boolean;
+  /** Precios en la moneda del visitante (por defecto, México) */
+  precios?: PreciosLocales;
   /** "3,177 vacantes de 129 empresas" para la ventana de registro */
   resumen: string;
 }
@@ -72,12 +73,13 @@ function VentanaDesbloquear({ ctx }: { ctx: ContextoTarjeta }) {
     <div className="space-y-4">
       {ctx.pagosActivos ? (
         <>
-          <p className="text-gris">Por $49 MXN ves la empresa, la descripción completa y el enlace para aplicar directo, en esta y en todas las vacantes, durante 1 semana.</p>
-          <BotonPagarSemana className="boton w-full" mxn={ctx.oxxo === false} />
+          <p className="text-gris">Por {(ctx.precios ?? PRECIOS_MX).semana}{(ctx.precios ?? PRECIOS_MX).oxxo ? " MXN" : ""} ves la empresa, la descripción completa y el enlace para aplicar directo, en esta y en todas las vacantes, durante 1 semana.</p>
+          <BotonPagarSemana className="boton w-full" precio={(ctx.precios ?? PRECIOS_MX).semana} />
           <Link href="/precios" className="boton-secundario w-full">
-            Ver otros planes (1 mes $129) <Flecha className="size-4" />
+            Ver otros planes (1 mes {(ctx.precios ?? PRECIOS_MX).mes}) <Flecha className="size-4" />
           </Link>
-          <p className="text-center text-xs text-gris">Pago único {ctx.oxxo === false ? "con tarjeta (en tu moneda)" : "con tarjeta u OXXO"}, no se renueva solo. No necesitas crear cuenta antes: tu acceso queda en el correo con el que pagues.</p>
+          {ctx.precios?.nota && <p className="text-center text-xs text-gris">Precio aproximado: el plan es de {ctx.precios.nota}.</p>}
+          <p className="text-center text-xs text-gris">Pago único {(ctx.precios ?? PRECIOS_MX).oxxo ? "con tarjeta u OXXO" : "con tarjeta"}, no se renueva solo. No necesitas crear cuenta antes: tu acceso queda en el correo con el que pagues.</p>
           {!ctx.conSesion && (
             <p className="text-center text-sm text-gris">
               ¿Ya pagaste?{" "}
