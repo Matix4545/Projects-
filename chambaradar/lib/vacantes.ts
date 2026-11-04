@@ -21,6 +21,8 @@ export interface Filtros {
   alcance: "cerca" | "todo";
   /** El visitante está en Sonora: ve las opciones locales y todo gratis */
   local: boolean;
+  /** "Home office" (donde=remoto): solo las remotas que aceptan gente en México (o de cualquier país) */
+  aceptaMx: boolean;
   conSueldo: boolean;
   dias: number;
   pagina: number;
@@ -55,6 +57,7 @@ export function leerFiltros(p: Params, local = false): Filtros {
     // Todos ven por defecto el catálogo completo (México y LATAM)
     alcance: donde === "cerca" ? "cerca" : "todo",
     local,
+    aceptaMx: donde === "remoto",
     conSueldo: uno(p.sueldo) === "1",
     dias: [1, 7, 30].includes(dias) ? dias : 0,
     pagina: Math.min(Math.max(1, Math.floor(Number(uno(p.pagina))) || 1), 500),
@@ -89,6 +92,8 @@ export async function buscarVacantes(f: Filtros, accesoEnLocal: boolean): Promis
     p_por_pagina: POR_PAGINA,
     p_zona: f.zona,
     p_cerca: f.alcance === "cerca",
+    // Solo cuando hace falta: así las demás búsquedas no dependen de 15_home_office_mexico.sql
+    ...(f.aceptaMx ? { p_acepta_mx: true } : {}),
   });
   if (error) throw new Error(`Error buscando vacantes: ${error.message}`);
   const r = data as { total: number; acceso: boolean; vacantes: FilaBase[] };
@@ -130,6 +135,7 @@ async function buscarEnArchivo(f: Filtros, acceso: boolean): Promise<Resultado> 
       (!f.nivel || v.nivel === f.nivel) &&
       (!f.tipo || v.empresa_tipo === f.tipo) &&
       (!f.zona || (v.zonas ?? []).includes(f.zona)) &&
+      (!f.aceptaMx || v.paises.length === 0 || v.paises.includes("MX")) &&
       (f.alcance === "todo" || esRelevanteObregon(v)) &&
       (!f.conSueldo || v.sueldo_max != null) &&
       (!limite || v.publicada >= limite),

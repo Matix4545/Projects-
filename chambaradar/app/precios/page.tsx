@@ -23,7 +23,7 @@ export default async function Precios({ searchParams }: Props) {
             renueva solo.
           </p>
           <p className="mt-3 rounded-xl bg-radar-claro p-3 text-sm text-radar-oscuro">
-            ¿Estás en Sonora? Tienes <strong>acceso completo gratis</strong>, sin plan. Las vacantes que publican los negocios también son siempre gratis.
+            Las vacantes que publican los negocios en ChambaRadar siempre se ven completas, sin plan.
           </p>
         </div>
 

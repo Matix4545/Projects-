@@ -40,9 +40,9 @@ async function textoParaCompartir(f: ReturnType<typeof leerFiltros>): Promise<{ 
   if (sinMas && (f.zona === "sonora" || f.zona === "cajeme" || (f.modalidad === "remoto" && !f.pais))) {
     const r = await resumen().catch(() => null);
     if (f.zona === "sonora" && r)
-      return { titulo: `${numero(r.enSonora)} vacantes en Sonora · Acceso completo gratis en Sonora`, descripcion: "Empleos en Hermosillo, Cd. Obregón, Navojoa, Guaymas y todo Sonora, directo de las páginas de las empresas. En Sonora el acceso completo es gratis." };
+      return { titulo: `${numero(r.enSonora)} vacantes en Sonora · ChambaRadar`, descripcion: "Empleos en Hermosillo, Cd. Obregón, Navojoa, Guaymas y todo Sonora, directo de las páginas de las empresas. Actualizado todos los días." };
     if (f.zona === "cajeme" && r)
-      return { titulo: `${numero(r.enCajeme)} vacantes en Cd. Obregón · Acceso completo gratis en Sonora`, descripcion: "Empleos en Ciudad Obregón (Cajeme), directo de las páginas de las empresas. En Sonora el acceso completo es gratis." };
+      return { titulo: `${numero(r.enCajeme)} vacantes en Cd. Obregón · ChambaRadar`, descripcion: "Empleos en Ciudad Obregón (Cajeme), directo de las páginas de las empresas. Actualizado todos los días." };
     if (r)
       return { titulo: `${numero(r.remotas)} vacantes home office para México · ChambaRadar`, descripcion: "Trabajos 100 % remotos que aceptan gente en México y LATAM, de empresas mexicanas y extranjeras. Los que son solo para EE. UU. no aparecen." };
   }

@@ -156,12 +156,6 @@ export default async function Inicio() {
           <p className="inline-flex items-center gap-2 rounded-full border border-radar/20 bg-radar-claro/60 px-3 py-1 text-xs font-semibold text-radar-oscuro sm:text-sm">
             <span className="size-2 animate-pulse rounded-full bg-radar" /> México y LATAM · actualizado hoy
           </p>
-          <Link
-            href="/vacantes?donde=sonora"
-            className="mx-auto mt-4 flex w-fit items-center gap-1.5 rounded-full bg-amber-100 px-4 py-1.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-200"
-          >
-            📍 ¿Estás en Sonora? Acceso completo gratis. <Flecha className="size-3.5" />
-          </Link>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl">
             Encuentra chamba que <span className="text-radar">no está</span> en LinkedIn ni en OCC
           </h1>
