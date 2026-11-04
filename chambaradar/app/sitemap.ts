@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { rutaVacante, vacantesPublicas } from "@/lib/publicas";
 import { busquedasSitemap } from "@/lib/seo";
 import { urlSitio } from "@/lib/sitio";
 
@@ -21,11 +22,14 @@ const PAGINAS: { ruta: string; prioridad: number; frecuencia: MetadataRoute.Site
 /** Next.js no escapa la URL al escribir el XML: un "&" suelto deja el sitemap inválido para Google. */
 const xml = (url: string) => url.replace(/&/g, "&amp;");
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sitio = urlSitio();
   const hoy = new Date();
+  // Cada vacante que publican los negocios tiene su página (las demás están detrás del muro)
+  const publicas = await vacantesPublicas().catch(() => []);
   return [
     ...PAGINAS.map((p) => ({ url: `${sitio}${p.ruta}`, lastModified: hoy, changeFrequency: p.frecuencia, priority: p.prioridad })),
+    ...publicas.map((v) => ({ url: `${sitio}${rutaVacante(v.id)}`, lastModified: new Date(v.vista), changeFrequency: "daily" as const, priority: 0.8 })),
     ...busquedasSitemap().map((ruta) => ({ url: xml(`${sitio}${ruta}`), lastModified: hoy, changeFrequency: "daily" as const, priority: 0.6 })),
   ];
 }

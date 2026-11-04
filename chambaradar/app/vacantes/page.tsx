@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { IMAGEN_OG, IMAGEN_X } from "@/lib/compartir";
 import Link from "next/link";
 import { BotonAlerta } from "@/components/BotonAlerta";
 import { Buscador, FiltrosLaterales, FiltrosMovil } from "@/components/Filtros";
@@ -21,12 +22,31 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const params = await searchParams;
   const f = leerFiltros(params);
   const pagina = f.pagina > 1 ? ` · página ${f.pagina}` : "";
+  const canonica = rutaCanonica(f);
+  const compartir = await textoParaCompartir(f);
   return {
     title: `${tituloDeFiltros(f)}${pagina}`,
     description: descripcionDeFiltros(f),
-    alternates: { canonical: rutaCanonica(f) },
+    alternates: { canonical: canonica },
+    openGraph: { title: compartir.titulo, description: compartir.descripcion, url: canonica, type: "website", siteName: "ChambaRadar", locale: "es_MX", images: IMAGEN_OG },
+    twitter: { card: "summary_large_image", title: compartir.titulo, description: compartir.descripcion, images: IMAGEN_X },
     robots: indexable(f, params) ? undefined : { index: false, follow: true },
   };
+}
+
+/** Lo que sale al compartir el enlace en Facebook o WhatsApp: con el número de vacantes cuando aplica. */
+async function textoParaCompartir(f: ReturnType<typeof leerFiltros>): Promise<{ titulo: string; descripcion: string }> {
+  const sinMas = !f.categoria && !f.q;
+  if (sinMas && (f.zona === "sonora" || f.zona === "cajeme" || (f.modalidad === "remoto" && !f.pais))) {
+    const r = await resumen().catch(() => null);
+    if (f.zona === "sonora" && r)
+      return { titulo: `${numero(r.enSonora)} vacantes en Sonora · Gratis para ver`, descripcion: "Empleos en Hermosillo, Cd. Obregón, Navojoa, Guaymas y todo Sonora, directo de las páginas de las empresas. En Sonora el acceso completo es gratis." };
+    if (f.zona === "cajeme" && r)
+      return { titulo: `${numero(r.enCajeme)} vacantes en Cd. Obregón · Gratis para ver`, descripcion: "Empleos en Ciudad Obregón (Cajeme), directo de las páginas de las empresas. En Sonora el acceso completo es gratis." };
+    if (r)
+      return { titulo: `${numero(r.remotas)} vacantes home office para México · ChambaRadar`, descripcion: "Trabajos 100 % remotos que aceptan gente en México y LATAM, de empresas mexicanas y extranjeras. Los que son solo para EE. UU. no aparecen." };
+  }
+  return { titulo: `${tituloDeFiltros(f)} · ChambaRadar`, descripcion: descripcionDeFiltros(f) };
 }
 
 export default async function Vacantes({ searchParams }: Props) {

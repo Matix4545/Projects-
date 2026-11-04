@@ -75,6 +75,21 @@ const CLAVES_PAIS: Record<string, string[]> = {
 /** Regiones que incluyen a LATAM. */
 const REGIONES_LATAM = /\b(latam|lat am|latin america|latinoamerica|america latina|south america|central america|americas|amer\b|anywhere|worldwide|global|any location|cualquier lugar|todo el mundo)/;
 
+/** Regiones abiertas de verdad: "Americas" o "AMER" no cuentan si además nombra a EE. UU. */
+const REGION_ABIERTA = /\b(latam|lat am|latin america|latinoamerica|america latina|south america|central america|anywhere|worldwide|global|any location|cualquier lugar|todo el mundo)/;
+
+const ESTADOS_EEUU =
+  "alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming|bay area|san francisco|seattle|boston|chicago|los angeles|austin|denver|atlanta";
+/** Siglas de estado sin ambigüedad con países de LATAM (sin CO, PA, AR, etc.) */
+const SIGLAS_EEUU = "ca|ny|ma|tx|wa|il|fl|ga|nj|nc|va|az|oh|mi|mn|ut|tn|mo|md|ct|wi|nv|sc|ky|ia|ks|ne|nh|vt|ri";
+const MENCIONA_EEUU = new RegExp(`united states|\\busa\\b|\\bu\\.s\\.|(^|[^a-z])us([^a-z]|$)|\\b(${ESTADOS_EEUU})\\b|,\\s*(${SIGLAS_EEUU})\\b`);
+
+/** ¿Nombra a EE. UU. (país, estado o ciudad) sin abrir la vacante a LATAM, México o cualquier país? */
+export function soloEeuu(texto: string): boolean {
+  const t = plano(texto);
+  return MENCIONA_EEUU.test(t) && !REGION_ABIERTA.test(t);
+}
+
 /** Palabras que solo dicen "remoto" sin nombrar un país o región. */
 const SOLO_REMOTO = /\b(remote|remoto|remota|fully|100%|work from home|home based|home office|wfh|teletrabajo|location|flexible|n\/a|none|any)\b/g;
 
@@ -192,6 +207,8 @@ export function aceptaLatam(ubicaciones: string[], modalidad: Modalidad, paises:
   if (paises.length > 0) return true;
   const t = plano(ubicaciones.join(" | "));
   if (modalidad !== "remoto") return false;
+  // "Remote, Massachusetts, United States, AMER": es para EE. UU. aunque diga AMER
+  if (soloEeuu(t)) return false;
   if (REGIONES_LATAM.test(t)) return true;
   // "Remote" a secas: solo cuenta en empresas que contratan en cualquier país.
   // "Remote, North America" o "Remote - US" nombran otra región y no cuentan.
@@ -309,7 +326,7 @@ export function normalizar(cruda: VacanteCruda, empresa: Empresa, ahora = new Da
   const textoUbic = ubicaciones.join(" | ");
   const paises = detectarPaises(textoUbic);
   const modalidad = detectarModalidad(ubicaciones, cruda.titulo, cruda.modalidadAts);
-  const titulo = sinMayusculasSostenidas(limpiarTexto(cruda.titulo ?? "").replace(/\s+/g, " ").trim());
+  const titulo = limpiarTitulo(cruda.titulo ?? "");
   const descripcion = limpiarTexto((cruda.descripcion ?? "").slice(0, 4000));
   const fecha = cruda.publicada ? new Date(cruda.publicada) : ahora;
 
@@ -335,10 +352,28 @@ export function normalizar(cruda: VacanteCruda, empresa: Empresa, ahora = new Da
   };
 }
 
+/**
+ * Título limpio para mostrar: sin códigos internos al final ("Repartidor-3",
+ * "Electromecanico (30400197)"), sin mayúsculas sostenidas y con la primera
+ * letra en mayúscula ("recoveries operational" → "Recoveries operational").
+ */
+export function limpiarTitulo(crudo: string): string {
+  let t = limpiarTexto(crudo).replace(/\s+/g, " ").trim();
+  t = t.replace(/\s*[-–#]\s*\d{1,3}$/, "").replace(/\s*[([]\s*(req|id|#)?\s*[\d-]{5,}\s*[)\]]\s*$/i, "").trim();
+  t = sinMayusculasSostenidas(t);
+  return t.charAt(0).toLocaleUpperCase("es-MX") + t.slice(1);
+}
+
+/** Vacantes de prueba que algunas empresas dejan publicadas ("Test", "Prueba 2"). */
+export function esTituloDePrueba(titulo: string): boolean {
+  return /^(test|testing|prueba|dummy|do not apply|no aplicar)[\s\d-]*$/i.test(titulo.trim());
+}
+
 /** "PLANEADOR (A) DE MATERIA PRIMA" → "Planeador (a) de materia prima" */
 export function sinMayusculasSostenidas(t: string): string {
   const letras = t.replace(/[^\p{L}]/gu, "");
-  if (letras.length < 8 || letras !== letras.toUpperCase()) return t;
+  // Palabras sueltas como "CHOFER" o "MEDICO" también, salvo siglas cortas ("SRE")
+  if (letras !== letras.toUpperCase() || letras.length < 5 || (letras.length < 8 && /\s/.test(t.trim()))) return t;
   const bajo = t.toLowerCase();
   // Respeta siglas cortas conocidas
   return (bajo.charAt(0).toUpperCase() + bajo.slice(1)).replace(/\b(it|qa|ui|ux|ai|ia|hr|rh|sap|erp|crm|sql|aws|b2b|b2c|cdmx|gdl|mty|pyme|ti)\b/g, (m) => m.toUpperCase());

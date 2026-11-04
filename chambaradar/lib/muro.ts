@@ -53,6 +53,11 @@ export function esGratis(v: Vacante): boolean {
   return v.id.startsWith("directa:");
 }
 
+/** Lo que ve quien no tiene plan en lugar del nombre de la empresa. Nunca lleva el nombre real. */
+export function etiquetaOculta(tipo: Vacante["empresa_tipo"]): string {
+  return tipo === "remoto" ? "Empresa extranjera · oculta" : "Empresa oculta";
+}
+
 export function vistaDeVacante(v: Vacante, conAcceso: boolean): VacanteVista {
   if (conAcceso || esGratis(v)) return { ...v, bloqueada: false };
   return {
@@ -63,7 +68,7 @@ export function vistaDeVacante(v: Vacante, conAcceso: boolean): VacanteVista {
     id: `v${Math.floor(generador(v.id)() * 1e12).toString(36)}`,
     url: null,
     empresa_slug: null,
-    empresa_nombre: revolver(v.empresa_nombre, `${v.id}:e`),
+    empresa_nombre: etiquetaOculta(v.empresa_tipo),
     descripcion: revolver(v.descripcion.slice(0, 280), `${v.id}:d`),
     bloqueada: true,
   };
@@ -92,8 +97,7 @@ export function vistaDesdeBase(f: FilaBase): VacanteVista {
     ...f,
     url: null,
     empresa_slug: null,
-    // Largo al azar: ni siquiera el largo del nombre debe dar pistas de la empresa
-    empresa_nombre: revolver("x".repeat(5 + Math.floor(generador(f.id)() * 9)), `${f.id}:e`),
+    empresa_nombre: etiquetaOculta(f.empresa_tipo),
     descripcion: f.largo_descripcion ? revolver(relleno(Math.min(f.largo_descripcion, 280)), `${f.id}:d`) : "",
     bloqueada: true,
   };

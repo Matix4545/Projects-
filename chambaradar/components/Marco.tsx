@@ -1,6 +1,14 @@
 import Link from "next/link";
-import { CORREO_CONTACTO } from "@/lib/legal";
+import { CORREO_CONTACTO, FACEBOOK } from "@/lib/legal";
 import type { Usuario } from "@/lib/supabase/servidor";
+
+export function IconoFacebook({ className = "size-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M24 12.07C24 5.41 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.8-4.7 4.54-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.5c-1.5 0-1.96.93-1.96 1.89v2.26h3.32l-.53 3.5h-2.8V24C19.62 23.1 24 18.1 24 12.07" />
+    </svg>
+  );
+}
 
 export function Logo({ claro = false }: { claro?: boolean }) {
   return (
@@ -74,6 +82,9 @@ export function Encabezado({ usuario, oscuro = false, buscador }: { usuario: Usu
                   {texto}
                 </Link>
               ))}
+              <a href={FACEBOOK} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 border-t border-borde px-4 py-2.5 text-[#1877f2] hover:bg-slate-50">
+                <IconoFacebook className="size-4" /> Síguenos en Facebook
+              </a>
             </div>
           </details>
         </nav>
@@ -90,12 +101,16 @@ export function Pie() {
         <div className="space-y-3">
           <Logo claro />
           <p className="text-sm">Vacantes en México, LATAM y home office, sacadas directo de las páginas de empleo de las empresas.</p>
+          <a href={FACEBOOK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm hover:text-white" aria-label="ChambaRadar en Facebook">
+            <IconoFacebook className="size-5" /> Síguenos en Facebook
+          </a>
         </div>
         <div className="space-y-2 text-sm">
           <p className="font-semibold text-white">Explora</p>
           <Link href="/vacantes" className="block hover:text-white">Todas las vacantes</Link>
           <Link href="/vacantes?donde=mx" className="block hover:text-white">Empleos en México</Link>
           <Link href="/vacantes?donde=sonora" className="block hover:text-white">Empleos en Sonora</Link>
+          <Link href="/obregon" className="block hover:text-white">Empleos en Cd. Obregón</Link>
           <Link href="/vacantes?donde=remoto" className="block hover:text-white">Home office</Link>
           <Link href="/cv" className="block hover:text-white">Haz tu CV gratis</Link>
           <Link href="/empresas" className="block hover:text-white">Empresas que contratan</Link>
@@ -106,7 +121,7 @@ export function Pie() {
           <Link href="/precios" className="block hover:text-white">Precios</Link>
           <Link href="/privacidad" className="block hover:text-white">Aviso de privacidad</Link>
           <Link href="/terminos" className="block hover:text-white">Términos y condiciones</Link>
-          <a href={`mailto:${CORREO_CONTACTO}`} className="block break-all hover:text-white">Contacto</a>
+          <a href={`mailto:${CORREO_CONTACTO}`} className="block break-all hover:text-white">Contacto: {CORREO_CONTACTO}</a>
         </div>
       </div>
       <p className="contenedor border-t border-white/10 py-6 text-xs">© {new Date().getFullYear()} ChambaRadar. Hecho en México.</p>

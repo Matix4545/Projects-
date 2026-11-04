@@ -49,8 +49,8 @@ function Datos({ v, compacto = false }: { v: VacanteVista; compacto?: boolean })
 
 function Empresa({ v }: { v: VacanteVista }) {
   return v.bloqueada ? (
-    <span className="borroso select-none text-[15px] text-slate-600" aria-label="Empresa oculta">
-      {v.empresa_nombre}
+    <span className="inline-flex items-center gap-1 text-[15px] text-slate-500">
+      <Candado className="size-3.5 shrink-0" /> {v.empresa_nombre}
     </span>
   ) : (
     <span className="text-[15px] font-medium text-slate-700">{v.empresa_nombre}</span>
@@ -175,7 +175,15 @@ export function TarjetaVacante({ v, ctx }: { v: VacanteVista; ctx: ContextoTarje
 
   return (
     <article className="rounded-2xl border border-borde bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:shadow-md sm:p-6">
-      <h3 className="text-lg font-semibold leading-snug tracking-tight text-tinta sm:text-xl">{v.titulo}</h3>
+      <h3 className="text-lg font-semibold leading-snug tracking-tight text-tinta sm:text-xl">
+        {v.id.startsWith("directa:") ? (
+          <Link href={`/vacante/${v.id.slice("directa:".length)}`} className="hover:text-radar-oscuro hover:underline">
+            {v.titulo}
+          </Link>
+        ) : (
+          v.titulo
+        )}
+      </h3>
       <div className="mt-0.5">
         <Empresa v={v} />
       </div>

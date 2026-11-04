@@ -224,3 +224,27 @@ test("solo Brasil no se guarda; Brasil y otro país de LATAM sí", async () => {
   assert.equal(soloBrasil({ paises: [] }), false);
   assert.equal(soloBrasil({ paises: ["AR"] }), false);
 });
+
+test("home office solo para EE. UU. no cuenta aunque diga AMER", async () => {
+  const { soloEeuu } = await import("../lib/normalizar.ts");
+  assert.equal(soloEeuu("Remote, Massachusetts, United States, AMER"), true);
+  assert.equal(soloEeuu("Remote, Bay Area, CA · Remote, AMER"), true);
+  assert.equal(soloEeuu("Remote, US"), true);
+  assert.equal(soloEeuu("Remote, AMER"), false);
+  assert.equal(soloEeuu("Remote - LATAM"), false);
+  assert.equal(soloEeuu("Remote, United States or Anywhere"), false);
+  assert.equal(soloEeuu("Bogotá, CO"), false);
+});
+
+test("títulos: sin códigos al final, sin gritos y con mayúscula inicial", async () => {
+  const { limpiarTitulo, esTituloDePrueba } = await import("../lib/normalizar.ts");
+  assert.equal(limpiarTitulo("Repartidor-3"), "Repartidor");
+  assert.equal(limpiarTitulo("Electromecanico (30400197)"), "Electromecanico");
+  assert.equal(limpiarTitulo("CHOFER"), "Chofer");
+  assert.equal(limpiarTitulo("recoveries operational (Colima)"), "Recoveries operational (Colima)");
+  assert.equal(limpiarTitulo("SAP FICO"), "SAP FICO");
+  assert.equal(limpiarTitulo("Student 2"), "Student 2");
+  assert.equal(limpiarTitulo("Ingeniero de Procesos Sr. - 2026"), "Ingeniero de Procesos Sr. - 2026");
+  assert.equal(esTituloDePrueba("Test2"), true);
+  assert.equal(esTituloDePrueba("Test Engineer"), false);
+});

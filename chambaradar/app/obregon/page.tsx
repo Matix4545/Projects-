@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { IMAGEN_OG, IMAGEN_X } from "@/lib/compartir";
 import Link from "next/link";
 import { Flecha } from "@/components/Iconos";
 import { Encabezado, Pie } from "@/components/Marco";
@@ -8,11 +9,21 @@ import { pagosActivos } from "@/lib/planes";
 import { accesoLocal, usuarioActual } from "@/lib/supabase/servidor";
 import { buscarVacantes, leerFiltros, resumen } from "@/lib/vacantes";
 
-export const metadata: Metadata = {
-  title: "Empleos en Ciudad Obregón, Sonora",
-  description:
-    "Vacantes en Ciudad Obregón (Cajeme) y el resto de Sonora sacadas directo de las páginas de empleo de las empresas, y trabajo remoto que puedes hacer desde Obregón.",
-};
+const DESCRIPCION =
+  "Vacantes en Ciudad Obregón (Cajeme) y el resto de Sonora sacadas directo de las páginas de empleo de las empresas, y trabajo remoto que puedes hacer desde Obregón.";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const r = await resumen().catch(() => null);
+  const titulo = r ? `${numero(r.enCajeme)} empleos en Cd. Obregón · Gratis para ver` : "Empleos en Ciudad Obregón · ChambaRadar";
+  const descripcion = "Vacantes en Cd. Obregón y todo Sonora, directo de las empresas, y home office desde Cajeme. En Sonora el acceso completo es gratis.";
+  return {
+    title: "Empleos en Ciudad Obregón, Sonora",
+    description: DESCRIPCION,
+    alternates: { canonical: "/obregon" },
+    openGraph: { title: titulo, description: descripcion, url: "/obregon", type: "website", siteName: "ChambaRadar", locale: "es_MX", images: IMAGEN_OG },
+    twitter: { card: "summary_large_image", title: titulo, description: descripcion, images: IMAGEN_X },
+  };
+}
 
 function Seccion({ titulo, texto, enlace, total, children }: { titulo: string; texto: string; enlace: string; total: number; children: React.ReactNode }) {
   return (

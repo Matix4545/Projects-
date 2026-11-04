@@ -2,10 +2,42 @@ import Link from "next/link";
 import { Candado, Dinero, Flecha, Lupa, Palomita, Reloj, Tache, Ubicacion } from "@/components/Iconos";
 import { Encabezado, Pie } from "@/components/Marco";
 import { formatoSueldo, haceCuanto, numero } from "@/lib/formato";
+import { jsonLd } from "@/lib/jobposting";
+import { CORREO_CONTACTO, FACEBOOK } from "@/lib/legal";
 import type { VacanteVista } from "@/lib/muro";
 import { accesoLocal, usuarioActual } from "@/lib/supabase/servidor";
+import { soloEeuu } from "@/lib/normalizar";
 import { visitanteLocal } from "@/lib/ubicacion";
 import { buscarVacantes, leerFiltros, resumen } from "@/lib/vacantes";
+
+/** Organization + WebSite para Google (logo, redes y buscador del sitio). */
+const DATOS_SITIO = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://chambaradar.com/#organizacion",
+      name: "ChambaRadar",
+      url: "https://chambaradar.com",
+      logo: "https://chambaradar.com/icono-512.png",
+      email: CORREO_CONTACTO,
+      sameAs: [FACEBOOK],
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://chambaradar.com/#sitio",
+      name: "ChambaRadar",
+      url: "https://chambaradar.com",
+      inLanguage: "es-MX",
+      publisher: { "@id": "https://chambaradar.com/#organizacion" },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: { "@type": "EntryPoint", urlTemplate: "https://chambaradar.com/vacantes?q={search_term_string}" },
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
+};
 
 const PREGUNTAS = [
   {
@@ -38,13 +70,39 @@ const PREGUNTAS = [
   },
 ];
 
+/**
+ * Tres tarjetas para la portada: 1-2 de Sonora y el resto home office que acepta
+ * México. Máximo una con sueldo en dólares y, de preferencia, que no sea senior,
+ * para que no parezca que solo hay puestos de $170k.
+ */
+function elegirMuestra(sonora: VacanteVista[], remotas: VacanteVista[], cuantasSonora: number): VacanteVista[] {
+  const real = (v: VacanteVista) => !NO_ES_VACANTE.test(v.titulo);
+  const elegidas = sonora.filter(real).slice(0, cuantasSonora);
+  // Home office que acepta México, sin repetir las de Sonora
+  const utiles = remotas.filter((v) => real(v) && !soloEeuu(v.ubicacion) && !v.zonas?.includes("sonora"));
+  const enDolares = utiles.filter((v) => v.moneda === "USD" && v.sueldo_max != null).sort((a, b) => Number(a.nivel === "senior" || a.nivel === "gerencia") - Number(b.nivel === "senior" || b.nivel === "gerencia"));
+  const otras = utiles.filter((v) => v.moneda !== "USD");
+  if (enDolares[0]) elegidas.push(enDolares[0]);
+  for (const v of [...otras, ...sonora.filter(real)]) {
+    if (elegidas.length >= 3) break;
+    if (!elegidas.some((e) => e.id === v.id)) elegidas.push(v);
+  }
+  // Orden: local, home office sin dólares, en dólares
+  return elegidas.slice(0, 3).sort((a, b) => peso(a) - peso(b));
+}
+/** "Banco de talentos" o "General application" no son una vacante concreta: no van de muestra. */
+const NO_ES_VACANTE = /banco de talento|talent (pool|community|network)|general application|aplicaci[oó]n general|open application|candidatura espont/i;
+const peso = (v: VacanteVista) => (v.modalidad !== "remoto" ? 0 : v.moneda === "USD" ? 2 : 1);
+
 /** Tarjeta de muestra para la vista del producto en la portada (sin botones activos). */
 function Muestra({ v, i }: { v: VacanteVista; i: number }) {
   const sueldo = formatoSueldo(v.sueldo_min, v.sueldo_max, v.moneda, v.periodo);
   return (
     <div className={`rounded-2xl border border-borde bg-white p-4 text-left shadow-sm sm:p-5 ${i > 0 ? "hidden sm:block" : ""}`}>
       <p className="font-semibold leading-snug text-tinta sm:text-lg">{v.titulo}</p>
-      <p className={`text-sm ${v.bloqueada ? "borroso select-none text-slate-600" : "font-medium text-slate-700"}`}>{v.empresa_nombre}</p>
+      <p className={`flex items-center gap-1 text-sm ${v.bloqueada ? "text-slate-500" : "font-medium text-slate-700"}`}>
+        {v.bloqueada && <Candado className="size-3 shrink-0" />} {v.empresa_nombre}
+      </p>
       <div className="mt-2 space-y-0.5 text-sm">
         {sueldo && (
           <p className="flex items-center gap-1.5 font-medium text-amber-600">
@@ -71,14 +129,20 @@ function Muestra({ v, i }: { v: VacanteVista; i: number }) {
 export default async function Inicio() {
   const usuario = await usuarioActual();
   const [acceso, local] = await Promise.all([accesoLocal(usuario), visitanteLocal()]);
-  // Muestra: home office con sueldo (quien está en Sonora ve primero lo de Cd. Obregón)
-  const [r, cerca] = await Promise.all([resumen(), local ? buscarVacantes(leerFiltros({ zona: "cajeme" }, true), acceso) : null]);
-  const conCerca = (cerca?.vacantes.length ?? 0) >= 3;
-  const tarjetas = (conCerca ? cerca! : await buscarVacantes(leerFiltros({ sueldo: "1", modalidad: "remoto" }), acceso)).vacantes.slice(0, 3);
-  const busquedaMuestra = conCerca ? "Cerca de ti" : "Home office con sueldo publicado";
+  // Muestra mezclada: lo de Sonora, home office que acepta México y máximo una en dólares
+  const base = leerFiltros({}, local);
+  const [r, sonora, remotas, conSueldo] = await Promise.all([
+    resumen(),
+    buscarVacantes({ ...base, zona: local ? "cajeme" : "sonora" }, acceso),
+    buscarVacantes({ ...base, modalidad: "remoto", alcance: "cerca" }, acceso),
+    buscarVacantes({ ...base, modalidad: "remoto", alcance: "cerca", conSueldo: true }, acceso),
+  ]);
+  const tarjetas = elegirMuestra(sonora.vacantes, [...remotas.vacantes, ...conSueldo.vacantes], local ? 2 : 1);
+  const busquedaMuestra = local ? "Cerca de ti y home office" : "Sonora y home office para México";
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(DATOS_SITIO) }} />
       <Encabezado usuario={usuario} />
 
       {/* Portada */}
@@ -92,6 +156,12 @@ export default async function Inicio() {
           <p className="inline-flex items-center gap-2 rounded-full border border-radar/20 bg-radar-claro/60 px-3 py-1 text-xs font-semibold text-radar-oscuro sm:text-sm">
             <span className="size-2 animate-pulse rounded-full bg-radar" /> México y LATAM · actualizado hoy
           </p>
+          <Link
+            href="/vacantes?donde=sonora"
+            className="mx-auto mt-4 flex w-fit items-center gap-1.5 rounded-full bg-amber-100 px-4 py-1.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-200"
+          >
+            📍 ¿Estás en Sonora? Todo es gratis, sin plan. <Flecha className="size-3.5" />
+          </Link>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl">
             Encuentra chamba que <span className="text-radar">no está</span> en LinkedIn ni en OCC
           </h1>

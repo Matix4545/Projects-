@@ -3,7 +3,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { leerVacantes } from "./fuentes/index.ts";
-import { esRelevanteObregon, normalizar } from "./normalizar.ts";
+import { esRelevanteObregon, esTituloDePrueba, normalizar } from "./normalizar.ts";
 import type { Empresa, Vacante } from "./tipos.ts";
 
 export interface ResultadoRecoleccion {
@@ -48,7 +48,7 @@ export async function recolectar(
     enfoque = enfoqueActual(),
   }: { paralelo?: number; ahora?: Date; alAvanzar?: (texto: string) => void; enfoque?: Enfoque } = {},
 ): Promise<ResultadoRecoleccion> {
-  const sirve = (v: Vacante) => v.acepta_latam && !soloBrasil(v) && (enfoque === "latam" || esRelevanteObregon(v));
+  const sirve = (v: Vacante) => v.acepta_latam && !esTituloDePrueba(v.titulo) && !soloBrasil(v) && (enfoque === "latam" || esRelevanteObregon(v));
   const mapa = new Map<string, Vacante>();
   const respondieron: string[] = [];
   const fallidas: ResultadoRecoleccion["fallidas"] = [];
