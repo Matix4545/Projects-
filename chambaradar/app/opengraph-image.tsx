@@ -39,7 +39,7 @@ export default async function Imagen() {
           <div style={{ display: "flex", flexWrap: "wrap", fontSize: 76, fontWeight: 800, lineHeight: 1.05, letterSpacing: -2 }}>
             Chamba que <span style={{ color: "#60a5fa", margin: "0 18px" }}>no está</span> en OCC ni LinkedIn
           </div>
-          <div style={{ display: "flex", fontSize: 34, color: "#cbd5e1" }}>Home office · Empleos en Sonora · Gratis para ver</div>
+          <div style={{ display: "flex", fontSize: 34, color: "#cbd5e1" }}>Home office · Empleos en Sonora</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", fontSize: 32, fontWeight: 700, color: "#ffffff", background: "#2563eb", padding: "14px 30px", borderRadius: 999 }}>

@@ -14,7 +14,7 @@ const DESCRIPCION =
 
 export async function generateMetadata(): Promise<Metadata> {
   const r = await resumen().catch(() => null);
-  const titulo = r ? `${numero(r.enCajeme)} empleos en Cd. Obregón · Gratis para ver` : "Empleos en Ciudad Obregón · ChambaRadar";
+  const titulo = r ? `${numero(r.enCajeme)} empleos en Cd. Obregón · Acceso completo gratis en Sonora` : "Empleos en Ciudad Obregón · ChambaRadar";
   const descripcion = "Vacantes en Cd. Obregón y todo Sonora, directo de las empresas, y home office desde Cajeme. En Sonora el acceso completo es gratis.";
   return {
     title: "Empleos en Ciudad Obregón, Sonora",

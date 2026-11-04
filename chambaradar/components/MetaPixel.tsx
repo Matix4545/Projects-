@@ -19,6 +19,31 @@ declare global {
   }
 }
 
+const LLAVE_PAGO = "cr_pago_valor";
+
+/** sessionStorage con try/catch (modo privado, almacenamiento bloqueado). `undefined` = no hay nada guardado. */
+function leerSesion(llave: string): string | undefined {
+  try {
+    return sessionStorage.getItem(llave) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+function guardarSesion(llave: string, valor: string) {
+  try {
+    sessionStorage.setItem(llave, valor);
+  } catch {
+    /* sin almacenamiento: la compra se cuenta sin monto */
+  }
+}
+function borrarSesion(llave: string) {
+  try {
+    sessionStorage.removeItem(llave);
+  } catch {
+    /* nada */
+  }
+}
+
 function leerDecision(): string | null {
   try {
     return localStorage.getItem(LLAVE);
@@ -66,7 +91,14 @@ export function MetaPixel() {
     if (decision !== "si") return;
     cargarPixel();
     window.fbq?.("track", "PageView");
-    if (ruta === "/cuenta" && params.get("pago") === "ok") window.fbq?.("track", "Purchase", { currency: "MXN", value: 0 });
+    // Listado de vacantes: ViewContent (con la búsqueda, sin datos personales)
+    if (ruta === "/vacantes") window.fbq?.("track", "ViewContent", { content_type: "vacantes", content_name: params.get("donde") || params.get("categoria") || "todas" });
+    if (ruta === "/cuenta" && params.get("pago") === "ok") {
+      // El monto lo guardó el clic en "Pagar" (no se toca Stripe). Se borra para no contar la compra dos veces.
+      const valor = leerSesion(LLAVE_PAGO);
+      borrarSesion(LLAVE_PAGO);
+      if (valor !== undefined) window.fbq?.("track", "Purchase", valor ? { currency: "MXN", value: Number(valor) } : { currency: "MXN" });
+    }
   }, [decision, ruta, params]);
 
   // Clics: "Aplicar" con candado = Lead; botones con data-meta = el evento que digan
@@ -76,7 +108,10 @@ export function MetaPixel() {
       const el = (e.target as HTMLElement | null)?.closest<HTMLElement>("[data-evento='aplicar_bloqueada'], [data-meta]");
       if (!el) return;
       if (el.dataset.evento === "aplicar_bloqueada") eventoMeta("Lead");
-      else if (el.dataset.meta) eventoMeta(el.dataset.meta, el.dataset.metaValor ? { currency: "MXN", value: Number(el.dataset.metaValor) } : undefined);
+      else if (el.dataset.meta) {
+        eventoMeta(el.dataset.meta, el.dataset.metaValor ? { currency: "MXN", value: Number(el.dataset.metaValor) } : undefined);
+        if (el.dataset.meta === "InitiateCheckout") guardarSesion(LLAVE_PAGO, el.dataset.metaValor ?? "");
+      }
     };
     document.addEventListener("click", alClic, true);
     return () => document.removeEventListener("click", alClic, true);

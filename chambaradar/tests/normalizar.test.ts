@@ -248,3 +248,9 @@ test("títulos: sin códigos al final, sin gritos y con mayúscula inicial", asy
   assert.equal(esTituloDePrueba("Test2"), true);
   assert.equal(esTituloDePrueba("Test Engineer"), false);
 });
+
+test("Americas cuenta como abierto; AMER con EE. UU. no", async () => {
+  const { soloEeuu } = await import("../lib/normalizar.ts");
+  assert.equal(soloEeuu("Remote, United States; Remote, Americas"), false);
+  assert.equal(soloEeuu("Remote, New York, United States, AMER"), true);
+});

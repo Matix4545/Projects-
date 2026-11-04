@@ -87,7 +87,7 @@ export default function Empezar() {
           <button className="boton mt-8 w-full py-3.5 text-base">
             Ver mis vacantes <Flecha className="size-4" />
           </button>
-          <p className="mt-3 text-center text-sm text-gris">Gratis y sin registrarte. Puedes cambiar los filtros cuando quieras.</p>
+          <p className="mt-3 text-center text-sm text-gris">Vista previa gratis y sin registrarte. Puedes cambiar los filtros cuando quieras.</p>
         </form>
       </div>
     </main>

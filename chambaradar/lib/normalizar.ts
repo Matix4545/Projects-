@@ -75,8 +75,8 @@ const CLAVES_PAIS: Record<string, string[]> = {
 /** Regiones que incluyen a LATAM. */
 const REGIONES_LATAM = /\b(latam|lat am|latin america|latinoamerica|america latina|south america|central america|americas|amer\b|anywhere|worldwide|global|any location|cualquier lugar|todo el mundo)/;
 
-/** Regiones abiertas de verdad: "Americas" o "AMER" no cuentan si además nombra a EE. UU. */
-const REGION_ABIERTA = /\b(latam|lat am|latin america|latinoamerica|america latina|south america|central america|anywhere|worldwide|global|any location|cualquier lugar|todo el mundo)/;
+/** Regiones abiertas de verdad. "AMER" (región de ventas) no cuenta si además nombra a EE. UU.; "Americas" sí. */
+const REGION_ABIERTA = /\b(latam|lat am|latin america|latinoamerica|america latina|south america|central america|americas|anywhere|worldwide|global|any location|cualquier lugar|todo el mundo)/;
 
 const ESTADOS_EEUU =
   "alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming|bay area|san francisco|seattle|boston|chicago|los angeles|austin|denver|atlanta";

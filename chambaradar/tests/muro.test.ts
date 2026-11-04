@@ -37,7 +37,7 @@ test("sin acceso: nada en la vacante revela la empresa ni el enlace", () => {
   assert.equal(vista.sueldo_max, 2000);
   assert.equal(vista.titulo, "Account Executive - ••• Mexico");
   // En lugar del nombre: una etiqueta legible, nunca texto revuelto
-  assert.equal(vista.empresa_nombre, "Empresa extranjera · oculta");
+  assert.equal(vista.empresa_nombre, "Empresa extranjera");
   assert.equal(vistaDeVacante({ ...v, empresa_tipo: "local" }, false).empresa_nombre, "Empresa oculta");
 });
 

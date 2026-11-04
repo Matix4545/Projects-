@@ -55,7 +55,7 @@ export function esGratis(v: Vacante): boolean {
 
 /** Lo que ve quien no tiene plan en lugar del nombre de la empresa. Nunca lleva el nombre real. */
 export function etiquetaOculta(tipo: Vacante["empresa_tipo"]): string {
-  return tipo === "remoto" ? "Empresa extranjera · oculta" : "Empresa oculta";
+  return tipo === "remoto" ? "Empresa extranjera" : "Empresa oculta";
 }
 
 export function vistaDeVacante(v: Vacante, conAcceso: boolean): VacanteVista {
