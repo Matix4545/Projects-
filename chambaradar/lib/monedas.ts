@@ -103,12 +103,15 @@ export interface PreciosLocales {
   ahorroMes: string;
 }
 
+/** ¿Se puede pagar en OXXO? Solo en México (o cuando no sabemos el país: casi todo el tráfico es de México). */
+export const hayOxxo = (pais: string | null | undefined) => !pais || pais === "MX";
+
 /** Precios para mostrar a un visitante de `pais` (null o México: en pesos, con OXXO). */
 export async function preciosPara(pais: string | null | undefined, semanaMxn: number, mesMxn: number): Promise<PreciosLocales> {
   const moneda = pais ? MONEDA_PAIS[pais] : undefined;
   const ahorroPesos = semanaMxn * 4 - mesMxn;
   const ahorroPct = `ahorras ${Math.round((ahorroPesos / (semanaMxn * 4)) * 100)} %`;
-  if (!pais || pais === "MX" || !moneda) return { semana: `$${semanaMxn}`, mes: `$${mesMxn}`, nota: "", oxxo: true, ahorroMes: `ahorras $${ahorroPesos}` };
+  if (!pais || pais === "MX" || !moneda) return { semana: `$${semanaMxn}`, mes: `$${mesMxn}`, nota: "", oxxo: hayOxxo(pais), ahorroMes: `ahorras $${ahorroPesos}` };
   const tasa = (await tipos())[moneda];
   if (!tasa) return { semana: `$${semanaMxn} MXN`, mes: `$${mesMxn} MXN`, nota: "", oxxo: false, ahorroMes: ahorroPct };
   const local = (mxn: number) => `≈ ${formatoMoneda(mxn * tasa * MARGEN, moneda)}`;

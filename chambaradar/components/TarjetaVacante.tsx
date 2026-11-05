@@ -7,7 +7,10 @@ import { formatoSueldo, haceCuanto } from "@/lib/formato";
 import { NOMBRE_CATEGORIA, NOMBRE_NIVEL, PAISES } from "@/lib/tipos";
 import { Candado, Capas, Dinero, Flecha, Reloj, Ubicacion } from "./Iconos";
 import type { PreciosLocales } from "@/lib/monedas";
+import { CapturaCorreo } from "./CapturaCorreo";
+import { Confianza } from "./Confianza";
 import { BotonPagarSemana, PRECIOS_MX } from "./Desbloquear";
+import { sueldoGrande } from "@/lib/landing";
 import { Modal } from "./Modal";
 
 const MODALIDAD = { remoto: "Remoto", hibrido: "Híbrido", presencial: "Presencial" } as const;
@@ -20,6 +23,8 @@ export interface ContextoTarjeta {
   precios?: PreciosLocales;
   /** "3,177 vacantes de 129 empresas" para la ventana de registro */
   resumen: string;
+  /** Landing de anuncios: el sueldo al mes, grande, con su equivalente en pesos (pesos por dólar) */
+  sueldoGrande?: { tasaUsd: number };
 }
 
 function fechaCorta(iso: string) {
@@ -33,20 +38,36 @@ function ubicacionVisible(v: VacanteVista): string {
 }
 
 /** Renglones de datos de la tarjeta: sueldo, ubicación y fecha, cada uno con su ícono. */
-function Datos({ v, compacto = false }: { v: VacanteVista; compacto?: boolean }) {
+function Datos({ v, compacto = false, grande }: { v: VacanteVista; compacto?: boolean; grande?: { tasaUsd: number } }) {
   const sueldo = formatoSueldo(v.sueldo_min, v.sueldo_max, v.moneda, v.periodo);
+  const g = grande && !compacto ? sueldoGrande(v, grande.tasaUsd) : null;
   return (
     <div className={`space-y-1 ${compacto ? "text-sm" : "text-[15px]"}`}>
-      {sueldo && (
-        <p className="flex items-center gap-1.5 font-medium text-amber-600">
-          <Dinero className="size-4 shrink-0" />
-          {sueldo}
-        </p>
+      {g ? (
+        <div className="rounded-xl bg-amber-50 px-3 py-2">
+          <p className="flex items-center gap-1.5 text-xl font-extrabold tracking-tight text-amber-700 sm:text-2xl">
+            <Dinero className="size-5 shrink-0" />
+            {g.principal}
+          </p>
+          {(g.pesos || g.porHora) && (
+            <p className="text-sm font-medium text-amber-800">
+              {[g.pesos, g.porHora].filter(Boolean).join(" · ")} <span className="font-normal text-amber-700/80">· sueldo publicado por la empresa</span>
+            </p>
+          )}
+        </div>
+      ) : (
+        sueldo && (
+          <p className="flex items-center gap-1.5 font-medium text-amber-600">
+            <Dinero className="size-4 shrink-0" />
+            {sueldo}
+          </p>
+        )
       )}
       {!compacto && (
         <p className="flex items-center gap-1.5 text-slate-600">
           <Ubicacion className="size-4 shrink-0" />
           <span className="truncate">{ubicacionVisible(v)}</span>
+          {(v.otras_ubicaciones ?? 0) > 0 && <span className="shrink-0 text-xs text-slate-500">y {v.otras_ubicaciones} {v.otras_ubicaciones === 1 ? "ubicación más" : "ubicaciones más"}</span>}
         </p>
       )}
       <p className="flex items-center gap-1.5 text-slate-500" suppressHydrationWarning>
@@ -80,6 +101,10 @@ function VentanaDesbloquear({ ctx }: { ctx: ContextoTarjeta }) {
           </Link>
           {ctx.precios?.nota && <p className="text-center text-xs text-gris">Precio aproximado: el plan es de {ctx.precios.nota}.</p>}
           <p className="text-center text-xs text-gris">Pago único {(ctx.precios ?? PRECIOS_MX).oxxo ? "con tarjeta u OXXO" : "con tarjeta"}, no se renueva solo. No necesitas crear cuenta antes: tu acceso queda en el correo con el que pagues.</p>
+          <Confianza compacto />
+          <div className="border-t border-borde pt-4">
+            <CapturaCorreo origen="vacante-bloqueada" compacto titulo="¿Todavía no? Recibe gratis 5 vacantes remotas en dólares cada semana" />
+          </div>
           {!ctx.conSesion && (
             <p className="text-center text-sm text-gris">
               ¿Ya pagaste?{" "}
@@ -200,7 +225,7 @@ export function TarjetaVacante({ v, ctx }: { v: VacanteVista; ctx: ContextoTarje
         <Empresa v={v} />
       </div>
       <div className="mt-3">
-        <Datos v={v} />
+        <Datos v={v} grande={ctx.sueldoGrande} />
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <BotonAplicar v={v} alAplicar={abrirAplicar} />

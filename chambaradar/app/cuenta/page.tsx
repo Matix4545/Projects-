@@ -5,16 +5,24 @@ import { Encabezado, Pie } from "@/components/Marco";
 import { borrarAlerta } from "@/app/alertas/acciones";
 import { enviarEnlace } from "@/app/entrar/acciones";
 import { describirFiltros, enlaceBusqueda, type FiltrosAlerta } from "@/lib/alertas";
+import { compraConfirmada, sesionStripeValida, type CompraConfirmada } from "@/lib/pagos";
 import { supabaseSesion, usuarioActual } from "@/lib/supabase/servidor";
 
 export const metadata: Metadata = { title: "Mi cuenta", robots: { index: false } };
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 
+/** Marca invisible que lee el píxel (components/MetaPixel.tsx) para contar la compra, solo si Stripe ya la confirmó. */
+function MarcaCompra({ sesion, compra }: { sesion?: string; compra: CompraConfirmada | null }) {
+  if (!sesion || !compra) return null;
+  return <span hidden data-compra={sesion} data-valor={compra.valor} data-moneda={compra.moneda} data-plan={compra.plan} />;
+}
+
 /** Después de pagar sin haber entrado: el acceso quedó en el correo que puso en Stripe. */
-function PagoRecibido() {
+function PagoRecibido({ sesion, compra }: { sesion?: string; compra: CompraConfirmada | null }) {
   return (
     <>
+      <MarcaCompra sesion={sesion} compra={compra} />
       <Encabezado usuario={null} />
       <main className="contenedor max-w-xl space-y-5 py-10">
         <div className="rounded-3xl border border-borde bg-white p-6 sm:p-8">
@@ -40,9 +48,11 @@ function PagoRecibido() {
 }
 
 export default async function Cuenta({ searchParams }: Props) {
-  const { pago } = await searchParams;
-  const usuario = await usuarioActual();
-  if (!usuario && pago === "ok") return <PagoRecibido />;
+  const { pago, sesion: s } = await searchParams;
+  // Stripe vuelve a /cuenta?pago=ok&sesion={CHECKOUT_SESSION_ID}; con ese id se confirma la compra en la base
+  const sesion = sesionStripeValida(s) ? s : undefined;
+  const [usuario, compra] = await Promise.all([usuarioActual(), pago === "ok" && sesion ? compraConfirmada(sesion) : null]);
+  if (!usuario && pago === "ok") return <PagoRecibido sesion={sesion} compra={compra} />;
   if (!usuario) redirect("/entrar?siguiente=/cuenta");
 
   // La política de la tabla solo devuelve las alertas propias
@@ -55,6 +65,7 @@ export default async function Cuenta({ searchParams }: Props) {
 
   return (
     <>
+      <MarcaCompra sesion={sesion} compra={compra} />
       <Encabezado usuario={usuario} />
       <main className="contenedor max-w-xl space-y-4 py-10">
         <h1 className="text-2xl font-extrabold">Mi cuenta</h1>

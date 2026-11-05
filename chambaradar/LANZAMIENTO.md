@@ -56,3 +56,14 @@ Estado: **cobro activo en modo real** (cuenta Stripe "ChambaRadar", `acct_1UXVQR
 - Incluido en todos los planes. Modelo: Claude Haiku 5.5 (≈ US$0.15 al mes por usuario activo; la IA solo corre cuando abren la vacante).
 - Requiere: cuenta en console.anthropic.com con saldo (mín. US$5) y la llave en Netlify como ANTHROPIC_API_KEY (scope Functions y Builds).
 - No construir "aplicamos por ti" automático en portales de terceros (Workday, Greenhouse…): viola sus términos y las empresas descartan aplicaciones masivas.
+
+
+## Landing de anuncios `/remoto-dolares` (nov 2026)
+
+- El anuncio puede seguir apuntando a `/vacantes?donde=remoto`: si trae `utm_source`, redirige a `/remoto-dolares` con los mismos parámetros. Mejor apuntarlo directo a `https://chambaradar.com/remoto-dolares?utm_source=meta&utm_campaign=prueba1`.
+- Pendientes de configuración (no son código):
+  1. Correr `supabase/20_landing_remoto_dolares.sql` en el SQL Editor (agrupa duplicados, landing, vacante de ejemplo, correos, compra confirmada).
+  2. En Stripe, en los 3 Payment Links → "Después del pago" → redirigir a `https://chambaradar.com/cuenta?pago=ok&sesion={CHECKOUT_SESSION_ID}`. Con eso el navegador manda `Purchase` con el pago ya confirmado por el webhook y el mismo id que el servidor.
+  3. Netlify: `NEXT_PUBLIC_CLARITY_ID` (Clarity), `META_CAPI_TOKEN` (API de conversiones del píxel), y `NEXT_PUBLIC_GARANTIA_DIAS=7` solo si se decide activar la garantía.
+- Garantía de devolución: apagada por defecto. Si se activa, el reembolso se hace a mano en Stripe (Pagos → el pago → Reembolsar; el dinero tarda 5-10 días en regresar a la tarjeta; con OXXO Stripe no reembolsa a la tienda, hay que pedir CLABE y transferir). El acceso se quita poniendo `acceso_hasta = now()` en `perfiles` para ese usuario.
+- Correos de "5 vacantes remotas en dólares cada semana" se guardan en `suscriptores`; el envío semanal todavía no existe (siguiente paso: función programada con Resend, igual que las alertas).

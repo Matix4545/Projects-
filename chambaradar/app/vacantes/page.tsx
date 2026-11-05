@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IMAGEN_OG, IMAGEN_X } from "@/lib/compartir";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Fragment } from "react";
 import { BotonAlerta } from "@/components/BotonAlerta";
 import { BarraDesbloquear, BloqueDesbloquear } from "@/components/Desbloquear";
@@ -92,6 +93,12 @@ function titularVenta(f: ReturnType<typeof leerFiltros>, total: number, titulo: 
 
 export default async function Vacantes({ searchParams }: Props) {
   const params = await searchParams;
+  // Quien llega de un anuncio (utm_source) a "home office" sin más filtros ve la landing pensada para convertir
+  if (params.donde === "remoto" && typeof params.utm_source === "string" && !params.categoria && !params.q && !params.pagina) {
+    const u = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) if (typeof v === "string" && v && k !== "donde" && k !== "modalidad") u.set(k, v);
+    redirect(`/remoto-dolares?${u.toString()}`);
+  }
   const [local, pais] = await Promise.all([visitanteLocal(), paisVisitante()]);
   const f = leerFiltros(params, local, pais);
   // Precio en la moneda del visitante (solo se muestra; el cobro sigue en MXN). OXXO solo en México.

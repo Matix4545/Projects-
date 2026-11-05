@@ -10,6 +10,8 @@ export type VacanteVista = Omit<Vacante, "url" | "empresa_nombre" | "empresa_slu
   empresa_slug: string | null;
   descripcion: string;
   bloqueada: boolean;
+  /** La misma vacante en otras ciudades (mismo título y empresa), agrupadas en esta tarjeta */
+  otras_ubicaciones?: number;
 };
 
 const LETRAS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -81,6 +83,7 @@ export type FilaBase = Omit<Vacante, "url" | "empresa_nombre" | "empresa_slug" |
   empresa_slug: string | null;
   descripcion: string | null;
   bloqueada: boolean;
+  otras_ubicaciones?: number;
   largo_empresa?: number;
   largo_descripcion?: number;
 };

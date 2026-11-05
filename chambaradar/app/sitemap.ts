@@ -15,6 +15,8 @@ const PAGINAS: { ruta: string; prioridad: number; frecuencia: MetadataRoute.Site
   { ruta: "/cv", prioridad: 0.7, frecuencia: "monthly" },
   { ruta: "/herramientas", prioridad: 0.6, frecuencia: "monthly" },
   { ruta: "/comparativa", prioridad: 0.6, frecuencia: "monthly" },
+  { ruta: "/remoto-dolares", prioridad: 0.9, frecuencia: "daily" },
+  { ruta: "/guias/estafas-trabajo-desde-casa", prioridad: 0.6, frecuencia: "monthly" },
   { ruta: "/herramientas/sueldo-neto", prioridad: 0.7, frecuencia: "monthly" },
   { ruta: "/herramientas/dolares-a-pesos", prioridad: 0.7, frecuencia: "weekly" },
   ...[500, 800, 1000, 1200, 1500, 2000, 2500, 3000, 3500, 4000, 5000, 6000, 8000, 10000].map((m) => ({ ruta: `/herramientas/dolares-a-pesos/${m}`, prioridad: 0.5, frecuencia: "weekly" as const })),

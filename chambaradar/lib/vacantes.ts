@@ -1,4 +1,5 @@
 import "server-only";
+import { agruparRepetidas, aptaRemotoDolares, compararLanding, sueldoCreible } from "./landing.ts";
 import { esRelevanteObregon } from "./normalizar.ts";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -36,7 +37,7 @@ type Params = Record<string, string | string[] | undefined>;
 const uno = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 /** País para "Home office": el de la URL, si no el del visitante, si no México (Brasil no está en el catálogo). */
-function paisHomeOffice(deUrl: string, visitante: string | null | undefined): string {
+export function paisHomeOffice(deUrl: string, visitante: string | null | undefined): string {
   for (const c of [deUrl.toUpperCase(), (visitante ?? "").toUpperCase()]) if (c in PAISES && c !== "BR") return c;
   return "MX";
 }
@@ -149,8 +150,56 @@ async function buscarEnArchivo(f: Filtros, acceso: boolean): Promise<Resultado> 
       (!f.conSueldo || v.sueldo_max != null) &&
       (!limite || v.publicada >= limite),
   );
+  const agrupadas = agruparRepetidas(filtradas, f.aceptaPais || f.pais || "MX");
   const desde = (f.pagina - 1) * POR_PAGINA;
-  return { vacantes: filtradas.slice(desde, desde + POR_PAGINA).map((v) => vistaDeVacante(v, acceso)), total: filtradas.length, acceso };
+  return { vacantes: agrupadas.slice(desde, desde + POR_PAGINA).map((v) => ({ ...vistaDeVacante(v, acceso), otras_ubicaciones: v.otras_ubicaciones })), total: agrupadas.length, acceso };
+}
+
+// --- Landing "Remoto en dólares" (app/remoto-dolares) ---------------------------
+
+export interface ResultadoLanding extends Resultado {
+  /** Cuántas de todas publican sueldo creíble */
+  conSueldo: number;
+}
+
+/** Remotas que aceptan `pais`: con sueldo primero, áreas masivas y puestos de entrada antes (supabase/20_landing_remoto_dolares.sql). */
+export async function remotoDolares(pais: string, pagina: number, accesoEnLocal: boolean): Promise<ResultadoLanding> {
+  if (supabaseConfigurado()) {
+    const { data, error } = await (await supabaseSesion()).rpc("remoto_dolares", { p_pais: pais, p_pagina: pagina, p_por_pagina: POR_PAGINA });
+    if (error) throw new Error(`Error en la landing: ${error.message}`);
+    const r = data as { total: number; con_sueldo: number; acceso: boolean; vacantes: FilaBase[] };
+    return { total: r.total, conSueldo: r.con_sueldo, acceso: r.acceso, vacantes: r.vacantes.map(vistaDesdeBase) };
+  }
+  const todas = (await todasLocales())
+    .filter((v) => v.acepta_latam && v.modalidad === "remoto" && (v.paises.length === 0 || v.paises.includes(pais)) && aptaRemotoDolares(v.titulo))
+    .sort(compararLanding);
+  const agrupadas = agruparRepetidas(todas, pais);
+  const desde = (pagina - 1) * POR_PAGINA;
+  return {
+    total: agrupadas.length,
+    conSueldo: agrupadas.filter((v) => sueldoCreible(v)).length,
+    acceso: accesoEnLocal,
+    vacantes: agrupadas.slice(desde, desde + POR_PAGINA).map((v) => ({ ...vistaDeVacante(v, accesoEnLocal), otras_ubicaciones: v.otras_ubicaciones })),
+  };
+}
+
+/** Una vacante remota COMPLETA (empresa y enlace) aunque no haya pagado: la muestra de lo que se recibe. */
+const peso = (v: Vacante) => (v.periodo === "mes" ? 2 : v.periodo === "hora" ? 1 : 0);
+export async function vacanteEjemplo(pais: string): Promise<VacanteVista | null> {
+  if (supabaseConfigurado()) {
+    const { data, error } = await (await supabaseSesion()).rpc("vacante_ejemplo", { p_pais: pais });
+    if (error) throw new Error(`Error leyendo la vacante de ejemplo: ${error.message}`);
+    return data ? vistaDesdeBase(data as FilaBase) : null;
+  }
+  const v = (await todasLocales())
+    .filter(
+      (v) =>
+        v.acepta_latam && v.modalidad === "remoto" && (v.paises.length === 0 || v.paises.includes(pais)) && sueldoCreible(v) && aptaRemotoDolares(v.titulo) &&
+        ["atencion-clientes", "ventas", "operaciones", "recursos-humanos", "otros", "marketing"].includes(v.categoria) && ["junior", "intermedio", "practicante"].includes(v.nivel) &&
+        !/senior|\bsr\b|lead|principal|enterprise|director|head of|manager|gerente/i.test(v.titulo) && !(v.paises.length === 0 && /united states|\busa?\b/i.test(v.ubicacion)),
+    )
+    .sort((a, b) => peso(b) - peso(a) || b.publicada.localeCompare(a.publicada))[0];
+  return v ? vistaDeVacante(v, true) : null;
 }
 
 // --- Números para la portada y la página de empresas -------------------------

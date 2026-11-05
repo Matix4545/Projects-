@@ -3,6 +3,8 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { escaparHtml } from "@/lib/alertas";
 import { enviarUno } from "@/lib/correo";
+import { enviarCompraAMeta } from "@/lib/meta";
+import { leerIntentoPago } from "@/lib/pagos";
 import { planPorMonto } from "@/lib/planes";
 import { urlSitio } from "@/lib/sitio";
 
@@ -35,7 +37,10 @@ export async function POST(request: NextRequest) {
   if (!pagado) return NextResponse.json({ ok: true });
 
   const sesion = evento.data.object as Stripe.Checkout.Session;
-  const usuario = sesion.client_reference_id;
+  // client_reference_id: el id del usuario con sesión, o un "intento" (i_…) de quien pagó sin cuenta
+  const referencia = sesion.client_reference_id ?? "";
+  const usuario = /^[0-9a-f-]{36}$/i.test(referencia) ? referencia : null;
+  const intento = referencia.startsWith("i_") ? referencia : null;
   // Si Stripe le cobró en otra moneda (p. ej. USD a alguien fuera de México),
   // el monto original en pesos viene en currency_conversion
   const conversion = sesion.currency_conversion;
@@ -59,6 +64,10 @@ export async function POST(request: NextRequest) {
     : await sb.rpc("registrar_pago_por_correo", { ...comun, p_correo: correo });
   // Si falla, Stripe reintenta el webhook más tarde
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Compra confirmada → Meta (API de conversiones), con el mismo id que manda el navegador en /cuenta
+  const quien = await leerIntentoPago(intento, usuario);
+  await enviarCompraAMeta({ sesion: sesion.id, valor: (montoMxn ?? plan.precio * 100) / 100, moneda: "MXN", correo, fbp: quien?.fbp, fbc: quien?.fbc, ip: quien?.ip, ua: quien?.ua, url: `${urlSitio()}/cuenta` });
 
   // Pagó sin cuenta: le mandamos cómo entrar
   if (!usuario && correo && resultado === "pendiente") {

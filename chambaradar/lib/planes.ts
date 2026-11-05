@@ -25,6 +25,16 @@ export function ahorroMes(): { pesos: number; porcentaje: number } {
   return { pesos: cuatro - mes, porcentaje: Math.round((1 - mes / cuatro) * 100) };
 }
 
+/**
+ * Garantía "si en N días no te sirve, te devolvemos tu dinero". Apagada hasta
+ * que se decida activarla: NEXT_PUBLIC_GARANTIA_DIAS=7 en Netlify la prende.
+ * El reembolso se hace a mano en Stripe (Pagos → el pago → Reembolsar).
+ */
+export function garantiaDias(): number {
+  const n = Number(process.env.NEXT_PUBLIC_GARANTIA_DIAS ?? 0);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
 export function buscarPlan(id: string | null | undefined): Plan | undefined {
   return PLANES.find((p) => p.id === id);
 }

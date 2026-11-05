@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { PreciosLocales } from "@/lib/monedas";
 import { ahorroMes, PLANES } from "@/lib/planes";
+import { Confianza } from "./Confianza";
 import { Candado, Flecha, Palomita } from "./Iconos";
 
 // Bloques de venta para quien llega sin plan (por ejemplo, desde un anuncio).
@@ -96,6 +97,7 @@ export function BloqueDesbloquear({
           </Link>
         </div>
         {precios.nota && <p className="text-center text-xs text-gris sm:text-left">Precio aproximado: el plan es de {precios.nota}.</p>}
+        <Confianza compacto />
         {/* En celular la barra fija de abajo ya dice "pago único, tarjeta u OXXO": aquí solo en pantallas grandes */}
         <p className="hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 sm:flex">
           <span>🔒 Pago seguro con Stripe</span>

@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { Encabezado, Pie } from "@/components/Marco";
 import { ahorroMes, PLANES, pagosActivos } from "@/lib/planes";
 import { usuarioActual } from "@/lib/supabase/servidor";
-import { aproximadoLocal, nombreMoneda } from "@/lib/monedas";
+import { aproximadoLocal, hayOxxo, nombreMoneda } from "@/lib/monedas";
 import { paisVisitante } from "@/lib/ubicacion";
 
-export const metadata: Metadata = { title: "Precios", description: "Desbloquea empresas y enlaces de todas las vacantes. Pago único con tarjeta u OXXO." };
+export const metadata: Metadata = { title: "Precios", description: "Desbloquea empresas y enlaces de todas las vacantes. Pago único, con tarjeta u OXXO, sin suscripción." };
+
+// Depende del país del visitante (OXXO, moneda): no se puede prerenderizar
+export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 
@@ -15,7 +18,7 @@ export default async function Precios({ searchParams }: Props) {
   const activos = pagosActivos();
   // Fuera de México: precio aproximado en su moneda y sin OXXO (solo existe en México)
   const pais = await paisVisitante();
-  const enMexico = !pais || pais === "MX";
+  const enMexico = hayOxxo(pais);
   const locales = await Promise.all(PLANES.map((p) => aproximadoLocal(pais, p.precio)));
   const moneda = nombreMoneda(pais);
   const ahorro = ahorroMes();
@@ -27,8 +30,7 @@ export default async function Precios({ searchParams }: Props) {
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Desbloquea todas las vacantes</h1>
           <p className="mt-3 text-gris">
-            Ve qué empresa es, la descripción completa y el enlace para aplicar directo. Pago único {enMexico ? "con tarjeta o en efectivo en OXXO" : "con tarjeta"}: no se
-            renueva solo.
+            Ve qué empresa es, la descripción completa y el enlace para aplicar directo. Pago único, {enMexico ? "con tarjeta u OXXO" : "con tarjeta"}: no se renueva solo.
           </p>
           <p className="mt-3 rounded-xl bg-radar-claro p-3 text-sm text-radar-oscuro">
             Las vacantes que publican los negocios en ChambaRadar siempre se ven completas, sin plan.
