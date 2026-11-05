@@ -329,5 +329,10 @@
   {"slug":"techholding","nombre":"Tech Holding","ats":"greenhouse","board":"techholding","tipo":"remoto"},
   {"slug":"mill","nombre":"Mill","ats":"greenhouse","board":"mill","tipo":"remoto"},
   {"slug":"puzzle-consulting-services","nombre":"Puzzle Consulting Services","ats":"ashby","board":"puzzle-consulting-services","tipo":"remoto"},
-  {"slug":"sesolabor","nombre":"Seso","ats":"greenhouse","board":"sesolabor","tipo":"remoto"}
+  {"slug":"sesolabor","nombre":"Seso","ats":"greenhouse","board":"sesolabor","tipo":"remoto"},
+  {"slug":"capgemini","nombre":"Capgemini","ats":"successfactors","board":"careers.capgemini.com","tipo":"remoto"},
+  {"slug":"nemak","nombre":"Nemak","ats":"successfactors","board":"careers.nemak.com","tipo":"local"},
+  {"slug":"afirme","nombre":"Afirme","ats":"successfactors","board":"empleos.afirme.com","tipo":"local"},
+  {"slug":"foundever","nombre":"Foundever","ats":"successfactors","board":"jobs.foundever.com","tipo":"remoto"},
+  {"slug":"melia","nombre":"Meliá Hotels","ats":"successfactors","board":"careers.melia.com","tipo":"remoto"}
 ]
