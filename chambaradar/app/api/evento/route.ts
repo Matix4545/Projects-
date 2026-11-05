@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { leerGeo } from "@/lib/geo";
 import { dispositivoDe, esBot, limpiarCampana, limpiarRuta, origenDe, rutaContable, visitanteDelDia, zonaDeGeo, type TipoEvento } from "@/lib/estadisticas";
 
-const TIPOS: TipoEvento[] = ["vista", "aplicar", "aplicar_bloqueada"];
+const TIPOS: TipoEvento[] = ["vista", "aplicar", "aplicar_bloqueada", "pagar"];
 const nada = () => new NextResponse(null, { status: 204 });
 
 /** Recibe una visita o un clic en "Aplicar" desde el navegador (components/Contador.tsx). */

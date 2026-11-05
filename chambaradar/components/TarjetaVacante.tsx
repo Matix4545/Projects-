@@ -207,6 +207,7 @@ export function TarjetaVacante({ v, ctx }: { v: VacanteVista; ctx: ContextoTarje
         <button onClick={() => setModo("mas")} className="boton-contorno">
           <Capas className="size-4" /> Más
         </button>
+        {v.idioma !== "es" && <span className="chip bg-slate-100 text-xs text-slate-600">En {IDIOMA[v.idioma]}</span>}
         <span className={`ml-auto hidden text-xs font-medium sm:inline ${v.modalidad === "remoto" ? "text-radar-oscuro" : "text-gris"}`}>
           {MODALIDAD[v.modalidad]}
           {v.empresa_tipo === "remoto" ? " · empresa extranjera" : ""}

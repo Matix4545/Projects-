@@ -24,7 +24,7 @@ export function BotonPagarSemana({ className = "boton w-full sm:w-auto", texto, 
   return (
     <form action="/api/pago" method="post" className="contents">
       <input type="hidden" name="plan" value={SEMANA.id} />
-      <button className={className} data-meta="InitiateCheckout" data-meta-valor={SEMANA.precio}>
+      <button className={className} data-evento="pagar" data-meta="InitiateCheckout" data-meta-valor={SEMANA.precio}>
         <Candado className="size-4" /> {texto ?? `Desbloquear todo por ${precio}`}
       </button>
     </form>
@@ -35,11 +35,41 @@ export function BotonPagarSemana({ className = "boton w-full sm:w-auto", texto, 
 const portal = (pais: string) => (pais === "MX" ? "LinkedIn ni OCC" : "LinkedIn ni Computrabajo");
 
 /** Arriba del listado: qué es, qué ves gratis y qué obtienes por el plan de 1 semana. */
-export function BloqueDesbloquear({ titular, conSesion, pais, precios }: { titular: string; conSesion: boolean; pais: string; precios: PreciosLocales }) {
+/** Empresas del catálogo que la gente reconoce (no dice qué vacante es de cuál). */
+const EMPRESAS_CONOCIDAS = "Banorte, Santander, Cemex, Accenture, Salesforce";
+
+export function BloqueDesbloquear({
+  titular,
+  conSesion,
+  pais,
+  precios,
+  nuevasSemana = 0,
+  empresas = 0,
+}: {
+  titular: string;
+  conSesion: boolean;
+  pais: string;
+  precios: PreciosLocales;
+  /** Vacantes publicadas en los últimos 7 días dentro de esta búsqueda */
+  nuevasSemana?: number;
+  /** Empresas con vacantes hoy en todo el sitio */
+  empresas?: number;
+}) {
   return (
     <div className="overflow-hidden rounded-2xl border border-radar/30 bg-white shadow-sm">
       <div className="space-y-3 p-4 sm:p-6">
         <p className="text-base font-extrabold leading-snug tracking-tight sm:text-xl">{titular}</p>
+        {(nuevasSemana > 0 || empresas > 0) && (
+          <p className="text-xs font-medium text-slate-500">
+            {nuevasSemana > 0 && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">+{nuevasSemana.toLocaleString("es-MX")} nuevas esta semana</span>}
+            {empresas > 0 && (
+              <>
+                {nuevasSemana > 0 ? " · " : ""}
+                De {EMPRESAS_CONOCIDAS} y {Math.max(0, empresas - 5).toLocaleString("es-MX")} empresas más
+              </>
+            )}
+          </p>
+        )}
         <ul className="hidden space-y-1.5 text-sm text-slate-700 sm:block">
           {[
             `Directo de las páginas de empleo de las empresas, no de ${portal(pais)}`,
@@ -55,7 +85,6 @@ export function BloqueDesbloquear({ titular, conSesion, pais, precios }: { titul
           ))}
         </ul>
         <p className="text-sm text-slate-700 sm:rounded-xl sm:bg-fondo sm:px-3 sm:py-2.5">
-          <span className="sm:hidden">Directo de las páginas de las empresas, no de {portal(pais)}. </span>
           <strong>Gratis</strong> ves puesto y sueldo; <strong>por {precios.semana}</strong>
           {precios.oxxo ? " MXN" : ""} ves la empresa y el enlace para aplicar, en todas.
         </p>
@@ -67,6 +96,12 @@ export function BloqueDesbloquear({ titular, conSesion, pais, precios }: { titul
           </Link>
         </div>
         {precios.nota && <p className="text-center text-xs text-gris sm:text-left">Precio aproximado: el plan es de {precios.nota}.</p>}
+        <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-slate-500 sm:justify-start">
+          <span>🔒 Pago seguro con Stripe</span>
+          <span>⚡ Acceso inmediato</span>
+          <span>🚫 Sin suscripción</span>
+          {precios.oxxo && <span>🏪 Tarjeta u OXXO</span>}
+        </p>
         <p className="hidden text-xs text-gris sm:block">
           Pago único, no se renueva solo · {precios.oxxo ? "Tarjeta u OXXO" : "Con tarjeta"} · No necesitas crear cuenta: tu acceso queda en el correo con el que pagas.
           {!conSesion && (

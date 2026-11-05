@@ -6,7 +6,7 @@
 import type { Geo } from "./geo.ts";
 
 export type Zona = "obregon" | "sonora" | "mexico" | "extranjero" | "desconocida";
-export type TipoEvento = "vista" | "aplicar" | "aplicar_bloqueada";
+export type TipoEvento = "vista" | "aplicar" | "aplicar_bloqueada" | "pagar";
 
 export const NOMBRE_ZONA_VISITA: Record<Zona, string> = {
   obregon: "Cd. Obregón (Cajeme)",

@@ -15,7 +15,7 @@ import { pagosActivos, PLANES } from "@/lib/planes";
 import { preciosPara } from "@/lib/monedas";
 import { accesoLocal, usuarioActual } from "@/lib/supabase/servidor";
 import { paisVisitante, visitanteLocal } from "@/lib/ubicacion";
-import { PAISES } from "@/lib/tipos";
+import { NOMBRE_CATEGORIA, PAISES } from "@/lib/tipos";
 import { descripcionDeFiltros, indexable, rutaCanonica, tituloDeFiltros } from "@/lib/seo";
 import { buscarVacantes, leerFiltros, POR_PAGINA, resumen } from "@/lib/vacantes";
 
@@ -57,6 +57,31 @@ async function textoParaCompartir(f: ReturnType<typeof leerFiltros>): Promise<{ 
   return { titulo: `${tituloDeFiltros(f)} · ChambaRadar`, descripcion: descripcionDeFiltros(f) };
 }
 
+/** Áreas más buscadas por la gente que llega de anuncios, como botones rápidos (en celular no se ve el filtro lateral). */
+const AREAS_RAPIDAS = ["ventas", "atencion-clientes", "operaciones", "produccion", "banca", "software", "recursos-humanos", "finanzas", "marketing", "salud"] as const;
+
+function ChipsAreas({ f, params }: { f: ReturnType<typeof leerFiltros>; params: Record<string, string | string[] | undefined> }) {
+  const enlace = (categoria: string) => {
+    const u = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) if (typeof v === "string" && v && !["categoria", "pagina", "alerta"].includes(k)) u.set(k, v);
+    if (categoria) u.set("categoria", categoria);
+    const s = u.toString();
+    return s ? `/vacantes?${s}` : "/vacantes";
+  };
+  return (
+    <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:hidden" aria-label="Áreas">
+      <Link href={enlace("")} className={`chip shrink-0 ${!f.categoria ? "bg-noche text-white" : "bg-white"}`}>
+        Todas
+      </Link>
+      {AREAS_RAPIDAS.map((c) => (
+        <Link key={c} href={enlace(c)} className={`chip shrink-0 ${f.categoria === c ? "bg-noche text-white" : "bg-white"}`}>
+          {NOMBRE_CATEGORIA[c]}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 /** "621 vacantes home office que aceptan gente de México", "71 vacantes en Sonora"… */
 function titularVenta(f: ReturnType<typeof leerFiltros>, total: number, titulo: string): string {
   const n = numero(total);
@@ -72,7 +97,13 @@ export default async function Vacantes({ searchParams }: Props) {
   // Precio en la moneda del visitante (solo se muestra; el cobro sigue en MXN). OXXO solo en México.
   const precios = await preciosPara(pais, PLANES.find((p) => p.id === "semana")!.precio, PLANES.find((p) => p.id === "mes")!.precio);
   const usuario = await usuarioActual();
-  const [{ vacantes, total, acceso }, r] = await Promise.all([buscarVacantes(f, await accesoLocal(usuario)), resumen()]);
+  const accesoUsuario = await accesoLocal(usuario);
+  const [{ vacantes, total, acceso }, r, semana] = await Promise.all([
+    buscarVacantes(f, accesoUsuario),
+    resumen(),
+    // Cuántas de esta búsqueda se publicaron en los últimos 7 días (para el bloque de venta)
+    f.dias ? null : buscarVacantes({ ...f, dias: 7, pagina: 1 }, accesoUsuario).catch(() => null),
+  ]);
   const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
 
   const enlacePagina = (pagina: number) => {
@@ -128,7 +159,9 @@ export default async function Vacantes({ searchParams }: Props) {
             </p>
           )}
 
-          {!acceso && ctx.pagosActivos && <BloqueDesbloquear titular={titularVenta(f, total, titulo)} conSesion={Boolean(usuario)} pais={f.aceptaPais || pais || "MX"} precios={precios} />}
+          <ChipsAreas f={f} params={params} />
+
+          {!acceso && ctx.pagosActivos && <BloqueDesbloquear titular={titularVenta(f, total, titulo)} conSesion={Boolean(usuario)} pais={f.aceptaPais || pais || "MX"} precios={precios} nuevasSemana={semana?.total ?? 0} empresas={r.empresas} />}
 
           {!acceso && !ctx.pagosActivos && (
             <Link href="/precios" className="flex items-center gap-3 rounded-2xl bg-noche px-4 py-3 text-sm text-white transition hover:bg-noche-2 sm:px-5">

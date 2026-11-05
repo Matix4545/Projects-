@@ -13,6 +13,7 @@ interface Fila {
   n?: number;
   visitantes?: number;
   aplicar?: number;
+  pagar?: number;
 }
 interface Dia {
   dia: string;
@@ -21,7 +22,7 @@ interface Dia {
   aplicar: number;
 }
 interface Datos {
-  resumen: { visitantes: number; vistas: number; aplicar: number; aplicar_bloqueada: number; busquedas: number; obregon: number };
+  resumen: { visitantes: number; vistas: number; aplicar: number; aplicar_bloqueada: number; pagar?: number; busquedas: number; obregon: number };
   por_dia: Dia[];
   por_zona: Fila[];
   por_origen: Fila[];
@@ -159,11 +160,12 @@ export default async function Trafico({ searchParams }: Props) {
           </nav>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
           <Cifra valor={r.visitantes} texto="Visitantes" nota={`${numero(r.vistas)} páginas vistas`} />
           <Cifra valor={r.obregon} texto="De Cd. Obregón" nota={r.visitantes ? `${Math.round((r.obregon / r.visitantes) * 100)} % del total` : undefined} />
           <Cifra valor={r.aplicar} texto="Clics en Aplicar" nota="Gente que fue a aplicar" />
           <Cifra valor={r.aplicar_bloqueada} texto="Aplicar sin pagar" nota="Tocaron Aplicar con candado" />
+          <Cifra valor={r.pagar ?? 0} texto="Fueron a pagar" nota={r.visitantes ? `${((100 * (r.pagar ?? 0)) / r.visitantes).toFixed(1)} % de los visitantes` : "Tocaron Pagar o Desbloquear"} />
           <Cifra valor={r.busquedas} texto="Búsquedas" />
         </div>
 
@@ -181,7 +183,8 @@ export default async function Trafico({ searchParams }: Props) {
             filas={(d.campanas ?? []).map((f) => ({ clave: f.clave, n: f.visitantes ?? 0 }))}
             vacio="Todavía no llega nadie desde un anuncio. Pon ?utm_source=facebook&utm_campaign=nombre en el enlace del anuncio."
           />
-          <Lista titulo="Campañas: clics en Aplicar" filas={(d.campanas ?? []).filter((f) => (f.aplicar ?? 0) > 0).map((f) => ({ clave: f.clave, n: f.aplicar ?? 0 }))} vacio="Sin clics en Aplicar desde anuncios todavía." />
+          <Lista titulo="Campañas: tocaron Aplicar" filas={(d.campanas ?? []).filter((f) => (f.aplicar ?? 0) > 0).map((f) => ({ clave: f.clave, n: f.aplicar ?? 0 }))} vacio="Sin clics en Aplicar desde anuncios todavía." />
+          <Lista titulo="Campañas: fueron a pagar" filas={(d.campanas ?? []).filter((f) => (f.pagar ?? 0) > 0).map((f) => ({ clave: f.clave, n: f.pagar ?? 0 }))} vacio="Nadie ha tocado Pagar desde un anuncio todavía." />
         </div>
       </main>
       <Pie />
