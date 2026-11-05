@@ -36,7 +36,7 @@ const portal = (pais: string) => (pais === "MX" ? "LinkedIn ni OCC" : "LinkedIn 
 
 /** Arriba del listado: qué es, qué ves gratis y qué obtienes por el plan de 1 semana. */
 /** Empresas del catálogo que la gente reconoce (no dice qué vacante es de cuál). */
-const EMPRESAS_CONOCIDAS = "Banorte, Santander, Cemex, Accenture, Salesforce";
+const EMPRESAS_CONOCIDAS = "Banorte, Cemex, Accenture, Salesforce";
 
 export function BloqueDesbloquear({
   titular,
@@ -65,7 +65,7 @@ export function BloqueDesbloquear({
             {empresas > 0 && (
               <>
                 {nuevasSemana > 0 ? " · " : ""}
-                De {EMPRESAS_CONOCIDAS} y {Math.max(0, empresas - 5).toLocaleString("es-MX")} empresas más
+                {EMPRESAS_CONOCIDAS} y {Math.max(0, empresas - 4).toLocaleString("es-MX")} empresas más
               </>
             )}
           </p>
@@ -96,7 +96,8 @@ export function BloqueDesbloquear({
           </Link>
         </div>
         {precios.nota && <p className="text-center text-xs text-gris sm:text-left">Precio aproximado: el plan es de {precios.nota}.</p>}
-        <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-slate-500 sm:justify-start">
+        {/* En celular la barra fija de abajo ya dice "pago único, tarjeta u OXXO": aquí solo en pantallas grandes */}
+        <p className="hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 sm:flex">
           <span>🔒 Pago seguro con Stripe</span>
           <span>⚡ Acceso inmediato</span>
           <span>🚫 Sin suscripción</span>
