@@ -450,60 +450,31 @@ function mangaRaglan(m: Medidas): Pieza[] {
   return [cuerpoE, cuerpoD, mE, mD];
 }
 
-type OpcionesUnida = {
-  nombre: string;
-  /** Ángulo del brazo bajo la horizontal (grados). */
-  angulo: number;
-  /** Largo desde el punto de hombro. */
-  largo: number;
-  /** Media bastilla (de la línea de hombro a la de bajo brazo), delantero. */
-  mediaBastilla: number;
-  /** Punto de la axila: cm sobre la cintura en el costado (murciélago) o null para calcularlo. */
-  axilaSobreCintura?: number;
-  /** Radio de la curva de axila (kimono). */
-  radio?: number;
-};
-
-/** Manga cortada en una con el cuerpo (kimono y murciélago). */
-function mangaUnida(m: Medidas, o: OpcionesUnida): Pieza[] {
+/**
+ * Manga murciélago: cortada en una con el cuerpo y axila casi en la cintura.
+ * Cada media bastilla se ajusta para que la costura bajo brazo de espalda y
+ * delantero mida lo mismo.
+ */
+function mangaMurcielago(m: Medidas): Pieza[] {
   // la pinza de busto va al hombro: el costado queda libre para la axila
   const b = blusaBase(m, { pinza: "hombro" });
-  const a = grados(o.angulo);
+  const a = grados(20);
+  const largo = m.largoBrazo;
+  const w0 = (m.muneca + 8) / 2;
+  const sobreCintura = 4;
   const construir = (pz: Pieza, haciaX: number, mediaBastilla: number): Pieza => {
     const r = structuredClone(pz);
     const H = v(r, "hombro");
     const dS = P(haciaX * Math.cos(a), -Math.sin(a));
-    const O = suma(H, escalar(dS, o.largo));
+    const O = suma(H, escalar(dS, largo));
     let nAbajo = perp(dS);
     if (nAbajo.y > 0) nAbajo = escalar(nAbajo, -1);
     const U = suma(O, escalar(nAbajo, mediaBastilla));
     const sisaBajo = v(r, "sisaBajo");
     const cint = v(r, "costadoCintura");
-    let axila: Pt;
-    let bajoBrazo: Pt[];
-    if (o.axilaSobreCintura !== undefined) {
-      axila = lerp(cint, sisaBajo, o.axilaSobreCintura / dist(cint, sisaBajo));
-      const tanU = rotar(escalar(dS, -1), P(0, 0), grados(28 * haciaX));
-      bajoBrazo = curva(U, tanU, axila, dir(axila, cint), 0.55, 0.45);
-    } else {
-      // esquina entre la línea bajo brazo y el costado, redondeada
-      const lado = dir(sisaBajo, cint);
-      const k = (() => {
-        // intersección de U + t·(−dS) con la recta del costado
-        const d1 = escalar(dS, -1);
-        const den = d1.x * lado.y - d1.y * lado.x;
-        const w = resta(sisaBajo, U);
-        const t = (w.x * lado.y - w.y * lado.x) / den;
-        return suma(U, escalar(d1, t));
-      })();
-      const rad = o.radio ?? 6;
-      const a1 = hacia(k, U, rad);
-      axila = suma(k, escalar(lado, rad));
-      // nunca más abajo que 3 cm sobre la cintura
-      const maxBaja = dist(sisaBajo, cint) - 3;
-      if (dist(sisaBajo, axila) > maxBaja && axila.y < sisaBajo.y) axila = suma(sisaBajo, escalar(lado, maxBaja));
-      bajoBrazo = [U, ...curva(a1, escalar(dS, -1), axila, lado, 0.55, 0.55)];
-    }
+    const axila = lerp(cint, sisaBajo, sobreCintura / dist(cint, sisaBajo));
+    const tanU = rotar(escalar(dS, -1), P(0, 0), grados(28 * haciaX));
+    const bajoBrazo = curva(U, tanU, axila, dir(axila, cint), 0.55, 0.45);
     const nAx = insertar(r, "axila", axila);
     const nuevos = [H, O, ...bajoBrazo];
     if (tramo(r, "hombro", nAx).length <= tramo(r, nAx, "hombro").length) reemplazar(r, "hombro", nAx, nuevos, true);
@@ -517,20 +488,23 @@ function mangaUnida(m: Medidas, o: OpcionesUnida): Pieza[] {
     return r;
   };
   const largoBajo = (pz: Pieza) => largoTramoBorde(pz, "punoAbajo", "costadoCintura");
-  const del = construir(b.delantero, -1, o.mediaBastilla);
-  const objetivo = largoBajo(del);
-  // ajusta la media bastilla trasera para que la costura bajo brazo mida lo mismo
-  let lo = o.mediaBastilla * 0.5;
-  let hi = o.mediaBastilla * 1.6;
-  let esp = construir(b.espalda, 1, o.mediaBastilla);
-  for (let k = 0; k < 30; k++) {
-    const mb = (lo + hi) / 2;
-    esp = construir(b.espalda, 1, mb);
-    if (largoBajo(esp) > objetivo) hi = mb;
-    else lo = mb;
-  }
-  void o.nombre;
-  return [esp, del];
+  const objetivo = (largoBajo(construir(b.delantero, -1, w0)) + largoBajo(construir(b.espalda, 1, w0))) / 2;
+  // busca la media bastilla (entre 60 % y 160 % de la nominal) que da el largo objetivo
+  const ajustar = (pz: Pieza, haciaX: number) => {
+    let mejor = construir(pz, haciaX, w0);
+    let error = Math.abs(largoBajo(mejor) - objetivo);
+    for (let k = 0; k <= 80; k++) {
+      const w = w0 * (0.6 + k / 80);
+      const c = construir(pz, haciaX, w);
+      const e = Math.abs(largoBajo(c) - objetivo);
+      if (e < error) {
+        error = e;
+        mejor = c;
+      }
+    }
+    return mejor;
+  };
+  return [ajustar(b.espalda, 1), ajustar(b.delantero, -1)];
 }
 
 /**
@@ -787,7 +761,7 @@ export const MANGAS: Modelo[] = [
       "Traza una curva amplia de la muñeca al costado, 4 cm arriba de la cintura.",
       "Para que no se suba, termina la manga y la cintura con puño o resorte.",
     ],
-    generar: (m) => mangaUnida(m, { nombre: "murciélago", angulo: 20, largo: m.largoBrazo, mediaBastilla: (m.muneca + 8) / 2, axilaSobreCintura: 4 }),
+    generar: mangaMurcielago,
   },
   {
     id: "manga-caida",

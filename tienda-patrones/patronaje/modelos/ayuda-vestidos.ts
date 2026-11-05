@@ -223,6 +223,73 @@ export function vistasSinManga(c: Cuerpo, o: { espaldaAlDoblez: boolean }): Piez
   return [ve, vee, vs, vse];
 }
 
+// ── Esquinas de costuras princesa ───────────────────────────────────────────
+
+function vecinos(pz: Pieza, n: string) {
+  const c = pz.contorno;
+  const i = c.findIndex((q) => q.n === n);
+  const k = c.length;
+  return { i, a: c[(i - 1 + k) % k], p: c[i], b: c[(i + 1) % k] };
+}
+
+/** Curva que redondea la esquina p entre a y b, empezando a `d` cm de la esquina en cada lado. */
+function curvaEsquina(a: Pt, p: Pt, b: Pt, d: number): Pt[] {
+  const uin = dir(a, p);
+  const uout = dir(p, b);
+  const dd = Math.min(d, dist(a, p) * 0.9, dist(p, b) * 0.9);
+  const p1 = suma(p, escalar(uin, -dd));
+  const p2 = suma(p, escalar(uout, dd));
+  return curva(p1, uin, p2, uout, 0.55, 0.55, 16);
+}
+
+function largo(pts: Pt[]) {
+  let l = 0;
+  for (let i = 1; i < pts.length; i++) l += dist(pts[i - 1], pts[i]);
+  return l;
+}
+
+/** Cuánto se acorta la costura al redondear la esquina con distancia d. */
+function acorta(a: Pt, p: Pt, b: Pt, d: number) {
+  const c = curvaEsquina(a, p, b, d);
+  return dist(c[0], p) + dist(p, c[c.length - 1]) - largo(c);
+}
+
+function aplicarEsquina(pz: Pieza, n: string, d: number) {
+  const { i, a, p, b } = vecinos(pz, n);
+  const c = curvaEsquina(a, p, b, d);
+  const medio = Math.floor(c.length / 2);
+  const nuevos: V[] = c.map((q, k) => ({ x: q.x, y: q.y, m: p.m, d: p.d, n: k === medio ? n : undefined }));
+  pz.contorno.splice(i, 1, ...nuevos);
+}
+
+/**
+ * Redondea la misma esquina de dos paneles que se cosen entre sí (p. ej. el busto en la
+ * costura princesa) de modo que las dos costuras sigan midiendo lo mismo: la esquina más
+ * cerrada se redondea con `d` cm y la otra con lo que haga falta para acortar igual.
+ */
+export function redondearPar(p1: Pieza, n1: string, p2: Pieza, n2: string, d = 2.5): number {
+  const e1 = vecinos(p1, n1);
+  const e2 = vecinos(p2, n2);
+  const r1 = acorta(e1.a, e1.p, e1.b, d);
+  const r2 = acorta(e2.a, e2.p, e2.b, d);
+  // la que más se acorta con d es la esquina más cerrada: la otra se ajusta
+  const [cerrada, abierta, ec, ea, nc, na] = r1 >= r2 ? [p1, p2, e1, e2, n1, n2] : [p2, p1, e2, e1, n2, n1];
+  const objetivo = Math.max(r1, r2);
+  let lo = 0;
+  let hi = Math.min(dist(ea.a, ea.p), dist(ea.p, ea.b)) * 0.9;
+  for (let k = 0; k < 50; k++) {
+    const mid = (lo + hi) / 2;
+    if (acorta(ea.a, ea.p, ea.b, mid) < objetivo) lo = mid;
+    else hi = mid;
+  }
+  const dAbierta = (lo + hi) / 2;
+  const resto = objetivo - acorta(ea.a, ea.p, ea.b, dAbierta);
+  void ec;
+  aplicarEsquina(cerrada, nc, d);
+  aplicarEsquina(abierta, na, dAbierta);
+  return resto; // diferencia que no se pudo compensar (cm)
+}
+
 /** Hilo vertical en x, entre dos alturas. */
 export function hiloEn(x: number, y0: number, y1: number): [Pt, Pt] {
   return [P(x, y0), P(x, y1)];

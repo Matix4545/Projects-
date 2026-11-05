@@ -36,6 +36,7 @@ import {
   nombrarCerca,
   parteBaja,
   recortar,
+  redondearPar,
   sinDoblez,
   suelto,
   vistasSinManga,
@@ -193,8 +194,7 @@ function princesaDelantero(del: Pieza, m: Medidas, cad: number, o: OpcionesPanel
     marcas: marcasDentro(del, contL),
     hilo: hiloEn((xd + cc.x - cad) / 2, yW - 2, yB + 10),
   });
-  suavizar(centro, "pinzaBustoA", "pinzaCinturaB", 30, 0.6);
-  suavizar(lado, "pinzaCinturaA", "pinzaBustoB", 30, 0.6);
+  redondearPar(centro, "busto", lado, "busto");
   doblezBorde(centro, "centroBajo", "centroCintura");
   margenBorde(centro, "bajoCostura", "centroBajo", 2);
   margenBorde(lado, "costadoBajo", "bajoCostura", 2);
@@ -262,8 +262,8 @@ function princesaEspalda(esp: Pieza, m: Medidas, cad: number, o: OpcionesPanel):
     marcas: marcasDentro(esp, contL),
     hilo: hiloEn((xd + cc.x + cad) / 2, yW - 2, yB + 10),
   });
-  suavizar(centro, "pinzaCinturaA", "pinzaHombroB", 30, 0.6);
-  suavizar(lado, "pinzaHombroA", "pinzaCinturaB", 30, 0.6);
+  redondearPar(centro, "apiceHombro", lado, "apiceHombro", 2.5);
+  redondearPar(centro, "apiceCintura", lado, "apiceCintura", 2.5);
   margenBorde(centro, "centroBajo", "bajoCostura", 2);
   margenBorde(lado, "bajoCostura", "costadoBajo", 2);
   for (const q of centro.contorno) if (q.d) {

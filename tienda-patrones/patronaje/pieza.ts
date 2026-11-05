@@ -229,7 +229,8 @@ export function renombrar(pz: Pieza, viejo: string, nuevo: string) {
 
 /** Ordena dos puntos para que el tramo entre ellos sea el corto (el borde que los une directamente). */
 export function corto(pz: Pieza, a: string, b: string): [string, string] {
-  return indicesTramo(pz, a, b).length <= indicesTramo(pz, b, a).length ? [a, b] : [b, a];
+  // por longitud de arco (no por número de vértices: las curvas tienen muchos puntos)
+  return longitud(tramo(pz, a, b)) <= longitud(tramo(pz, b, a)) ? [a, b] : [b, a];
 }
 
 /** Margen (cm) para el borde que une a y b (en cualquier sentido). */

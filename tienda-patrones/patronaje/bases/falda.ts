@@ -32,12 +32,15 @@ function mitad(
   bajadaCentro: number,
   largosPinza: number[],
   posiciones: number[],
+  pinzasDadas?: { x: number; ancho: number }[],
 ): Pieza {
   const yC = -m.alturaCadera;
   const sobra = anchoCadera - cinturaTerminada;
-  const costado = Math.min(3, Math.max(1.2, sobra * 0.42));
-  const pinzas = sobra - costado;
-  const n = pinzas > 2.8 ? 2 : 1;
+  const costado = pinzasDadas && pinzasDadas.length ? sobra - pinzasDadas.reduce((s, d) => s + d.ancho, 0) : Math.min(3, Math.max(1.2, sobra * 0.42));
+  let pinzas = sobra - costado;
+  let n = pinzas > 2.8 ? 2 : 1;
+  // pinzas dadas (vestidos): posiciones y anchos fijos; el resto va al costado
+  const dadas = pinzasDadas && pinzasDadas.length ? pinzasDadas : null;
   const xCostCint = anchoCadera - costado;
   const cintCost = P(xCostCint, 0.8);
   const cadera = P(anchoCadera, yC);
@@ -54,11 +57,22 @@ function mitad(
     { x: 0, y: -bajadaCentro, n: "centroCintura" },
   ];
   const pz = crear(nombre, cont, { ancla: P(0, 0) });
+  if (dadas) {
+    n = dadas.length;
+    pinzas = dadas.reduce((s, d) => s + d.ancho, 0);
+  }
+  // con mucha diferencia cadera–cintura, una tercera pinza (máx. 3.5 cm cada una)
+  if (!dadas && pinzas / n > 3.5) n = Math.min(3, Math.ceil(pinzas / 3.5));
   const anchoPinza = pinzas / n;
+  let xAnterior = -Infinity;
   for (let k = 0; k < n; k++) {
-    const x = posiciones[k] ?? (xCostCint * (k + 1)) / (n + 1);
-    const lp = largosPinza[k] ?? largosPinza[0];
-    agregarPinza(pz, `pinza${k + 1}`, P(x, 0), P(x, -lp), anchoPinza, 0);
+    const ancho = dadas ? dadas[k].ancho : anchoPinza;
+    let x = dadas ? dadas[k].x : posiciones[k] ?? (xCostCint * (k + 1)) / (n + 1);
+    // que las pinzas no se encimen: al menos su ancho + 1.5 cm entre centros
+    if (!dadas) x = Math.max(x, xAnterior + ancho + 1.5);
+    xAnterior = x;
+    const lp = largosPinza[k] ?? largosPinza[largosPinza.length - 1] - 1;
+    agregarPinza(pz, `pinza${k + 1}`, P(x, 0), P(x, -lp), ancho, 0);
   }
   margen(pz, "centroBajo", "costadoBajo", 3);
   piquete(pz, "cadera");
@@ -75,8 +89,8 @@ export function faldaBase(m: Medidas, o: OpcionesFalda = {}): Falda {
   const cintD = m.cintura / 4 + hw + 0.5;
   const cintE = m.cintura / 4 + hw - 0.5;
   const sep = m.separacionBusto / 2;
-  let delantero = mitad("Falda delantero", m, anchoD, cintD, largo, 0, [9.5, 8.5], [sep, sep + 3.8]);
-  const espalda = mitad("Falda espalda", m, anchoE, cintE, largo, o.bajadaEspalda ?? 1, [14, 12.5], [anchoE * 0.33, anchoE * 0.33 + 4.2]);
+  let delantero = mitad("Falda delantero", m, anchoD, cintD, largo, 0, [9.5, 8.5], [sep, sep + 3.8], o.pinzasDelantero);
+  const espalda = mitad("Falda espalda", m, anchoE, cintE, largo, o.bajadaEspalda ?? 1, [14, 12.5], [anchoE * 0.33, anchoE * 0.33 + 4.2], o.pinzasEspalda);
   // delantero con el centro a la derecha (como en el cuerpo) y al doblez
   delantero = espejarX(delantero, 0);
   doblez(delantero, "centroBajo", "centroCintura");

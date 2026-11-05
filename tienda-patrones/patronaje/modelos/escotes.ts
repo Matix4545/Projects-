@@ -195,27 +195,30 @@ function cascada(m: Medidas): Pieza[] {
   let del = b.delantero;
   const esp = b.espalda;
   const abrirHombro = 2;
+  const profundidad = 9;
+  // 1) escote en V hasta la profundidad de la cascada
+  cambiarEscote(del, abrirHombro, profundidad, curvaV(0.1));
   const c0 = v(del, "centroCuello");
-  const S = enHombro(del, abrirHombro);
-  const s = insertar(del, "cascadaHombro", S);
+  const S = v(del, "cuelloHombro");
+  const s = "cuelloHombro";
   const H = v(del, "hombro");
-  // cortes del centro al hombro, de abajo hacia arriba
+  // 2) cortes del centro al hombro, de abajo hacia arriba
   const cortes = [
-    { prof: 13, t: 0.8 },
-    { prof: 8.5, t: 0.55 },
-    { prof: 4, t: 0.3 },
+    { prof: 11, t: 0.75 },
+    { prof: 7, t: 0.5 },
+    { prof: 3, t: 0.25 },
   ];
   cortes.forEach(({ prof, t }, k) => {
     insertar(del, `cascadaCentro${k}`, P(c0.x, c0.y - prof));
     insertar(del, `cascadaBisagra${k}`, suma(S, escalar(resta(H, S), t)));
   });
   cortes.forEach((_, k) => {
-    del = abrir(del, `cascadaCentro${k}`, `cascadaBisagra${k}`, 4.5);
+    del = abrir(del, `cascadaCentro${k}`, `cascadaBisagra${k}`, 4);
   });
   // centro nuevo: recto desde la bastilla; borde de la cascada a escuadra con el centro
+  // 3) centro nuevo: recta de la bastilla al fondo de la V; el borde va a escuadra hasta el hombro
   const cb = v(del, "centroBajo");
-  const ccin = v(del, "centroCintura");
-  const arriba = unitario(resta(ccin, cb));
+  const arriba = unitario(resta(v(del, "centroCuello"), cb));
   const proy = (p: Pt) => suma(cb, escalar(arriba, (p.x - cb.x) * arriba.x + (p.y - cb.y) * arriba.y));
   const Sact = v(del, s);
   const topCF = proy(Sact);
@@ -453,10 +456,10 @@ export const ESCOTES: Modelo[] = [
     nombre: "Escote cascada (cowl)",
     descripcion: "Pliegues suaves que caen al frente. El delantero se corta al bies para que la tela caiga.",
     pasos: [
-      "Abre 2 cm el escote en el hombro.",
-      "Traza tres cortes del centro delantero (a 4, 8.5 y 13 cm del escote) al hombro.",
-      "Corta y abre 4.5 cm cada uno en el centro, sin separar el hombro.",
-      "Traza el centro nuevo recto desde la bastilla y el borde de la cascada a escuadra con el centro, hasta el hombro.",
+      "Abre 2 cm el escote en el hombro y baja el centro delantero 9 cm con una línea recta (escote en V).",
+      "Traza tres cortes del centro delantero (a 3, 7 y 11 cm abajo de la V) a la línea de hombro.",
+      "Corta y abre 4 cm cada uno en el centro, sin separar el hombro (la pieza gira).",
+      "Traza el centro nuevo recto de la bastilla al fondo de la V y alárgalo; el borde de la cascada sale del hombro a escuadra con ese centro.",
       "Agrega 7 cm de vista incluida reflejando el hombro.",
       "Calca la pieza completa y córtala al bies (el centro a 45° del hilo).",
     ],
