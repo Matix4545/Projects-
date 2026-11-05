@@ -98,7 +98,7 @@ declare
   por_pagina int := least(greatest(coalesce(p_por_pagina, 20), 1), 50);
   desde int := (least(greatest(coalesce(p_pagina, 1), 1), 100) - 1) * por_pagina;
   sal text := (select valor from config_privada where nombre = 'clave_app');
-  total int; con_sueldo int; filas jsonb;
+  total int; n_con_sueldo int; filas jsonb;
 begin
   with f0 as (
     select v as fila, v.id, v.publicada, v.empresa_slug, v.titulo, v.paises,
@@ -126,9 +126,9 @@ begin
   select (select count(*) from f where rn = 1), (select count(*) from f where rn = 1 and con_sueldo = 1),
          coalesce(jsonb_agg(vacante_json(r.fila, acceso, sal) || jsonb_build_object('otras_ubicaciones', r.repetidas - 1)
                             order by r.con_sueldo desc, r.masiva desc, r.entrada desc, r.espanol desc, r.publicada desc, r.id), '[]'::jsonb)
-    into total, con_sueldo, filas
+    into total, n_con_sueldo, filas
     from pagina r;
-  return jsonb_build_object('total', total, 'con_sueldo', con_sueldo, 'acceso', acceso, 'vacantes', filas);
+  return jsonb_build_object('total', total, 'con_sueldo', n_con_sueldo, 'acceso', acceso, 'vacantes', filas);
 end $$;
 revoke all on function public.remoto_dolares(text, int, int) from public;
 grant execute on function public.remoto_dolares(text, int, int) to anon, authenticated;
@@ -148,7 +148,7 @@ returns jsonb language sql stable security definer set search_path = public as $
      and v.nivel in ('junior', 'intermedio', 'practicante')
      and v.titulo !~* '(senior|\msr\M|lead|principal|enterprise|director|head of|manager|gerente)'
      and not (v.paises = '{}' and v.ubicacion ~* 'united states|\musa?\M')
-   order by case v.periodo when 'mes' then 2 when 'hora' then 1 else 0 end desc, v.publicada desc, v.id
+   order by case v.periodo when 'mes' then 2 when 'hora' then 1 else 0 end desc, (v.titulo !~* '(part[- ]time|medio tiempo)')::int desc, v.publicada desc, v.id
    limit 1;
 $$;
 revoke all on function public.vacante_ejemplo(text) from public;

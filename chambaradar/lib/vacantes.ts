@@ -198,7 +198,7 @@ export async function vacanteEjemplo(pais: string): Promise<VacanteVista | null>
         ["atencion-clientes", "ventas", "operaciones", "recursos-humanos", "otros", "marketing"].includes(v.categoria) && ["junior", "intermedio", "practicante"].includes(v.nivel) &&
         !/senior|\bsr\b|lead|principal|enterprise|director|head of|manager|gerente/i.test(v.titulo) && !(v.paises.length === 0 && /united states|\busa?\b/i.test(v.ubicacion)),
     )
-    .sort((a, b) => peso(b) - peso(a) || b.publicada.localeCompare(a.publicada))[0];
+    .sort((a, b) => peso(b) - peso(a) || Number(/part[- ]time|medio tiempo/i.test(a.titulo)) - Number(/part[- ]time|medio tiempo/i.test(b.titulo)) || b.publicada.localeCompare(a.publicada))[0];
   return v ? vistaDeVacante(v, true) : null;
 }
 
