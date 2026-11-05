@@ -49,3 +49,10 @@ Estado: **cobro activo en modo real** (cuenta Stripe "ChambaRadar", `acct_1UXVQR
 - 10 vacantes en Cd. Obregón, 54 en Sonora y ~610 de home office abiertas a México (se actualiza cada 30 minutos).
 - Primero lo de Obregón; filtro "¿Dónde?" (Obregón / Sonora / home office).
 - Alertas por correo, "Más vacantes de esta empresa" y la portada nueva.
+
+## Pendiente: "Vacantes para ti" (IA) — activar con el primer cliente que pague
+- Qué es: correo diario con las 5 vacantes que mejor le quedan al CV del usuario y botón "Preparar mi aplicación"
+  (resumen y experiencia ajustados a la vacante + carta de presentación, en el idioma de la vacante, con enlace para aplicar).
+- Incluido en todos los planes. Modelo: Claude Haiku 5.5 (≈ US$0.15 al mes por usuario activo; la IA solo corre cuando abren la vacante).
+- Requiere: cuenta en console.anthropic.com con saldo (mín. US$5) y la llave en Netlify como ANTHROPIC_API_KEY (scope Functions y Builds).
+- No construir "aplicamos por ti" automático en portales de terceros (Workday, Greenhouse…): viola sus términos y las empresas descartan aplicaciones masivas.
