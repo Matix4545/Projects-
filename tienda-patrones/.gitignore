@@ -16,3 +16,5 @@ salida/
 # Salidas del generador de patrones
 patrones-generados/
 biblioteca/
+# Netlify (archivos locales del despliegue)
+.netlify/
