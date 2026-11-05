@@ -126,7 +126,6 @@ export function pantalonBase(m: Medidas, o: OpcionesPantalon = {}): Pantalon {
     agregarPinza(espalda, `pinza${k + 1}`, c, suma(c, escalar(P(0.12, -1), k === 0 ? 12 : 11)), anchoP, 0);
   }
   margen(espalda, "costadoBajo", "entrepiernaBajo", 3);
-  margen(espalda, "centroCadera", "centroCintura", 2); // costura de centro espalda con margen para ajustar
   espalda.hilo = [P(rayaE, yTiro - 4), P(rayaE, yBajo + 10)];
   espalda.marcas.push({ t: "linea", pts: [P(rayaE, yTiro), P(rayaE, yBajo)], estilo: "pliegue" });
   piquete(espalda, "cadera");

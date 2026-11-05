@@ -4,6 +4,7 @@
 // dibuja la línea de costura (capa COSTURA, punteada).
 import type { Pt } from "../geometria.ts";
 import type { Pliego } from "./acomodo.ts";
+import { textoSeguro } from "./salida.ts";
 
 const MM = 10;
 // colores de AutoCAD (ACI) por talla, en orden
@@ -52,7 +53,7 @@ class Escritor {
     this.par(8, capa);
     this.par(10, n(p.x)); this.par(20, n(p.y)); this.par(30, 0);
     this.par(40, n(h));
-    this.par(1, s);
+    this.par(1, textoSeguro(s));
     if (ang) this.par(50, ((ang * 180) / Math.PI).toFixed(3));
     this.par(72, 1); // centrado
     this.par(11, n(p.x)); this.par(21, n(p.y)); this.par(31, 0);

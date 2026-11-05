@@ -5,6 +5,15 @@ import type { Pieza } from "../pieza.ts";
 
 export type Texto = { p: Pt; s: string; h: number; ang: number };
 
+/** Deja el texto en caracteres que entienden Helvetica (PDF) y AutoCAD R12 (Latin-1). */
+export function textoSeguro(s: string): string {
+  const cambios: Record<string, string> = { "−": "-", "–": "-", "—": "-", "×": "x", "“": '"', "”": '"', "‘": "'", "’": "'", "…": "...", "≈": "~", "→": "->", "←": "<-", "≤": "<=", "≥": ">=", "½": "1/2", "¼": "1/4", "¾": "3/4" };
+  return [...s]
+    .map((c) => cambios[c] ?? c)
+    .join("")
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, "");
+}
+
 export type Dibujo = {
   nombre: string;
   corte: Pt[];

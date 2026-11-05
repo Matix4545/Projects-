@@ -25,6 +25,7 @@ import {
 } from "pdf-lib";
 import type { Pt } from "../geometria.ts";
 import type { Pliego } from "./acomodo.ts";
+import { textoSeguro } from "./salida.ts";
 
 const PT = 72 / 2.54; // puntos por cm
 
@@ -42,7 +43,8 @@ const COLORES: [number, number, number][] = [
   [0.9, 0.2, 0.55],
 ];
 
-export async function pdf(pliego: Pliego, modelo: string, tienda = "Trazo"): Promise<Uint8Array> {
+export async function pdf(pliego: Pliego, modelo0: string, tienda = "Trazo"): Promise<Uint8Array> {
+  const modelo = textoSeguro(modelo0);
   const doc = await PDFDocument.create();
   doc.setTitle(`${modelo} · plotter 1:1`);
   doc.setAuthor(tienda);
@@ -135,7 +137,8 @@ export async function pdf(pliego: Pliego, modelo: string, tienda = "Trazo"): Pro
   page.pushOperators(bdc("Info"));
   for (const grupo of pliego.grupos) {
     const d = grupo.porTalla[iRef].d;
-    for (const t of d.textos) {
+    for (const t0 of d.textos) {
+      const t = { ...t0, s: textoSeguro(t0.s) };
       const f = t.s === t.s.toUpperCase() ? negrita : fuente;
       const size = t.h * PT * 0.9;
       const ancho = f.widthOfTextAtSize(t.s, size);
@@ -158,11 +161,11 @@ export async function pdf(pliego: Pliego, modelo: string, tienda = "Trazo"): Pro
     pliego.tallas.forEach((t, i) => {
       const [r, g, b] = COLORES[i % COLORES.length];
       page.drawRectangle({ x: xL, y: yL - 1, width: 18, height: 10, color: rgb(r, g, b) });
-      page.drawText(t, { x: xL + 22, y: yL, size: 11, font: fuente, color: rgb(0.17, 0.14, 0.13) });
+      page.drawText(textoSeguro(t), { x: xL + 22, y: yL, size: 11, font: fuente, color: rgb(0.17, 0.14, 0.13) });
       xL += 30 + fuente.widthOfTextAtSize(t, 11);
     });
   } else {
-    page.drawText(`Talla ${pliego.tallas[0]} · línea continua = corte · punteada = costura`, { x: xL, y: yL, size: 11, font: fuente, color: rgb(0.17, 0.14, 0.13) });
+    page.drawText(textoSeguro(`Talla ${pliego.tallas[0]} · línea continua = corte · punteada = costura`), { x: xL, y: yL, size: 11, font: fuente, color: rgb(0.17, 0.14, 0.13) });
   }
   // cuadro de prueba de 5 cm
   const q = { x: pliego.ancho - 6.5, y: pliego.alto + 0.3 };
