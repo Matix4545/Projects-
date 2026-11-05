@@ -482,7 +482,8 @@ function cinturaCaida(m: Medidas): Pieza[] {
 function cruzado(m: Medidas): Pieza[] {
   const c = cuerpoBase(m);
   const largo = m.largoRodilla;
-  const { del, esp } = vestidoAjustado(m, c, largo, { pinza: "cintura" });
+  // pinza de busto en el costado: el excedente del busto del lado que cruza se embebe en la cintura
+  const { del, esp } = vestidoAjustado(m, c, largo, { pinza: "costado" });
   // delantero completo (las dos mitades) y corte del cruce: del hombro a la cintura del otro lado
   const completo = completar(del, "centroBajo", "centroCuello");
   insertarEn(completo, "cruceHombro", "cuelloHombro", "hombro", 2.5);
@@ -493,7 +494,9 @@ function cruzado(m: Medidas): Pieza[] {
   const yB = v(completo, "centroBajo").y;
   insertar(completo, "cruceBajo", P(W.x, yB));
   const H = v(completo, "cruceHombro");
-  const linea = curva(H, dir(H, W), W, P(0.25, -1), 0.3, 0.25, 20).slice(1);
+  // del hombro baja en diagonal y entra suave a la vertical 6 cm arriba de la cintura (sin esquina)
+  const W6 = P(W.x, W.y + 6);
+  const linea = [...curva(H, dir(H, W6), W6, P(0, -1), 0.3, 0.28, 24).slice(1), W];
   const [p1, p2] = dividir(completo, "cruceHombro", "cruceBajo", linea, ["Delantero cruzado", "resto"]);
   const frente = tiene(p1, "costadoCintura") ? p1 : p2;
   nombrarCerca(frente, W, "cruceCintura");
@@ -508,7 +511,7 @@ function cruzado(m: Medidas): Pieza[] {
   const vEsp = vista(esp, "cuelloHombro", "centroCuello", 5, "Vista escote espalda", "Cortar 1 al doblez en tela y entretela");
   doblezBorde(vEsp, "fin", "finInterior");
   const vSisas = vistasSinManga(c, { espaldaAlDoblez: true }).slice(2);
-  const lazo = rectangulo("Lazo", 110, 10, "Cortar 2 en tela", { dobladoAlCentro: true });
+  const lazo = rectangulo("Lazo", 85, 10, "Cortar 2 en tela", { dobladoAlCentro: true });
   esp.cortar = "Cortar 1 al doblez en tela";
   return [esp, frente, vistaCruce, vEsp, ...vSisas, lazo];
 }
@@ -528,7 +531,7 @@ function camisero(m: Medidas): Pieza[] {
   const delantero = crear(
     "Delantero",
     [
-      ...cuerpoArriba.map((q) => ({ ...q, d: false, m: q.d ? 1 : q.m })),
+      ...cuerpoArriba.map((q) => ({ ...q, d: false, m: q.n === "centroBajo" ? 2 : q.d ? 1 : q.m })),
       { x: xc + 2, y: cb.y, n: "cruceBajo", m: 2 },
       { x: xc + 8.5, y: cb.y, n: "vistaBajo", m: 1 },
       { x: xc + 8.5, y: cu.y, n: "vistaCuello", m: 1 },
@@ -570,7 +573,8 @@ function camisero(m: Medidas): Pieza[] {
   doblezBorde(pie, "d", "a");
   pie.marcas.push({ t: "piquete", p: P(largoTramo(esp, "cuelloHombro", "centroCuello"), 0) });
   pie.marcas.push({ t: "piquete", p: P(cuello - 2, 0) });
-  const cinto = rectangulo("Cinturón", m.cintura + 30, 8, "Cortar 1 en tela", { dobladoAlCentro: true });
+  // en dos mitades (unidas al centro espalda) para que quepa en el rollo del plotter
+  const cinto = rectangulo("Cinturón", (m.cintura + 30) / 2 + 1, 8, "Cortar 2 en tela (unir al centro)", { dobladoAlCentro: true });
   return [canesu, espalda, delantero, manga, pie, cinto];
 }
 
@@ -759,11 +763,12 @@ export const VESTIDOS: Modelo[] = [
     nombre: "Vestido cruzado",
     descripcion: "El delantero cruza de un hombro a la cintura del otro lado y se amarra con lazo. Escote en V.",
     pasos: [
-      "Pasa la pinza de busto a la cintura y alarga a la rodilla con pinzas de pez.",
+      "Parte del vestido recto (pinza de busto en el costado y pinzas de pez), al doblez en la espalda.",
       "Dibuja el delantero completo (las dos mitades).",
       "Traza el cruce: del hombro (2.5 cm afuera del cuello) a la cintura del otro lado, 4 cm antes del costado, y de ahí recto a la bastilla.",
-      "Corta dos delanteros (un par). Vista de 6 cm en todo el borde del cruce.",
-      "Lazos de 110 cm; deja una abertura en un costado para pasar el lazo.",
+      "Corta dos delanteros (un par). Del lado que cruza, la pinza de costado queda fuera: ese poco de busto se embebe al coser la cintura.",
+      "Vista de 6 cm en todo el borde del cruce.",
+      "Lazos de 85 cm; deja una abertura en un costado para pasar el lazo.",
     ],
     telas: "Punto de rayón, crepé, satén, jersey.",
     generar: (m) => cruzado(m),

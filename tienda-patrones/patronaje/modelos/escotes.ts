@@ -213,10 +213,15 @@ function cascada(m: Medidas): Pieza[] {
     insertar(del, `cascadaCentro${k}`, P(c0.x, c0.y - prof));
     insertar(del, `cascadaBisagra${k}`, suma(S, escalar(resta(H, S), t)));
   });
+  // giro total: que el centro de abajo quede a escuadra con el borde de la cascada (S → fondo de la V)
+  const bordeOrig = resta(S, c0);
+  // el centro es vertical; su ángulo con el borde es atan(|dx|/dy); para quedar a escuadra gira el resto
+  const objetivo = Math.PI / 2 - Math.atan2(Math.abs(bordeOrig.x), bordeOrig.y);
+  const porCorte = Math.abs(objetivo) / cortes.length;
   cortes.forEach((_, k) => {
-    del = abrirSeparando(del, `cascadaCentro${k}`, `cascadaBisagra${k}`, 4);
+    const r = dist(v(del, `cascadaCentro${k}`), v(del, `cascadaBisagra${k}`));
+    del = abrirSeparando(del, `cascadaCentro${k}`, `cascadaBisagra${k}`, 2 * r * Math.sin(porCorte / 2));
   });
-  // centro nuevo: recto desde la bastilla; borde de la cascada a escuadra con el centro
   // 3) borde de la cascada: recta del hombro al fondo de la V. El centro nuevo sale a
   //    escuadra de ese borde y baja hasta la línea de la bastilla.
   const cb0 = v(del, "centroBajo");
@@ -466,7 +471,7 @@ export const ESCOTES: Modelo[] = [
     pasos: [
       "Abre 2 cm el escote en el hombro y baja el centro delantero 9 cm con una línea recta (escote en V).",
       "Traza tres cortes del centro delantero (a 3, 7 y 11 cm abajo de la V) a la línea de hombro.",
-      "Corta y abre 4 cm cada uno en el centro, sin separar el hombro (la pieza gira).",
+      "Corta y abre cada corte en el centro, sin separar el hombro, hasta que el centro de abajo quede a escuadra con la línea del hombro al fondo de la V.",
       "Traza el centro nuevo recto de la bastilla al fondo de la V y alárgalo; el borde de la cascada sale del hombro a escuadra con ese centro.",
       "Agrega 7 cm de vista incluida reflejando el hombro.",
       "Calca la pieza completa y córtala al bies (el centro a 45° del hilo).",

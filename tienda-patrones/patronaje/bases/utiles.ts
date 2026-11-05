@@ -8,6 +8,9 @@ import { type Pieza, type V, clonar, crear, doblezBorde, margenBorde, orientar, 
  * Las pinzas de cintura en V se convierten en pinzas de pez (rombo) que terminan
  * `largoPinza` cm abajo de la cintura; el costado se abre hasta el ancho de cadera.
  *
+ * Solo convierte pinzas con las dos patas sobre la cintura: no se usa con la pinza de busto
+ * sumada a la de cintura (delanteroConPinza(c, "cintura")); para eso está la pinza francesa.
+ *
  * `anchoCadera`: medio ancho en la línea de cadera, medido desde el centro (cm).
  * `largo`: cuánto baja desde la cintura (cm).
  */

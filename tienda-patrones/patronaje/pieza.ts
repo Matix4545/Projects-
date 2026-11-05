@@ -516,39 +516,40 @@ export function abrir(pz: Pieza, desde: string, hasta: string, apertura: number,
   // A: desde … hasta (más el corte de regreso); B: hasta … desde
   const D = v(pz, desde);
   const H = v(pz, hasta);
-  let Bm: Pieza;
-  if (o.paralelo) {
-    let nrm = perp(dir(D, H));
-    const prueba = suma(medio(D, H), escalar(nrm, 0.5));
-    if (dentro(prueba, A.contorno)) nrm = escalar(nrm, -1);
-    Bm = mover(B, nrm.x * apertura, nrm.y * apertura);
-  } else {
-    const r = dist(D, H);
-    const th = 2 * Math.asin(Math.min(1, apertura / (2 * r)));
-    const mas = rotar(D, H, th);
-    const signo = dentro(medio(D, mas), A.contorno) ? -1 : 1;
-    Bm = girar(B, H, signo * th);
-  }
-  // contorno: A sin el corte (desde → hasta) + B movida (hasta → desde)
-  const ca = tramo(A, desde, hasta);
-  const cb = tramo(Bm, hasta, desde);
-  ca[ca.length - 1] = { ...ca[ca.length - 1], m: cb[0].m, d: cb[0].d };
-  const nb = cb.map((p, k) => {
-    if (k === cb.length - 1) return { ...p, n: `${desde}'` };
-    if (k === 0) return { ...p, n: o.paralelo ? `${hasta}'` : undefined };
-    return p;
-  });
-  // el hueco en el extremo abierto hereda el margen del tramo original
-  const r: Pieza = {
-    ...clonar(pz),
-    contorno: limpiar(o.paralelo ? [...ca, ...nb] : [...ca, ...nb.slice(1)]),
-    pinzas: [...A.pinzas, ...Bm.pinzas.filter((q) => !A.pinzas.some((w) => w.apice === q.apice))],
-    marcas: [...A.marcas, ...Bm.marcas],
+  const armar = (Bm: Pieza): Pieza => {
+    // contorno: A sin el corte (desde → hasta) + B movida (hasta → desde)
+    const ca = tramo(A, desde, hasta);
+    const cb = tramo(Bm, hasta, desde);
+    ca[ca.length - 1] = { ...ca[ca.length - 1], m: cb[0].m, d: cb[0].d };
+    const nb = cb.map((p, k) => {
+      if (k === cb.length - 1) return { ...p, n: `${desde}'` };
+      if (k === 0) return { ...p, n: o.paralelo ? `${hasta}'` : undefined };
+      return p;
+    });
+    const r: Pieza = {
+      ...clonar(pz),
+      contorno: limpiar(o.paralelo ? [...ca, ...nb] : [...ca, ...nb.slice(1)]),
+      pinzas: [...A.pinzas, ...Bm.pinzas.filter((q) => !A.pinzas.some((w) => w.apice === q.apice))],
+      marcas: [...A.marcas, ...Bm.marcas],
+    };
+    // el hueco en el extremo abierto hereda el margen del tramo original
+    const ult = r.contorno[r.contorno.length - 1];
+    ult.m = v(pz, desde).m;
+    ult.d = v(pz, desde).d;
+    return r;
   };
-  const ult = r.contorno[r.contorno.length - 1];
-  ult.m = v(pz, desde).m;
-  ult.d = v(pz, desde).d;
-  return orientar(r);
+  // se prueban los dos sentidos y se queda el que abre (el de mayor área, sin encimarse)
+  let opciones: Pieza[];
+  if (o.paralelo) {
+    const nrm = perp(dir(D, H));
+    opciones = [1, -1].map((sg) => armar(mover(B, nrm.x * apertura * sg, nrm.y * apertura * sg)));
+  } else {
+    const radio = dist(D, H);
+    const th = 2 * Math.asin(Math.min(1, apertura / (2 * radio)));
+    opciones = [1, -1].map((sg) => armar(girar(B, H, sg * th)));
+  }
+  const mejor = Math.abs(areaFirmada(opciones[0].contorno)) >= Math.abs(areaFirmada(opciones[1].contorno)) ? opciones[0] : opciones[1];
+  return orientar(mejor);
 }
 
 /** Suaviza el tramo desde → hasta (para emparejar bastillas y copas después de abrir). */
@@ -581,7 +582,11 @@ export function suavizar(pz: Pieza, desde: string, hasta: string, iteraciones = 
   pz.contorno = limpiar(pz.contorno);
 }
 
-/** Refleja la pieza sobre el tramo recto desde→hasta (pieza al doblez → pieza completa). */
+/**
+ * Refleja la pieza sobre el tramo recto desde→hasta (pieza al doblez → pieza completa).
+ * Ojo: los puntos con nombre que estaban sobre el doblez (entre desde y hasta) desaparecen;
+ * lee sus coordenadas antes si las vas a necesitar.
+ */
 export function completar(pz: Pieza, desde: string, hasta: string): Pieza {
   const a = v(pz, desde);
   const b = v(pz, hasta);
