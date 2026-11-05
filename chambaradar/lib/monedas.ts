@@ -71,6 +71,12 @@ export function formatoMoneda(monto: number, moneda: string): string {
   return `${simbolo[moneda] ?? `${moneda} `}${numero}`;
 }
 
+/** Pesos mexicanos por una unidad de `moneda` (por ejemplo, pesos por dólar). */
+export async function pesosPor(moneda: string): Promise<number> {
+  const tasa = (await tipos())[moneda];
+  return tasa ? 1 / tasa : 1 / (RESPALDO[moneda] ?? 1);
+}
+
 /** "≈ S/ 25" para un monto en MXN, o null en México / país sin moneda conocida. */
 export async function aproximadoLocal(pais: string | null | undefined, mxn: number): Promise<string | null> {
   const moneda = pais ? MONEDA_PAIS[pais] : undefined;

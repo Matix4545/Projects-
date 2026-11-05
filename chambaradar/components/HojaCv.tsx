@@ -114,6 +114,12 @@ export function HojaCv({ cv }: { cv: Cv }) {
           </ul>
         </Seccion>
       )}
+      {/* Pie del PDF: cada CV que se envía es una recomendación del sitio */}
+      <p className="mt-8 border-t border-slate-200 pt-2 text-center text-[0.68rem] text-slate-400 print:mt-6">
+        {cv.idioma === "en" ? "Made for free at " : "Hecho gratis en "}
+        <span className="font-semibold text-slate-500">chambaradar.com</span>
+        {cv.idioma === "en" ? " · Jobs straight from company career pages" : " · Vacantes que no están en OCC ni LinkedIn"}
+      </p>
     </article>
   );
 }
