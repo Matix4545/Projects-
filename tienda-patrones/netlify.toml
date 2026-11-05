@@ -1,0 +1,11 @@
+# Publicación en Netlify (Next.js). La tienda vive en esta carpeta.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Adaptador oficial de Next.js para Netlify (funciones de servidor, imágenes, rutas dinámicas)
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
