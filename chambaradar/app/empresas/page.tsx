@@ -39,8 +39,10 @@ export default async function Empresas() {
                 <h2 className="text-xl font-bold">{g.titulo}</h2>
                 <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {g.lista.map((e) => (
-                    <li key={e.slug} className="rounded-2xl border border-borde bg-white p-4">
-                      <p className="font-semibold">{e.nombre}</p>
+                    <li key={e.slug} className="rounded-2xl border border-borde bg-white p-4 transition hover:border-radar">
+                      <Link href={`/empresas/${e.slug}`} className="font-semibold hover:text-radar-oscuro hover:underline">
+                        {e.nombre}
+                      </Link>
                       <p className="text-sm text-gris">
                         {numero(e.total)} {e.total === 1 ? "vacante" : "vacantes"}
                         {e.remotas > 0 && ` · ${numero(e.remotas)} remotas`}

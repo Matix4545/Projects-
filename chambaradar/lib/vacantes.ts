@@ -209,6 +209,39 @@ export async function empresasConVacantes(): Promise<EmpresaConVacantes[]> {
   return [...mapa.values()].sort((a, b) => b.total - a.total);
 }
 
+// --- Página por empresa --------------------------------------------------------
+
+export interface Conteo {
+  clave: string;
+  n: number;
+}
+export interface PaginaEmpresa {
+  slug: string;
+  nombre: string;
+  tipo: "local" | "remoto";
+  total: number;
+  remotas: number;
+  con_sueldo: number;
+  en_espanol: number;
+  ultima: string;
+  areas: Conteo[];
+  modalidades: Conteo[];
+  paises: Conteo[];
+  estados: Conteo[];
+  acceso: boolean;
+  vacantes: VacanteVista[];
+}
+
+/** Resumen y vacantes de una empresa (supabase/19_pagina_empresa.sql). Null si no tiene vacantes activas. */
+export async function vacantesDeEmpresa(slug: string): Promise<PaginaEmpresa | null> {
+  if (!supabaseConfigurado()) return null;
+  const { data, error } = await (await supabaseSesion()).rpc("vacantes_de_empresa", { p_slug: slug, p_limite: 30 });
+  if (error) throw new Error(`Error leyendo la empresa: ${error.message}`);
+  if (!data) return null;
+  const r = data as Omit<PaginaEmpresa, "vacantes"> & { vacantes: FilaBase[] };
+  return { ...r, vacantes: r.vacantes.map(vistaDesdeBase) };
+}
+
 // --- "Más vacantes de esta empresa" ------------------------------------------
 
 export interface Relacionadas {

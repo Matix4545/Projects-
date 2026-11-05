@@ -122,6 +122,7 @@ export function Pie() {
           <p className="font-semibold text-white">ChambaRadar</p>
           <Link href="/publicar" className="block hover:text-white">Publica tu vacante gratis</Link>
           <Link href="/precios" className="block hover:text-white">Precios</Link>
+          <Link href="/comparativa" className="block hover:text-white">ChambaRadar vs OCC y LinkedIn</Link>
           <Link href="/privacidad" className="block hover:text-white">Aviso de privacidad</Link>
           <Link href="/terminos" className="block hover:text-white">Términos y condiciones</Link>
           <a href={`mailto:${CORREO_CONTACTO}`} className="block break-all hover:text-white">Contacto: {CORREO_CONTACTO}</a>
