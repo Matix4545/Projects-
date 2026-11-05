@@ -458,18 +458,18 @@ function mangaRaglan(m: Medidas): Pieza[] {
 function mangaMurcielago(m: Medidas): Pieza[] {
   // la pinza de busto va al hombro: el costado queda libre para la axila
   const b = blusaBase(m, { pinza: "hombro" });
-  const a = grados(20);
   const largo = m.largoBrazo;
-  const w0 = (m.muneca + 8) / 2;
+  const w = (m.muneca + 8) / 2;
   const sobreCintura = 4;
-  const construir = (pz: Pieza, haciaX: number, mediaBastilla: number): Pieza => {
+  const construir = (pz: Pieza, haciaX: number, grad: number): Pieza => {
     const r = structuredClone(pz);
+    const a = grados(grad);
     const H = v(r, "hombro");
     const dS = P(haciaX * Math.cos(a), -Math.sin(a));
     const O = suma(H, escalar(dS, largo));
     let nAbajo = perp(dS);
     if (nAbajo.y > 0) nAbajo = escalar(nAbajo, -1);
-    const U = suma(O, escalar(nAbajo, mediaBastilla));
+    const U = suma(O, escalar(nAbajo, w));
     const sisaBajo = v(r, "sisaBajo");
     const cint = v(r, "costadoCintura");
     const axila = lerp(cint, sisaBajo, sobreCintura / dist(cint, sisaBajo));
@@ -488,23 +488,21 @@ function mangaMurcielago(m: Medidas): Pieza[] {
     return r;
   };
   const largoBajo = (pz: Pieza) => largoTramoBorde(pz, "punoAbajo", "costadoCintura");
-  const objetivo = (largoBajo(construir(b.delantero, -1, w0)) + largoBajo(construir(b.espalda, 1, w0))) / 2;
-  // busca la media bastilla (entre 60 % y 160 % de la nominal) que da el largo objetivo
-  const ajustar = (pz: Pieza, haciaX: number) => {
-    let mejor = construir(pz, haciaX, w0);
-    let error = Math.abs(largoBajo(mejor) - objetivo);
-    for (let k = 0; k <= 80; k++) {
-      const w = w0 * (0.6 + k / 80);
-      const c = construir(pz, haciaX, w);
-      const e = Math.abs(largoBajo(c) - objetivo);
-      if (e < error) {
-        error = e;
-        mejor = c;
-      }
+  const del = construir(b.delantero, -1, 20);
+  const objetivo = largoBajo(del);
+  // la espalda arranca más adentro del costado: se busca la caída del brazo
+  // trasero con la que la costura bajo brazo mide lo mismo que la delantera
+  let esp = construir(b.espalda, 1, 20);
+  let error = Math.abs(largoBajo(esp) - objetivo);
+  for (let g = 2; g <= 36; g += 0.25) {
+    const c = construir(b.espalda, 1, g);
+    const e = Math.abs(largoBajo(c) - objetivo);
+    if (e < error) {
+      error = e;
+      esp = c;
     }
-    return mejor;
-  };
-  return [ajustar(b.espalda, 1), ajustar(b.delantero, -1)];
+  }
+  return [esp, del];
 }
 
 /**
@@ -756,7 +754,7 @@ export const MANGAS: Modelo[] = [
     descripcion: "Manga unida al cuerpo con la axila muy profunda, casi en la cintura: queda como un ala al levantar el brazo.",
     pasos: [
       "Parte de la blusa con la pinza de busto en el hombro.",
-      "Prolonga el hombro con 20° de caída hasta el largo de brazo.",
+      "Prolonga el hombro con 20° de caída hasta el largo de brazo (en la espalda ajusta la caída para que la costura bajo brazo mida igual).",
       "En la muñeca la manga mide la mitad de muñeca + 8 cm.",
       "Traza una curva amplia de la muñeca al costado, 4 cm arriba de la cintura.",
       "Para que no se suba, termina la manga y la cintura con puño o resorte.",
