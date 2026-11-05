@@ -312,5 +312,22 @@
   {"slug":"dialpad","nombre":"Dialpad","ats":"greenhouse","board":"dialpad","tipo":"remoto"},
   {"slug":"appsflyer","nombre":"AppsFlyer","ats":"greenhouse","board":"appsflyer","tipo":"remoto"},
   {"slug":"redis","nombre":"Redis","ats":"ashby","board":"redis","tipo":"remoto"},
-  {"slug":"twitch","nombre":"Twitch","ats":"greenhouse","board":"twitch","tipo":"remoto"}
+  {"slug":"twitch","nombre":"Twitch","ats":"greenhouse","board":"twitch","tipo":"remoto"},
+  {"slug":"getwingapp","nombre":"Wing Assistant","ats":"lever","board":"getwingapp","tipo":"remoto"},
+  {"slug":"lilt-production","nombre":"LILT","ats":"ashby","board":"lilt-production","tipo":"remoto"},
+  {"slug":"launch2","nombre":"Launch Potato","ats":"greenhouse","board":"launch2","tipo":"remoto"},
+  {"slug":"agent","nombre":"Agent","ats":"ashby","board":"agent","tipo":"remoto"},
+  {"slug":"alorica","nombre":"Alorica","ats":"smartrecruiters","board":"alorica","tipo":"remoto"},
+  {"slug":"lumimeds","nombre":"LumiMeds","ats":"greenhouse","board":"lumimeds","tipo":"remoto"},
+  {"slug":"c3iot","nombre":"C3 AI","ats":"greenhouse","board":"c3iot","tipo":"remoto"},
+  {"slug":"fictiv","nombre":"Fictiv","ats":"greenhouse","board":"fictiv","tipo":"remoto"},
+  {"slug":"doola","nombre":"doola","ats":"lever","board":"doola","tipo":"remoto"},
+  {"slug":"overview","nombre":"Overview","ats":"ashby","board":"overview","tipo":"remoto"},
+  {"slug":"workatbackbase","nombre":"Backbase","ats":"greenhouse","board":"workatbackbase","tipo":"remoto"},
+  {"slug":"whippy","nombre":"Whippy","ats":"ashby","board":"whippy","tipo":"remoto"},
+  {"slug":"proyectosenmexycentroamerica","nombre":"Médicos Sin Fronteras México","ats":"greenhouse","board":"proyectosenmexycentroamerica","tipo":"local"},
+  {"slug":"techholding","nombre":"Tech Holding","ats":"greenhouse","board":"techholding","tipo":"remoto"},
+  {"slug":"mill","nombre":"Mill","ats":"greenhouse","board":"mill","tipo":"remoto"},
+  {"slug":"puzzle-consulting-services","nombre":"Puzzle Consulting Services","ats":"ashby","board":"puzzle-consulting-services","tipo":"remoto"},
+  {"slug":"sesolabor","nombre":"Seso","ats":"greenhouse","board":"sesolabor","tipo":"remoto"}
 ]
