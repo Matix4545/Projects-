@@ -115,14 +115,19 @@ function pinzaEnAlforzas(m: Medidas): Pieza[] {
   d = trasladarPinza(d, "pinzaBusto", n1, { fraccion: 1 / 3, nombre: "alforza1" });
   d = trasladarPinza(d, "pinzaBusto", n2, { fraccion: 0.5, nombre: "alforza2" });
   d = trasladarPinza(d, "pinzaBusto", n3, { nombre: "alforza3" });
-  // cada alforza se cose sólo 7 cm desde el hombro: retiro = largo de pata − 7
-  d.pinzas = d.pinzas.map((p) => {
-    if (!p.apice.startsWith("alforza")) return p;
+  // cada alforza se cose sólo 7 cm desde el hombro: su punta se dibuja a 7 cm
+  // (el ápice sólo sirve para dibujar; la línea de corte no cambia)
+  for (const p of d.pinzas) {
+    if (!p.apice.startsWith("alforza")) continue;
     const ap = v(d, p.apice);
-    const pa = v(d, p.a);
-    return { ...p, retiro: Math.max(0, dist(ap, pa) - largoAlforza) };
-  });
-  d.marcas.push({ t: "texto", p: P(v(d, "alforza2").x, v(d, "alforza2").y + 6), s: "alforzas: coser 7 cm, planchar hacia el centro", h: 0.6 });
+    const base = lerp(v(d, p.a), v(d, p.b), 0.5);
+    const punta = suma(base, escalar(dir(base, ap), largoAlforza));
+    ap.x = punta.x;
+    ap.y = punta.y;
+    p.retiro = 0;
+  }
+  const ap2 = v(d, "alforza2");
+  d.marcas.push({ t: "texto", p: P(ap2.x, ap2.y - 2), s: "coser 7 cm y planchar al centro", h: 0.6 });
   d.marcas = d.marcas.filter((k) => k.t !== "taladro");
   d.nombre = "Delantero";
   void idx;

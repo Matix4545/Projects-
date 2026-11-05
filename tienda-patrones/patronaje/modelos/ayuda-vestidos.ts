@@ -8,6 +8,8 @@ import { vista } from "../bases/utiles.ts";
 import {
   type Pieza,
   type V,
+  abrir,
+  area,
   crear,
   doblezBorde,
   hiloVertical,
@@ -288,6 +290,17 @@ export function redondearPar(p1: Pieza, n1: string, p2: Pieza, n2: string, d = 2
   aplicarEsquina(cerrada, nc, d);
   aplicarEsquina(abierta, na, dAbierta);
   return resto; // diferencia que no se pudo compensar (cm)
+}
+
+/**
+ * Cortar y abrir para dar vuelo. Usa abrir() de pieza.ts probando los dos sentidos
+ * de giro y se queda con el que agrega tela (más área): la prueba de sentido de abrir()
+ * falla cuando el corte llega a una bastilla recta.
+ */
+export function abrirVuelo(pz: Pieza, desde: string, hasta: string, apertura: number): Pieza {
+  const r1 = abrir(pz, desde, hasta, apertura);
+  const r2 = abrir(pz, desde, hasta, -apertura);
+  return area(r1) >= area(r2) ? r1 : r2;
 }
 
 /** Hilo vertical en x, entre dos alturas. */

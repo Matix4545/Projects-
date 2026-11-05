@@ -1,6 +1,6 @@
 // Piezas de partida que comparten varios modelos.
 import type { Medidas } from "../medidas.ts";
-import { type Cuerpo, cuerpoBase, delanteroConPinza } from "../bases/cuerpo.ts";
+import { type Cuerpo, type LugarPinza, cuerpoBase, delanteroConPinza } from "../bases/cuerpo.ts";
 import { mangaBase } from "../bases/manga.ts";
 import { alargar } from "../bases/utiles.ts";
 import type { Pieza } from "../pieza.ts";
@@ -12,7 +12,9 @@ export const largoBlusa = (m: Medidas) => m.alturaCadera + 2;
  * Blusa base: delantero con pinza de costado, espalda sin pinza de hombro
  * (va embebida), ambas alargadas a la cadera con pinzas de pez, y manga base.
  */
-export function blusaBase(m: Medidas, o: { largo?: number; pinza?: Parameters<typeof delanteroConPinza>[1] } = {}): {
+// "cintura" no se ofrece: al juntar la pinza de busto con la de cintura el costado sube
+// y el alargue a la cadera ya no queda parejo (para eso hay pinza "francesa").
+export function blusaBase(m: Medidas, o: { largo?: number; pinza?: Exclude<LugarPinza, "cintura"> } = {}): {
   cuerpo: Cuerpo;
   delantero: Pieza;
   espalda: Pieza;

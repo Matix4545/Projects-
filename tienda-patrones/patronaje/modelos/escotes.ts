@@ -32,6 +32,7 @@ import {
   necesitaAbertura,
   perpHombroAbajo,
   pinzaEspaldaASisa,
+  abrirSeparando,
   pinzasBajoBorde,
   vistaEscote,
   vistaRecortada,
@@ -213,15 +214,21 @@ function cascada(m: Medidas): Pieza[] {
     insertar(del, `cascadaBisagra${k}`, suma(S, escalar(resta(H, S), t)));
   });
   cortes.forEach((_, k) => {
-    del = abrir(del, `cascadaCentro${k}`, `cascadaBisagra${k}`, 4);
+    del = abrirSeparando(del, `cascadaCentro${k}`, `cascadaBisagra${k}`, 4);
   });
   // centro nuevo: recto desde la bastilla; borde de la cascada a escuadra con el centro
-  // 3) centro nuevo: recta de la bastilla al fondo de la V; el borde va a escuadra hasta el hombro
-  const cb = v(del, "centroBajo");
-  const arriba = unitario(resta(v(del, "centroCuello"), cb));
-  const proy = (p: Pt) => suma(cb, escalar(arriba, (p.x - cb.x) * arriba.x + (p.y - cb.y) * arriba.y));
+  // 3) borde de la cascada: recta del hombro al fondo de la V. El centro nuevo sale a
+  //    escuadra de ese borde y baja hasta la línea de la bastilla.
+  const cb0 = v(del, "centroBajo");
   const Sact = v(del, s);
-  const topCF = proy(Sact);
+  const topCF = v(del, "centroCuello");
+  const bordeDir = unitario(resta(Sact, topCF));
+  let abajo = P(bordeDir.y, -bordeDir.x);
+  if ((cb0.x - topCF.x) * abajo.x + (cb0.y - topCF.y) * abajo.y < 0) abajo = escalar(abajo, -1);
+  const arriba = escalar(abajo, -1);
+  // bastilla: recta por el costado bajo y el centro bajo; el centro nuevo llega a ella
+  const kb = v(del, "costadoBajo");
+  const cb = interseccion(kb, cb0, topCF, suma(topCF, abajo)) ?? cb0;
   // vista incluida: 7 cm por encima del borde, reflejando el hombro
   const vistaAncho = 7;
   const topExt = suma(topCF, escalar(arriba, vistaAncho));
@@ -229,6 +236,7 @@ function cascada(m: Medidas): Pieza[] {
   const Sext = interseccion(Sact, hombroRefl, topExt, suma(topExt, resta(Sact, topCF))) ?? suma(Sact, escalar(arriba, vistaAncho));
   const [a, z] = corto(del, "centroBajo", s);
   const nuevos = [cb, topCF, topExt, Sext, Sact];
+  // si el centro nuevo cae afuera de la bastilla vieja, la bastilla se alarga en línea recta
   reemplazar(del, a, z, a === "centroBajo" ? nuevos : [...nuevos].reverse());
   // nombres para el doblez del centro
   const iTop = del.contorno.findIndex((q) => dist(q, topExt) < 0.01);

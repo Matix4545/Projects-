@@ -101,7 +101,7 @@ export function dibujar(pz: Pieza, o: { etiqueta?: string; modelo?: string } = {
     const ap = pz.contorno.find((q) => q.n === pin.apice);
     if (!a || !b || !ap) continue;
     const base = medio(a, b);
-    const fin = pin.retiro ? hacia(ap, base, Math.min(pin.retiro, dist(ap, base) * 0.5)) : ap;
+    const fin = pin.retiro ? hacia(ap, base, Math.min(pin.retiro, Math.max(0, dist(ap, base) - 0.5))) : ap;
     d.pinzas.push([a, fin, b]);
     d.taladros.push(hacia(fin, base, Math.min(1, dist(fin, base) * 0.2)));
     piquete(a);

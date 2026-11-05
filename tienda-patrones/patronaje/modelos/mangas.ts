@@ -10,7 +10,6 @@ import {
   enLongitud,
   escalar,
   grados,
-  hacia,
   lerp,
   longitud,
   masCercano,
@@ -20,7 +19,6 @@ import {
   spline,
   suma,
   resta,
-  unitario,
 } from "../geometria.ts";
 import type { Medidas } from "../medidas.ts";
 import { cuerpoBase } from "../bases/cuerpo.ts";
@@ -33,9 +31,7 @@ import {
   crear,
   dividir,
   girar,
-  hiloVertical,
   insertar,
-  insertarEn,
   largoTramo,
   margen,
   margenBorde,
@@ -68,11 +64,6 @@ function tira(nombre: string, largo: number, altoTerminado: number, cortar = "Co
 function brazoA(m: Medidas, desdeHombro: number) {
   const t = Math.max(0, Math.min(1, (desdeHombro - 12) / (m.largoBrazo - 12)));
   return m.brazo + (m.muneca - m.brazo) * t;
-}
-
-/** Copia el hilo de la manga base (vertical al centro). */
-function hiloCentro(pz: Pieza, y0: number, y1: number) {
-  pz.hilo = [P(0, y0), P(0, y1)];
 }
 
 // ── Mangas montadas ─────────────────────────────────────────────────────────

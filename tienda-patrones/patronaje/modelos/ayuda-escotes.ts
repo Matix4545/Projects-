@@ -2,7 +2,43 @@
 // cruce de botones, aberturas y medidas del escote.
 import { type Pt, P, cruceSegmentos, curva, dir, dist, enLongitud, escalar, interseccion, longitud, perp, remuestrear, resta, suma, unitario } from "../geometria.ts";
 import type { Medidas } from "../medidas.ts";
-import { type Pieza, type V, corto, crear, idx, indicesTramo, largoTramo, margen, orientar, piquete, reemplazar, tiene, tramo, tramoSinPinzas, trasladarPinza, v } from "../pieza.ts";
+import { type Pieza, type V, clonar, corto, crear, dividir, girar, idx, indicesTramo, largoTramo, margen, orientar, piquete, reemplazar, tiene, tramo, tramoSinPinzas, trasladarPinza, v } from "../pieza.ts";
+import { cruz, limpiar, rotar } from "../geometria.ts";
+
+/**
+ * Cortar y separar (como `abrir` de pieza.ts) pero eligiendo bien hacia dónde gira:
+ * la parte que se mueve siempre se aleja de la que se queda (no se encima).
+ */
+export function abrirSeparando(pz: Pieza, desde: string, hasta: string, apertura: number): Pieza {
+  const [A, B] = dividir(pz, desde, hasta);
+  const D = v(pz, desde);
+  const H = v(pz, hasta);
+  const eje = resta(H, D);
+  // lado de la parte fija: el vértice de A más alejado de la línea de corte
+  let ladoA = 0;
+  for (const q of tramo(A, desde, hasta)) {
+    const c = cruz(eje, resta(q, D));
+    if (Math.abs(c) > Math.abs(ladoA)) ladoA = c;
+  }
+  const th = 2 * Math.asin(Math.min(1, apertura / (2 * dist(D, H))));
+  const prueba = rotar(D, H, th);
+  const signo = Math.sign(cruz(eje, resta(prueba, D))) === Math.sign(ladoA) ? -1 : 1;
+  const Bm = girar(B, H, signo * th);
+  const ca = tramo(A, desde, hasta);
+  const cb = tramo(Bm, hasta, desde);
+  ca[ca.length - 1] = { ...ca[ca.length - 1], m: cb[0].m, d: cb[0].d };
+  const nb = cb.map((p, k) => (k === cb.length - 1 ? { ...p, n: `${desde}'` } : k === 0 ? { ...p, n: undefined } : p));
+  const r: Pieza = {
+    ...clonar(pz),
+    contorno: limpiar([...ca, ...nb.slice(1)]),
+    pinzas: [...A.pinzas, ...Bm.pinzas.filter((q) => !A.pinzas.some((w) => w.apice === q.apice))],
+    marcas: [...A.marcas, ...Bm.marcas],
+  };
+  const ult = r.contorno[r.contorno.length - 1];
+  ult.m = v(pz, desde).m;
+  ult.d = v(pz, desde).d;
+  return orientar(r);
+}
 
 /** Quita de la lista las pinzas cuyos puntos ya no existen (el escote nuevo las recortó). */
 export function limpiarPinzas(pz: Pieza): Pieza {

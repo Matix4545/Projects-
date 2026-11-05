@@ -30,6 +30,7 @@ import {
 import { dentro, masCercano } from "../geometria.ts";
 import {
   type LadoPanel,
+  abrirVuelo,
   hiloEn,
   igualarCostados,
   marcarCierre,
@@ -118,8 +119,10 @@ function vueloEspalda(esp: Pieza, apertura: number): Pieza {
   const kb = v(esp, "costadoBajo");
   insertar(esp, "corteVuelo", lerp(cb, kb, 0.5));
   // abrir() gira la parte del centro; después se endereza para que el centro quede vertical
-  const r = enderezar(abrir(esp, "corteVuelo", "sisaMedio", apertura), "centroCuello", "centroBajo");
+  const r = enderezar(abrirVuelo(esp, "corteVuelo", "sisaMedio", apertura), "centroCuello", "centroBajo");
   suavizar(r, "centroBajo", "costadoBajo", 30, 0.6);
+  const cc = v(r, "centroCuello");
+  r.hilo = hiloEn(cc.x + 5, cc.y - 30, cc.y - 60);
   return r;
 }
 
@@ -284,7 +287,23 @@ function princesa(m: Medidas, desde: "hombro" | "sisa", o: OpcionesPanel): Pieza
   const cad = caderaAjustada(m);
   const del = desde === "hombro" ? delanteroConPinza(c, "hombro") : structuredClone(c.delantero);
   let esp = structuredClone(c.espalda);
-  if (desde === "sisa") esp = trasladarPinza(esp, "pinzaHombro", "sisaMedio", { nombre: "pinzaHombro" });
+  if (desde === "sisa") {
+    // punto de la sisa un poco más alto que el ápice de la pinza de hombro: la costura baja sin subir
+    const ap = v(esp, "pinzaHombro");
+    const sisa = tramo(esp, "sisaMedio", "hombro");
+    const y = ap.y + 1.5;
+    let p = sisa[0] as Pt;
+    for (let k = 1; k < sisa.length; k++) {
+      const a = sisa[k - 1];
+      const b = sisa[k];
+      if ((a.y - y) * (b.y - y) <= 0 && a.y !== b.y) {
+        p = lerp(a, b, (y - a.y) / (b.y - a.y));
+        break;
+      }
+    }
+    insertar(esp, "puntoSisa", p);
+    esp = trasladarPinza(esp, "pinzaHombro", "puntoSisa", { nombre: "pinzaHombro" });
+  }
   const [dc, dl] = princesaDelantero(del, m, cad.del, o);
   const [ec, el] = princesaEspalda(esp, m, cad.esp, o);
   return [ec, el, dl, dc, ...vistasSinManga(c, { espaldaAlDoblez: false })];
@@ -305,7 +324,7 @@ function nombrarCorte(pz: Pieza, apice: string, xCentro: number, prefijo: string
   libres.sort((a, b) => Math.abs(a.x - xCentro) - Math.abs(b.x - xCentro));
   libres[0].n = `centro${prefijo}`;
   libres[libres.length - 1].n = `costado${prefijo}`;
-  pz.pinzas = [{ a: `pinza${prefijo}A`, apice, b: `pinza${prefijo}B`, retiro: 0 }];
+  pz.pinzas = [...pz.pinzas.filter((p) => p.apice !== apice), { a: `pinza${prefijo}A`, apice, b: `pinza${prefijo}B`, retiro: 0 }];
 }
 
 /** Falda en línea A que se cose a un corte (imperio o cintura caída). */
@@ -348,10 +367,10 @@ function imperio(m: Medidas): Pieza[] {
   // corpiño delantero: se corta bajo el busto y toda la pinza de busto pasa a la costura
   let del = recortar(c.delantero, P(-50, y), P(200, y), true, "Corpiño delantero");
   nombrarCorte(del, "pinzaCintura", c.ref.anchoTotal, "Imperio");
-  del.pinzas.push({ a: "pinzaBustoA", apice: "pinzaBusto", b: "pinzaBustoB", retiro: 2 });
+  if (!del.pinzas.some((p) => p.apice === "pinzaBusto")) del.pinzas.push({ a: "pinzaBustoA", apice: "pinzaBusto", b: "pinzaBustoB", retiro: 2 });
   del = trasladarPinza(del, "pinzaBusto", "pinzaImperioA", { nombre: "pinzaBusto" });
   del = fusionarPinzas(del, "pinzaBusto", "pinzaCintura", "pinzaBusto");
-  del.pinzas[0].retiro = 2;
+  for (const p of del.pinzas) p.retiro = 2;
   del.cortar = "Cortar 1 al doblez en tela y 1 en forro";
   let esp = recortar(c.espalda, P(200, y), P(-50, y), false, "Corpiño espalda");
   // (la recta va hacia la izquierda: "derecha" de la recta es arriba)
