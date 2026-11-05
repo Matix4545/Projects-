@@ -284,3 +284,19 @@ body {
 .leaflet-tooltip.etiqueta-seccion::before {
   display: none;
 }
+
+/* Generador de escritos: al imprimir solo sale el escrito, sin la página alrededor */
+@media print {
+  body:has(#carta-impresion) * {
+    visibility: hidden;
+  }
+  body:has(#carta-impresion) #carta-impresion,
+  body:has(#carta-impresion) #carta-impresion * {
+    visibility: visible;
+  }
+  #carta-impresion {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+}

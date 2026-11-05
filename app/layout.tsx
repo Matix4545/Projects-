@@ -1,18 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { DOMINIO } from "@/lib/sitio";
 import "./globals.css";
-
-// Dominio público para los enlaces de la vista previa (Vercel lo da automáticamente)
-const dominio =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
 
 const descripcion =
   "Mapa ciudadano donde vecinos de Ciudad Obregón reportan falta de agua, baches, drenaje, alumbrado, banquetas y baldíos. Anónimo y sin afiliación al gobierno.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(dominio),
+  metadataBase: new URL(DOMINIO),
   title: "Reporta Cajeme · Agua, baches, alumbrado y más en Ciudad Obregón",
   description: descripcion,
+  // Google Search Console: para ver qué búsquedas traen gente a cada página (ver docs/estrategia-contenido.md)
+  verification: process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : undefined,
   openGraph: {
     title: "Reporta Cajeme",
     description: descripcion,

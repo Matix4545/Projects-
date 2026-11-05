@@ -526,6 +526,63 @@ as $$
   )
 $$;
 
+-- Páginas públicas de colonias (/colonias): lista sin geometría, con el estado del agua de 7 días.
+-- Los hexágonos "Sector N" no se listan (nadie busca "Sector 47"). Solo la llama el servidor.
+create or replace function public.colonias_publicas()
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  select coalesce(json_agg(json_build_object(
+      'id', z.id,
+      'nombre', z.nombre,
+      'fuente', z.fuente,
+      'estado', m.estado,
+      'agua_7d', coalesce(a.n7, 0),
+      'activos', coalesce(p.activos, 0),
+      'total', coalesce(a.total, 0) + coalesce(p.total, 0),
+      'ultimo', greatest(a.ultimo, p.ultimo)
+    ) order by z.id), '[]'::json)
+  from zonas z
+  left join _estado_mayoria(168) m on m.zona_id = z.id
+  left join (select zona_id, count(*) as total,
+                    count(*) filter (where creado_en > now() - interval '7 days') as n7,
+                    max(creado_en) as ultimo
+             from reportes_agua group by zona_id) a on a.zona_id = z.id
+  left join (select zona_id, count(*) as total,
+                    count(*) filter (where estado = 'activo' and ultima_actividad > now() - interval '60 days') as activos,
+                    max(creado_en) as ultimo
+             from reportes_pin where zona_id is not null group by zona_id) p on p.zona_id = z.id
+  where z.fuente <> 'h3'
+$$;
+
+-- Una colonia para su página pública (/colonias/<nombre>): el detalle del agua (igual que al
+-- tocarla en el mapa) y sus reportes con punto pendientes. Solo la llama el servidor.
+create or replace function public.colonia_publica(p_id bigint)
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  select json_build_object(
+    'zona', detalle_zona(z.id, 168),
+    'por_tipo', (
+      select coalesce(json_object_agg(t.tipo, t.n), '{}'::json)
+      from (select tipo, count(*) as n from reportes_pin
+            where zona_id = z.id and estado = 'activo' and ultima_actividad > now() - interval '60 days'
+            group by tipo) t),
+    'arreglados', (select count(*) from reportes_pin where zona_id = z.id and estado = 'arreglado'),
+    'recientes', (
+      select coalesce(json_agg(r order by r.creado_en desc), '[]'::json)
+      from (select id, tipo, subtipo, confirmaciones, creado_en from reportes_pin
+            where zona_id = z.id and estado = 'activo' and ultima_actividad > now() - interval '60 days'
+            order by creado_en desc limit 8) r),
+    'total', (select count(*) from reportes_agua where zona_id = z.id)
+           + (select count(*) from reportes_pin where zona_id = z.id)
+  )
+  from zonas z
+  where z.id = p_id
+$$;
+
 -- Resumen para la barra inferior: reportes y colonias afectadas en las últimas p_horas horas
 create or replace function public.resumen(p_horas int default 168)
 returns json

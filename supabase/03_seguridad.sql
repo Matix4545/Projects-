@@ -40,6 +40,7 @@ grant execute on function public.resumen(integer)                              t
 grant execute on function public.zona_de_punto(double precision, double precision) to anon, authenticated;
 grant execute on function public.historico_mapa()                               to anon, authenticated;
 grant execute on function public.datos_publicos()                               to anon, authenticated;
+-- colonias_publicas() y colonia_publica() (páginas /colonias) solo las llama el servidor: no se abren al público.
 
 -- 4) El servidor (service_role) puede todo.
 --    (Supabase ya da acceso al esquema "extensions"; se repite por si acaso.)
