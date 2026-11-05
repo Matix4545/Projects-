@@ -260,3 +260,27 @@ test("el resumen de ubicación pone México antes que otros países", async () =
   assert.equal(resumirUbicacion(["Brazil", "Peru", "Colombia", "Mexico", "Chile"]), "Mexico · Brazil · Peru y 2 más");
   assert.match(resumirUbicacion(["Lima, Peru", "Hermosillo, Sonora, Mexico", "Mexico City"]), /^Hermosillo/);
 });
+
+test("áreas nuevas: banca, producción, salud, turismo y oficios", async () => {
+  const { detectarCategoria } = await import("../lib/normalizar.ts");
+  assert.equal(detectarCategoria("Asesor PyME Banamex"), "banca");
+  assert.equal(detectarCategoria("Cajero Universal Sucursal Obregón"), "banca");
+  assert.equal(detectarCategoria("Banquero Patrimonial"), "banca");
+  assert.equal(detectarCategoria("Agente de Seguros"), "banca");
+  assert.equal(detectarCategoria("Operador de Producción"), "produccion");
+  assert.equal(detectarCategoria("Ingeniero de Manufactura"), "produccion");
+  assert.equal(detectarCategoria("Técnico de Mantenimiento"), "produccion");
+  assert.equal(detectarCategoria("Maintenance Technician"), "produccion");
+  assert.equal(detectarCategoria("QA Automation Engineer"), "software");
+  assert.equal(detectarCategoria("Quality Assurance Analyst"), "software");
+  assert.equal(detectarCategoria("Médico Laboral"), "salud");
+  assert.equal(detectarCategoria("Enfermera General"), "salud");
+  assert.equal(detectarCategoria("Recepcionista de Hotel"), "turismo");
+  assert.equal(detectarCategoria("Camarista"), "turismo");
+  assert.equal(detectarCategoria("Chofer Repartidor"), "oficios");
+  assert.equal(detectarCategoria("Guardia de Seguridad para nuestra planta"), "oficios");
+  assert.equal(detectarCategoria("Courier"), "oficios");
+  assert.equal(detectarCategoria("Security Engineer"), "seguridad");
+  assert.equal(detectarCategoria("Data Analyst"), "datos-ia");
+  assert.equal(detectarCategoria("Account Executive"), "ventas");
+});

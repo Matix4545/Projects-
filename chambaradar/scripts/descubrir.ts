@@ -4,6 +4,7 @@
 //   npm run descubrir -- --guardar → además las agrega a data/empresas.json
 //   npm run descubrir -- --workable → también prueba Workable (limita mucho las consultas)
 //   npm run descubrir -- --guardar --solo-latam → guarda solo las que hoy tienen vacantes para LATAM
+//   npm run descubrir -- --archivo=otra.txt → usa otra lista de candidatas
 //
 // Lee data/candidatas.txt (una empresa por línea: "Nombre | tipo | slug1, slug2…"),
 // prueba cada slug en cada sistema de reclutamiento y se queda con las empresas
@@ -28,7 +29,9 @@ interface Candidata {
   slugs: string[];
 }
 
-const candidatas: Candidata[] = readFileSync(join(raiz, "data/candidatas.txt"), "utf8")
+// --archivo=ruta: otra lista de candidatas (por defecto data/candidatas.txt)
+const archivoCandidatas = process.argv.find((a) => a.startsWith("--archivo="))?.slice("--archivo=".length) ?? join(raiz, "data/candidatas.txt");
+const candidatas: Candidata[] = readFileSync(archivoCandidatas, "utf8")
   .split("\n")
   .map((l) => l.replace(/#.*/, "").trim())
   .filter(Boolean)

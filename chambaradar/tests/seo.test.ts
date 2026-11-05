@@ -31,5 +31,5 @@ test("sitemap: cada área en todo, home office y México, más un estado por pá
   assert.ok(r.includes("/vacantes?donde=sonora"));
   assert.ok(r.includes("/vacantes?donde=nuevo-leon"));
   assert.ok(!r.some((x) => x.includes("otros")));
-  assert.equal(r.length, 2 + 13 * 3 + 32);
+  assert.equal(r.length, 2 + 18 * 3 + 32);
 });
