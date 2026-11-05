@@ -10,6 +10,7 @@ import { Logo } from "./Logo";
 const ENLACES = [
   { href: "/patrones", texto: "Patrones" },
   { href: "/patrones?precio=gratis", texto: "Gratis" },
+  { href: "/aprende", texto: "Aprende" },
   { href: "/medidas", texto: "Tabla de medidas" },
   { href: "/como-imprimir", texto: "Cómo imprimir" },
   { href: "/preguntas", texto: "Ayuda" },

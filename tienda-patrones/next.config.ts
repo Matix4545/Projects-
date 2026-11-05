@@ -1,10 +1,9 @@
-import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // La tienda vive en una subcarpeta del repositorio: esta carpeta es la raíz del proyecto.
-  outputFileTracingRoot: path.join(__dirname),
-  turbopack: { root: path.join(__dirname) },
+  outputFileTracingRoot: process.cwd(),
+  turbopack: { root: process.cwd() },
   async headers() {
     return [
       {

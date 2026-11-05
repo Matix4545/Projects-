@@ -26,6 +26,7 @@ export function Pie() {
         <div>
           <h3 className="font-semibold">Ayuda</h3>
           <ul className="mt-3 space-y-2 text-sm text-suave">
+            <li><Link href="/aprende" className="hover:text-tinta">Aprende patronaje</Link></li>
             <li><Link href="/medidas" className="hover:text-tinta">Tabla de medidas</Link></li>
             <li><Link href="/como-imprimir" className="hover:text-tinta">Cómo imprimir tu patrón</Link></li>
             <li><Link href="/preguntas" className="hover:text-tinta">Preguntas frecuentes</Link></li>

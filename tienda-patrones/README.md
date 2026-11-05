@@ -75,6 +75,19 @@ Cada patrón se entrega en 6 archivos. Así los sacas de AutoCAD:
 
 La hoja de prueba de impresión gratuita (`public/cuadro-de-prueba.pdf`) se regenera con `npm run cuadro-prueba`.
 
+## 3b. Generador de patrones (escotes, cuellos, mangas, pinzas, vestidos, faldas, pantalones)
+
+La carpeta `patronaje/` es un sistema de patronaje que traza los patrones base por talla (o a la medida)
+y todas sus transformaciones, y los entrega en DXF para AutoCAD y PDF a escala real con capas por talla:
+
+```bash
+npm run patron -- lista
+npm run patron -- vestido-princesa-hombro --hojas
+```
+
+Guía completa en [`patronaje/README.md`](patronaje/README.md) y lista de modelos en
+[`patronaje/CATALOGO.md`](patronaje/CATALOGO.md). Los mismos diagramas se publican en la tienda en `/aprende`.
+
 ## 4. Poner la tienda en internet
 
 ### a) Supabase (archivos privados y registro de ventas)

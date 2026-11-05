@@ -13,3 +13,6 @@ npm-debug.log*
 archivos-privados/
 # Salidas del script de mosaico
 salida/
+# Salidas del generador de patrones
+patrones-generados/
+biblioteca/
