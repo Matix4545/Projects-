@@ -377,5 +377,17 @@
   {"slug":"remotepeople","nombre":"Remote People","ats":"greenhouse","board":"remotepeople","tipo":"remoto"},
   {"slug":"tebra","nombre":"Tebra","ats":"greenhouse","board":"tebra","tipo":"remoto"},
   {"slug":"atlas-assistants","nombre":"Atlas Assistants","ats":"ashby","board":"atlas-assistants","tipo":"remoto"},
-  {"slug":"luxurypresence","nombre":"Luxury Presence","ats":"lever","board":"luxurypresence","tipo":"remoto"}
+  {"slug":"luxurypresence","nombre":"Luxury Presence","ats":"lever","board":"luxurypresence","tipo":"remoto"},
+  {"slug":"lyrahealth","nombre":"Lyra Health","ats":"lever","board":"lyrahealth","tipo":"remoto"},
+  {"slug":"superside","nombre":"Superside","ats":"lever","board":"superside","tipo":"remoto"},
+  {"slug":"uipath","nombre":"UiPath","ats":"ashby","board":"uipath","tipo":"remoto"},
+  {"slug":"appian","nombre":"Appian","ats":"greenhouse","board":"appian","tipo":"remoto"},
+  {"slug":"teravisiontech","nombre":"Teravision","ats":"bamboohr","board":"teravisiontech","tipo":"remoto"},
+  {"slug":"gorgias","nombre":"Gorgias","ats":"ashby","board":"gorgias","tipo":"remoto"},
+  {"slug":"hostinger","nombre":"Hostinger","ats":"ashby","board":"hostinger","tipo":"remoto"},
+  {"slug":"udacity","nombre":"Udacity","ats":"greenhouse","board":"udacity","tipo":"remoto"},
+  {"slug":"cambly","nombre":"Cambly","ats":"ashby","board":"cambly","tipo":"remoto"},
+  {"slug":"busuu","nombre":"Busuu","ats":"teamtailor","board":"busuu","tipo":"remoto"},
+  {"slug":"arionkoder","nombre":"Arionkoder","ats":"greenhouse","board":"arionkoder","tipo":"remoto"},
+  {"slug":"innovecs","nombre":"Innovecs","ats":"greenhouse","board":"innovecs","tipo":"remoto"}
 ]
