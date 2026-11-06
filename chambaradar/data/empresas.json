@@ -371,5 +371,11 @@
   {"slug":"paypal","nombre":"PayPal","ats":"workday","board":"paypal|wd1|jobs","tipo":"remoto"},
   {"slug":"dow","nombre":"Dow","ats":"workday","board":"dow|wd1|ExternalCareers","tipo":"remoto"},
   {"slug":"bristol-myers-squibb","nombre":"Bristol Myers Squibb","ats":"workday","board":"bristolmyerssquibb|wd5|BMS","tipo":"remoto"},
-  {"slug":"kenvue","nombre":"Kenvue","ats":"workday","board":"kenvue|wd5|kenvue","tipo":"remoto"}
+  {"slug":"kenvue","nombre":"Kenvue","ats":"workday","board":"kenvue|wd5|kenvue","tipo":"remoto"},
+  {"slug":"assist-world","nombre":"Assist World","ats":"lever","board":"assist-world","tipo":"remoto"},
+  {"slug":"the-global-talent-co","nombre":"The Global Talent Co.","ats":"ashby","board":"the-global-talent-co","tipo":"remoto"},
+  {"slug":"remotepeople","nombre":"Remote People","ats":"greenhouse","board":"remotepeople","tipo":"remoto"},
+  {"slug":"tebra","nombre":"Tebra","ats":"greenhouse","board":"tebra","tipo":"remoto"},
+  {"slug":"atlas-assistants","nombre":"Atlas Assistants","ats":"ashby","board":"atlas-assistants","tipo":"remoto"},
+  {"slug":"luxurypresence","nombre":"Luxury Presence","ats":"lever","board":"luxurypresence","tipo":"remoto"}
 ]
