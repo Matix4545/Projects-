@@ -93,6 +93,18 @@ export default async function Comparativa() {
               <li>{NO} No te servimos si buscas en negocios pequeños de tu colonia: ahí los portales tienen más.</li>
             </ul>
           </div>
+          <div className="rounded-2xl border border-borde bg-white p-5 sm:col-span-2">
+            <h2 className="font-bold">Y no olvides el Portal del Empleo del gobierno (gratis y oficial)</h2>
+            <p className="mt-2 text-sm text-slate-700">
+              El Servicio Nacional de Empleo tiene su propia bolsa de trabajo en{" "}
+              <a href="https://www.empleo.gob.mx/" target="_blank" rel="noopener noreferrer" className="font-semibold text-radar-oscuro hover:underline">
+                empleo.gob.mx
+              </a>
+              , con decenas de miles de vacantes operativas en todo México (producción, ventas en piso, choferes, oficios) y ferias de empleo por estado. Es gratis, nadie te
+              cobra por aplicar y es del gobierno federal. Para ese tipo de puesto cerca de ti, empieza ahí; ChambaRadar sirve para empresas medianas y grandes y para home
+              office.
+            </p>
+          </div>
         </section>
 
         <section className="space-y-3 text-sm text-slate-700">

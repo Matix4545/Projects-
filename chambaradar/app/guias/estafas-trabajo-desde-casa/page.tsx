@@ -72,6 +72,20 @@ export default async function GuiaEstafas() {
           </ol>
         </section>
 
+        <section className="space-y-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-950">
+          <h2 className="text-lg font-bold">Fuentes seguras y gratuitas para buscar trabajo</h2>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>
+              <a href="https://www.empleo.gob.mx/" target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                Portal del Empleo (empleo.gob.mx)
+              </a>
+              : la bolsa de trabajo oficial del Servicio Nacional de Empleo, gratis, con decenas de miles de vacantes operativas y ferias de empleo en todo México.
+            </li>
+            <li>La página de empleo oficial de cada empresa (normalmente empresa.com/careers o /empleos). Es de donde ChambaRadar toma sus vacantes.</li>
+            <li>Portales conocidos (OCC, Computrabajo, LinkedIn, Indeed): seguros para aplicar, aunque con mucha competencia; desconfía de quien te escriba fuera de ellos.</li>
+          </ul>
+        </section>
+
         <section className="space-y-3 rounded-2xl border border-borde bg-white p-5 text-sm text-slate-700">
           <h2 className="text-lg font-bold">¿Y ChambaRadar? ¿Por qué cobra?</h2>
           <p>
