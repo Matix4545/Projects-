@@ -8,7 +8,7 @@ export type DetalleSucia = (typeof DETALLES_SUCIA)[number];
 
 // Reportes con pin (ubicación exacta). Para agregar un tipo nuevo hay que
 // tocarlo aquí y en el "check" de reportes_pin (supabase/01_esquema.sql).
-export const TIPOS_PIN = ["bache", "drenaje", "alumbrado", "banqueta", "baldio", "calle_cerrada", "calle_baches"] as const;
+export const TIPOS_PIN = ["bache", "drenaje", "alumbrado", "banqueta", "baldio", "calle_cerrada", "calle_baches", "otro"] as const;
 export type TipoPin = (typeof TIPOS_PIN)[number];
 
 export const SUBTIPOS: Record<TipoPin, readonly string[]> = {
@@ -19,7 +19,12 @@ export const SUBTIPOS: Record<TipoPin, readonly string[]> = {
   baldio: ["basura", "maleza", "quema", "escombro"],
   calle_cerrada: ["obra", "inundada", "accidente", "otro_cierre"],
   calle_baches: ["mitad", "toda"],
+  // "Otro": lo describe la persona con sus palabras (el comentario es obligatorio)
+  otro: ["otro"],
 };
+
+/** Mínimo de letras para describir un reporte "Otro" */
+export const MIN_TEXTO_OTRO = 5;
 
 /** Tipos que se marcan como un tramo de calle (línea) en lugar de un punto */
 export const TIPOS_LINEA: ReadonlySet<TipoPin> = new Set(["calle_cerrada", "calle_baches"]);
@@ -39,6 +44,7 @@ export const INFO_PIN: Record<TipoPin, { nombre: string; plural: string; emoji: 
   baldio: { nombre: "Baldío", plural: "Baldíos", emoji: "🗑️", color: "#84cc16", pregunta: "¿Qué hay en el baldío?" },
   calle_cerrada: { nombre: "Calle cerrada", plural: "Calles cerradas", emoji: "⛔", color: "#dc2626", pregunta: "¿Por qué está cerrada?" },
   calle_baches: { nombre: "Calle con baches", plural: "Calles con baches", emoji: "🛣️", color: "#facc15", pregunta: "¿Cuánto de la calle tiene baches?" },
+  otro: { nombre: "Otro", plural: "Otros", emoji: "📝", color: "#14b8a6", pregunta: "Cuéntanos qué pasa" },
 };
 
 export const ETIQUETAS: Record<string, string> = {
@@ -81,11 +87,13 @@ export const ETIQUETAS: Record<string, string> = {
   toda: "Toda la calle",
   calle_cerrada: "Calle cerrada",
   calle_baches: "Calle con baches",
+  otro: "Otro problema",
 };
 
 /** "Bache grande", "Drenaje tapado", "Alumbrado: lámpara apagada o fundida"… */
 export function tituloReporte({ tipo, subtipo }: { tipo: TipoPin; subtipo: string }) {
   const detalle = ETIQUETAS[subtipo] ?? subtipo;
+  if (tipo === "otro") return "Otro problema";
   if (tipo === "bache") return `Bache ${detalle.toLowerCase()}`;
   if (tipo === "drenaje" || tipo === "baldio") return detalle;
   return `${INFO_PIN[tipo]?.nombre ?? tipo}: ${detalle.toLowerCase()}`;

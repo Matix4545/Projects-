@@ -6,6 +6,7 @@ import {
   LARGO_MIN_TRAMO,
   MAX_COMENTARIO,
   MAX_FOTO_BYTES,
+  MIN_TEXTO_OTRO,
   SUBTIPOS,
   TIPOS_PIN,
   dentroDeCajeme,
@@ -69,6 +70,10 @@ export async function POST(req: Request) {
   if (comentario && comentario.length > MAX_COMENTARIO) return error(`El comentario debe tener máximo ${MAX_COMENTARIO} caracteres.`);
   const problema = revisarComentario(comentario);
   if (problema) return error(problema);
+  // "Otro": lo único que dice qué pasa es el texto
+  if (cuerpo.tipo === "otro" && (comentario?.length ?? 0) < MIN_TEXTO_OTRO) {
+    return error("Escribe qué problema quieres reportar.");
+  }
 
   const foto = form.get("foto");
   const hayFoto = foto instanceof File && foto.size > 0;

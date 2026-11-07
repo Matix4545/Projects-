@@ -7,6 +7,7 @@ import {
   ETIQUETAS,
   INFO_PIN,
   MAX_COMENTARIO,
+  MIN_TEXTO_OTRO,
   SUBTIPOS,
   SUBTIPOS_PELIGROSOS,
   TIPOS_PIN,
@@ -249,14 +250,24 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
             </div>
           )}
 
-          {verComentario ? (
+          {verComentario || paso === "otro" ? (
             <div>
+              {paso === "otro" && (
+                <label htmlFor="texto-reporte" className="mb-1.5 block text-[15px] font-medium">
+                  ¿Qué problema quieres reportar?
+                </label>
+              )}
               <textarea
+                id="texto-reporte"
                 value={comentario}
                 onChange={(e) => setComentario(e.target.value.slice(0, MAX_COMENTARIO))}
-                rows={2}
+                rows={paso === "otro" ? 4 : 2}
                 maxLength={MAX_COMENTARIO}
-                placeholder="Comentario opcional (sin nombres, teléfonos ni direcciones exactas)"
+                placeholder={
+                  paso === "otro"
+                    ? "Ej.: Fuga de agua en la esquina, árbol caído, semáforo descompuesto… (sin nombres ni teléfonos)"
+                    : "Comentario opcional (sin nombres, teléfonos ni direcciones exactas)"
+                }
                 className="campo resize-none"
               />
               <div className="mt-1 text-right text-xs text-ios-terciario">
@@ -308,7 +319,17 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
             </>
           )}
 
-          {paso !== "agua" && (
+          {paso === "otro" && (
+            <button
+              onClick={() => enviarReporte("otro")}
+              disabled={bloqueado || comentario.trim().length < MIN_TEXTO_OTRO}
+              className="boton boton-principal w-full"
+            >
+              Enviar reporte
+            </button>
+          )}
+
+          {paso !== "agua" && paso !== "otro" && (
             <>
               <p className="titulo-grupo !px-1 !pb-0">Toca una opción para enviar</p>
               <div className={`grid gap-2 ${paso === "bache" || paso === "calle_cerrada" ? "grid-cols-2" : "grid-cols-1"}`}>

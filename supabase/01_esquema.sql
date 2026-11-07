@@ -152,6 +152,21 @@ alter table public.reportes_pin add constraint subtipo_valido check (
   (tipo = 'calle_baches'  and subtipo in ('mitad', 'toda'))
 );
 
+-- "Otro": el vecino describe el problema con sus palabras; el texto es obligatorio
+alter table public.reportes_pin drop constraint if exists subtipo_valido;
+alter table public.reportes_pin add constraint subtipo_valido check (
+  (tipo = 'bache'     and subtipo in ('chico', 'mediano', 'grande', 'peligroso')) or
+  (tipo = 'drenaje'   and subtipo in ('tapado', 'aguas_negras', 'sin_tapa', 'mal_olor')) or
+  (tipo = 'alumbrado' and subtipo in ('apagada', 'parpadea', 'poste_danado', 'cables_expuestos')) or
+  (tipo = 'banqueta'  and subtipo in ('quebrada', 'incompleta', 'obstruida')) or
+  (tipo = 'baldio'    and subtipo in ('basura', 'maleza', 'quema', 'escombro')) or
+  (tipo = 'calle_cerrada' and subtipo in ('obra', 'inundada', 'accidente', 'otro_cierre')) or
+  (tipo = 'calle_baches'  and subtipo in ('mitad', 'toda')) or
+  (tipo = 'otro'      and subtipo = 'otro')
+);
+alter table public.reportes_pin drop constraint if exists otro_con_texto;
+alter table public.reportes_pin add constraint otro_con_texto check (tipo <> 'otro' or coalesce(char_length(comentario), 0) >= 5);
+
 -- Calles cerradas y calles con baches: se guardan como un tramo (línea).
 -- "ubicacion" guarda el punto medio del tramo (para colonia, mapa de calor y listados).
 alter table public.reportes_pin add column if not exists trazo extensions.geometry(LineString, 4326);
