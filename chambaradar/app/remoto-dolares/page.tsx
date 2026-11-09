@@ -4,7 +4,7 @@ import { Fragment } from "react";
 import { IMAGEN_OG, IMAGEN_X } from "@/lib/compartir";
 import { CapturaCorreo } from "@/components/CapturaCorreo";
 import { Confianza } from "@/components/Confianza";
-import { BarraDesbloquear, BloqueDesbloquear } from "@/components/Desbloquear";
+import { BarraCorreo, BarraDesbloquear, BloqueDesbloquear } from "@/components/Desbloquear";
 import { Flecha } from "@/components/Iconos";
 import { Encabezado, Pie } from "@/components/Marco";
 import { TarjetaVacante, type ContextoTarjeta } from "@/components/TarjetaVacante";
@@ -72,6 +72,8 @@ export default async function RemotoDolares({ searchParams }: Props) {
     sueldoGrande: { tasaUsd },
   };
   const vender = !acceso && ctx.pagosActivos;
+  // Quien llega de un anuncio (utm_source) viene frío: lo primero que se le pide es el correo, no el pago
+  const deAnuncio = typeof p.utm_source === "string" && p.utm_source !== "";
   const captura = <CapturaCorreo origen="remoto-dolares" />;
 
   return (
@@ -91,6 +93,10 @@ export default async function RemotoDolares({ searchParams }: Props) {
         </div>
 
         <Confianza />
+
+        {!acceso && pagina === 1 && (
+          <CapturaCorreo id="boletin" origen={deAnuncio ? "remoto-dolares-anuncio" : "remoto-dolares"} destacado titulo="Recibe gratis 5 vacantes remotas en dólares cada semana" />
+        )}
 
         {ejemplo && (
           <section className="space-y-2">
@@ -122,7 +128,7 @@ export default async function RemotoDolares({ searchParams }: Props) {
             {vacantes.map((v, i) => (
               <Fragment key={v.id}>
                 <TarjetaVacante v={v} ctx={ctx} />
-                {pagina === 1 && i === Math.min(2, vacantes.length - 1) && captura}
+                {pagina === 1 && !acceso && i === Math.min(7, vacantes.length - 1) && captura}
               </Fragment>
             ))}
           </div>
@@ -171,7 +177,7 @@ export default async function RemotoDolares({ searchParams }: Props) {
       {vender && (
         <>
           <div className="h-16 bg-noche lg:hidden" aria-hidden />
-          <BarraDesbloquear precios={precios} />
+          {deAnuncio ? <BarraCorreo /> : <BarraDesbloquear precios={precios} />}
         </>
       )}
     </>

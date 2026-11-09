@@ -136,3 +136,19 @@ export function BarraDesbloquear({ precios }: { precios: PreciosLocales }) {
     </div>
   );
 }
+
+/** Barra fija abajo en el celular para quien llega de un anuncio: el primer paso es el correo gratis, no el pago. */
+export function BarraCorreo() {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-borde bg-white/95 px-4 py-2.5 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
+      <div className="mx-auto flex max-w-xl items-center gap-3">
+        <p className="min-w-0 flex-1 text-xs leading-snug text-slate-600">
+          <span className="font-semibold text-tinta">5 vacantes en dólares cada semana.</span> Gratis, solo tu correo.
+        </p>
+        <a href="#boletin" className="boton shrink-0 px-4 py-2.5 text-sm">
+          Quiero las 5 gratis
+        </a>
+      </div>
+    </div>
+  );
+}

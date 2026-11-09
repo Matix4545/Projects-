@@ -19,6 +19,12 @@ function enviar(datos: Record<string, string | undefined>) {
   }
 }
 
+/** Registra un evento propio desde otro componente (p. ej. "correo" cuando alguien se suscribe). */
+export function registrarEvento(tipo: string) {
+  if (typeof window === "undefined") return;
+  enviar({ tipo, ruta: `${location.pathname}${location.search}` });
+}
+
 export function Contador() {
   const ruta = usePathname();
   const params = useSearchParams();
