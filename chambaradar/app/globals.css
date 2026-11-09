@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* Colores de ChambaRadar: blanco limpio + azul confianza */
+@theme {
+  --font-sans: var(--font-inter), "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-noche: #0f172a;
+  --color-noche-2: #1e293b;
+  --color-radar: #2563eb;
+  --color-radar-oscuro: #1d4ed8;
+  --color-radar-claro: #dbeafe;
+  --color-tinta: #0f172a;
+  --color-gris: #64748b;
+  --color-borde: #e2e8f0;
+  --color-fondo: #f8fafc;
+}
+
+html,
+body {
+  background: var(--color-fondo);
+  color: var(--color-tinta);
+}
+
+@layer components {
+  .boton {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-radar px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-radar-oscuro focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-radar disabled:cursor-not-allowed;
+  }
+  .boton-secundario {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-borde bg-white px-5 py-3 font-semibold text-tinta transition hover:border-slate-400 hover:bg-slate-50;
+  }
+  /* Botón oscuro principal de las tarjetas ("Aplicar") */
+  .boton-oscuro {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full bg-noche px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700;
+  }
+  .boton-contorno {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full border border-borde bg-slate-50 px-4 py-2 text-sm font-semibold text-tinta transition hover:border-slate-400 hover:bg-white;
+  }
+  .campo {
+    @apply w-full rounded-xl border border-borde bg-white px-3 py-2 text-sm text-tinta outline-none focus:border-radar focus:ring-2 focus:ring-radar/20;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700;
+  }
+  .contenedor {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+}
+
+/* Texto revuelto del muro de pago: se ve, pero no se lee */
+.borroso {
+  filter: blur(4px);
+  user-select: none;
+}
+
+/* Imprimir / guardar como PDF (creador de CV) */
+@media print {
+  @page {
+    size: letter;
+    margin: 14mm 16mm;
+  }
+  body {
+    background: white !important;
+  }
+  /* Encabezado y pie del sitio (Marco) */
+  body header,
+  body footer {
+    display: none !important;
+  }
+}
