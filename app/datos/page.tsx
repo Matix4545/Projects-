@@ -43,9 +43,15 @@ const nombreTipo = (t: TipoPin | "agua") => (t === "agua" ? "💧 Agua" : `${INF
 const colorTipo = (t: TipoPin | "agua") => (t === "agua" ? "#007aff" : INFO_PIN[t]?.color);
 
 export default async function PaginaDatos() {
-  const { data, error } = await supabaseServidor().rpc("datos_publicos");
-  if (error) console.error("datos_publicos:", error.message);
-  const d = (data as Datos | null) ?? null;
+  // Si Supabase no responde (o faltan sus claves), la página muestra un aviso en vez de romper la publicación
+  let d: Datos | null = null;
+  try {
+    const { data, error } = await supabaseServidor().rpc("datos_publicos");
+    if (error) console.error("datos_publicos:", error.message);
+    d = (data as Datos | null) ?? null;
+  } catch (e) {
+    console.error("datos_publicos:", e instanceof Error ? e.message : e);
+  }
 
   return (
     <Pagina
