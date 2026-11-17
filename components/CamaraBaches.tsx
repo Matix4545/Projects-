@@ -404,9 +404,10 @@ function dibujar(
     ctx.font = "600 11px ui-monospace, monospace";
     const ancho = ctx.measureText(etiqueta).width + 10;
     const ty = Math.max(0, y - 18);
-    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    // Pastilla del color del nivel (texto oscuro en chico y mediano, blanco en grande) para leerse sobre el video
+    ctx.fillStyle = nivel ? nivel.color : "rgba(0,0,0,0.65)";
     ctx.fillRect(x, ty, ancho, 16);
-    ctx.fillStyle = color;
+    ctx.fillStyle = !nivel ? color : nivel.clave === "grande" ? "#ffffff" : "#1c1c1e";
     ctx.fillText(etiqueta, x + 5, ty + 12);
   });
 }
