@@ -13,7 +13,10 @@
   estacionamiento): ajusta el campo de visión y, si se quiere, la altura.
 - Los baches confirmados (vistos en varios cuadros) se suben solos con un recorte de foto. Si ya hay un
   bache activo a menos de 8 m, se le suma la detección y se recalcula su tamaño.
-- Modelos con varias clases (p. ej. bache, alcantarilla, rejilla): solo se suben los baches.
+- Modelos con varias clases (p. ej. bache, alcantarilla, rejilla): solo se suben los baches. Umbral por
+  clase: 0.15 para ser candidato; bache 0.25, grieta 0.20, lo demás 0.35; 0.5 para subirlo al mapa.
+- **Medida de referencia** con una hoja carta (homografía de 4 puntos) para comprobar la medida de la
+  cámara contra la realidad.
 - El mapa muestra el tamaño medido y en cuántos recorridos lo vio la cámara.
 - `/estadisticas`: descarga de todas las detecciones en CSV.
 - Workflow **“Instalar modelo de baches”**: instala un modelo entrenado en Ultralytics Platform

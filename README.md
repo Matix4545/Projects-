@@ -269,7 +269,10 @@ También se puede instalar a mano: `npm run instalar-modelo -- ruta/al/best.onnx
 - Mide con cinta la **altura de la cámara** sobre el piso y escríbela en `/medir`.
 - Toca **Probar y calibrar**: con el vehículo estacionado en piso plano, pon delante (a 5–8 m) un rectángulo de
   medida conocida, congela la imagen y toca sus 4 esquinas. Se guarda en el celular.
-- Para verificar, mide algunos baches con cinta y compáralos con el CSV de **/estadisticas → Baches de la cámara**.
+- Para verificar (como el GT-001 de InGeniia con su tablero ChArUco): en `/medir` → **Medida de referencia**, toma
+  una foto desde arriba de un bache con una hoja carta al lado (mejor 4 hojas juntas), toca las 4 esquinas de la hoja
+  y el borde del bache: una homografía da su área real. Compárala con la que dio la cámara (en el mapa o en el CSV de
+  **/estadisticas → Baches de la cámara**): error = (cámara − referencia) / referencia.
 
 > ⚠️ Ultralytics YOLO tiene licencia **AGPL-3.0**: si usas sus modelos, el código de la app debe seguir siendo
 > público (este repositorio lo es) o se necesita una licencia empresarial de Ultralytics.

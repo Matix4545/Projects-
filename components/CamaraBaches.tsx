@@ -84,7 +84,6 @@ export function CamaraBaches({
   const cola = useRef<Pendiente[]>([]);
   const subidos = useRef<BacheSubido[]>([]);
   const enviando = useRef(false);
-  const contador = useRef(0);
   const vivo = useRef(true);
 
   // Valores que cambian sin reiniciar la cámara
