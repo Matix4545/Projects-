@@ -231,3 +231,87 @@ alter table public.tramos_rugosidad add column if not exists soporte    text che
 alter table public.tramos_rugosidad add column if not exists plataforma text check (plataforma in ('android', 'ios', 'otro'));
 -- Etiqueta de un recorrido de prueba ("Calle 300 a 40 km/h"); solo la ve el equipo
 alter table public.tramos_rugosidad add column if not exists nota       text check (char_length(nota) <= 60);
+
+-- Baches detectados con la cámara del parabrisas (/medir, solo equipo).
+-- Cada bache confirmado en un recorrido es una "detección". Si cae a menos de 8 m de un bache
+-- activo (de vecinos o de la cámara) se le suma; si no, se crea un bache nuevo en el mapa.
+alter table public.reportes_pin add column if not exists origen text not null default 'vecino';
+alter table public.reportes_pin drop constraint if exists reportes_pin_origen_check;
+alter table public.reportes_pin add constraint reportes_pin_origen_check check (origen in ('vecino', 'camara'));
+-- Tamaño medido sobre el plano de la calle: mediana de las detecciones (m², m)
+alter table public.reportes_pin add column if not exists area_m2            real;
+alter table public.reportes_pin add column if not exists area_sd_m2         real;
+alter table public.reportes_pin add column if not exists largo_m            real;
+alter table public.reportes_pin add column if not exists ancho_m            real;
+-- En cuántos recorridos distintos lo vio la cámara
+alter table public.reportes_pin add column if not exists detecciones_camara int not null default 0;
+
+create table if not exists public.detecciones_bache (
+  id            bigint generated always as identity primary key,
+  pin_id        bigint references public.reportes_pin (id) on delete set null,
+  sesion        uuid   not null,          -- id al azar del recorrido
+  fecha         date   not null,
+  ubicacion     extensions.geometry(Point, 4326) not null,   -- el bache, no el vehículo
+  area_m2       real,                     -- null si nunca quedó en la zona de medición
+  area_sd_m2    real,
+  largo_m       real,
+  ancho_m       real,
+  confianza     real   not null,
+  confianza_max real,
+  cuadros       int    not null,          -- en cuántos cuadros de video apareció
+  medidas       int    not null default 0, -- cuántos de esos cuadros sirvieron para medir
+  distancia_m   real,                     -- a qué distancia se midió (mediana)
+  foto_ruta     text,
+  modelo        text,                     -- archivo del modelo que lo detectó
+  altura_m      real,                     -- altura de la cámara usada para medir
+  fov           real,                     -- campo de visión usado para medir
+  plataforma    text check (plataforma in ('android', 'ios', 'otro')),
+  creado_en     timestamptz not null default now()
+);
+create index if not exists detecciones_bache_pin_idx   on public.detecciones_bache (pin_id);
+create index if not exists detecciones_bache_geom_idx  on public.detecciones_bache using gist (ubicacion);
+create index if not exists detecciones_bache_fecha_idx on public.detecciones_bache (fecha desc);
+
+-- Calles de Cajeme (OpenStreetMap). Sirven para acomodar dentro de la calle los baches que ubica
+-- el GPS y para guardar el nombre de la calle. Se cargan con scripts/importar-calles.mjs
+-- (o el workflow "Importar calles"). Uso interno: el público no las lee.
+create table if not exists public.calles (
+  id            bigint generated always as identity primary key,
+  osm_id        text   not null unique,     -- "way/123456"
+  nombre        text,
+  tipo          text   not null,            -- highway de OSM: residential, primary…
+  sentido_unico boolean not null default false,
+  ancho_m       real   not null,            -- ancho estimado de banqueta a banqueta
+  geom          extensions.geometry(LineString, 4326) not null
+);
+create index if not exists calles_geom_idx on public.calles using gist (geom);
+
+-- Calle del bache y datos de la ubicación con GPS de cada detección
+alter table public.reportes_pin      add column if not exists calle         text;
+alter table public.detecciones_bache add column if not exists calle         text;
+alter table public.detecciones_bache add column if not exists rumbo         real;  -- hacia dónde iba el vehículo (°)
+alter table public.detecciones_bache add column if not exists precision_m   real;  -- precisión del GPS (m)
+alter table public.detecciones_bache add column if not exists ajuste_m      real;  -- cuánto se movió para quedar en la calle
+alter table public.detecciones_bache add column if not exists ubicacion_gps extensions.geometry(Point, 4326); -- antes del ajuste
+
+-- Recorridos de prueba con la cámara: las detecciones se guardan con la nota de la prueba
+-- ("Calle 300 a 30 km/h") y NO se publican en el mapa
+alter table public.detecciones_bache add column if not exists prueba text check (char_length(prueba) <= 60);
+
+-- Medidas de referencia (verdad de campo): un bache medido a pie con una foto desde arriba y una
+-- hoja de tamaño conocido (/medir → Medida de referencia). Se comparan con lo que midió la cámara
+-- en el mismo lugar para saber qué tan precisa es (error y MAPE en /estadisticas).
+create table if not exists public.mediciones_referencia (
+  id           bigint generated always as identity primary key,
+  fecha        date   not null,
+  ubicacion    extensions.geometry(Point, 4326) not null,  -- GPS del celular junto al bache
+  precision_m  real,
+  area_m2      real   not null,
+  largo_m      real,
+  ancho_m      real,
+  perimetro_m  real,
+  referencia   text check (referencia in ('carta', 'carta4', 'otra')),
+  nota         text check (char_length(nota) <= 60),
+  creado_en    timestamptz not null default now()
+);
+create index if not exists mediciones_referencia_geom_idx on public.mediciones_referencia using gist (ubicacion);

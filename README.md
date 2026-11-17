@@ -10,7 +10,7 @@ servicios públicos: **agua**, **baches** y **drenaje**. Es anónimo, está en e
 | Reporte | Cómo se reporta | Qué se ve en el mapa |
 |---|---|---|
 | 💧 **Agua** | Por colonia: sin agua · baja presión · agua sucia (mal olor, turbia, sedimentos, color extraño) · con agua | Cada colonia se pinta con el estado que más se reportó en 24 h: 🟥 sin agua · 🟧 baja presión · 🟪 sucia · 🟩 con agua · ⬜ sin reportes. En empate gana el más grave. |
-| 🕳️ **Bache** | Punto exacto (GPS o tocando el mapa) + tamaño, foto y comentario opcionales | Círculo amarillo (más grande si es más grande; borde rojo si es peligroso) |
+| 🕳️ **Bache** | Punto exacto (GPS o tocando el mapa) + tamaño, foto y comentario opcionales | Círculo por tamaño: 🟢 chico (menos de 45 cm) · 🟡 mediano (45–75 cm) · 🔴 grande (más de 75 cm); peligroso con borde rojo (como siempre) |
 | 🚧 **Drenaje** | Punto exacto + tipo (tapado, aguas negras, sin tapa, mal olor) | Círculo café |
 | 💡 **Alumbrado** | Punto exacto + tipo (apagada o fundida, parpadea, poste dañado, cables expuestos) | Círculo celeste |
 | 🚶 **Banqueta** | Punto exacto + tipo (quebrada, incompleta, obstruida) | Círculo rosa |
@@ -21,6 +21,38 @@ servicios públicos: **agua**, **baches** y **drenaje**. Es anónimo, está en e
   60 días se archivan solos.
 - Al tocar una colonia se ven los conteos de 24 h y 7 días, la hora del último reporte y los comentarios recientes.
 - La barra de abajo muestra "X reportes en las últimas 24 h · Y colonias afectadas".
+
+### 🕳️📷 Baches con la cámara (solo equipo)
+
+En `/medir`, quien entró con la contraseña del panel puede activar **"Detectar baches con la cámara"**. Con el
+celular en el parabrisas, mientras se maneja:
+
+1. Un modelo de **segmentación** (YOLO, exportado a ONNX) corre **en el celular** y dibuja el contorno de cada
+   bache. El video nunca sale del teléfono.
+2. Cada contorno se **proyecta al plano de la calle** con la altura de la cámara, su inclinación (sensores del
+   celular) y su campo de visión → **área en m²** (Gauss–Green), largo y ancho. Solo se mide en la "zona dulce"
+   (3–14 m adelante y sin tocar el borde de la imagen).
+3. El mismo bache aparece en varios cuadros: se juntan y se publica la **mediana**. Una detección vista en un solo
+   cuadro se descarta.
+4. Se sube solo al mapa como un reporte de bache normal (con un recorte de foto): un bache mediano queda como
+   **"Bache mediano"**, igual que si lo reportara un vecino. Si ya había un bache activo a **menos de 8 m**, se le
+   suma la detección y su tamaño pasa a ser el medido (salvo "peligroso", que lo deciden los vecinos). Un bache que
+   no se pudo medir **no se publica** (no se sabe si es chico, mediano o grande); solo se suma a uno que ya exista.
+   - **Ubicación con GPS lo más precisa posible:** cada cuadro de video toma la posición del GPS *interpolada* entre
+     la lectura anterior y la siguiente, con la hora en que se tomó cada lectura (no se adivina con la velocidad), y
+     el bache se ubica a la distancia y del lado que midió la cámara. Las lecturas con más de ±20 m de error no se
+     usan.
+   - **En la calle:** si por el error del GPS el bache quedó fuera del ancho de la calle por la que iba el vehículo
+     (calles de OpenStreetMap, ver "Calles para ubicar los baches"), se mueve hacia adentro hasta la orilla; en una
+     esquina se elige la calle según hacia dónde iba. Se guarda el nombre de la calle.
+   - Cada pasada por el mismo bache afina su ubicación (promedio de todas sus detecciones).
+5. Cada bache medido queda en un **nivel** según su diámetro equivalente (el de un círculo con la misma área), con
+   los cortes de la norma ASTM D6433: **chico** menos de 45 cm (< 0.16 m²), **mediano** de 45 a 75 cm, **grande**
+   más de 75 cm (> 0.44 m²). Los mismos niveles que eligen los vecinos al reportar. La norma también usa la
+   profundidad, que la cámara no ve: el nivel es de tamaño, no de gravedad.
+
+Si el modelo tiene varias clases (p. ej. `pothole`, `manhole`, `grate`), solo se suben las que se llaman
+bache / pothole; las alcantarillas y rejillas se dibujan en azul, pero no cuentan.
 
 ### Antispam y privacidad
 
@@ -60,7 +92,9 @@ supabase/
   05_borrar_datos_prueba.sql
   06_zonas_aproximadas.sql  Zonas listas para pegar (si no puedes correr el script)
 scripts/importar-zonas.mjs  Descarga colonias de OpenStreetMap y rellena con hexágonos H3
-tests/                      Pruebas del filtro de groserías
+lib/baches/                 Cámara: geometría del plano de la calle, lectura del modelo YOLO, seguimiento entre cuadros
+scripts/instalar-modelo.mjs Instala un modelo .onnx en public/modelos/
+tests/                      Pruebas (groserías, rugosidad, geometría de baches…)
 ```
 
 ---
@@ -216,6 +250,66 @@ Cuando se agregan funciones nuevas, vuelve a correr en Supabase → SQL Editor, 
 - Si OpenStreetMap no responde: `npm run importar-zonas -- --aproximado` cubre la ciudad solo con hexágonos.
 - Para mejorar el mapa para todos, puedes dibujar las colonias que faltan directamente en
   <https://www.openstreetmap.org> (etiqueta `place=neighbourhood` + `name=...`) y volver a importar.
+
+### Modelo de baches para la cámara (Ultralytics Platform)
+La app no trae modelo: hay que entrenarlo con fotos de calles (de preferencia de Cajeme) e instalarlo.
+
+**1 · Entrenar en [Ultralytics Platform](https://platform.ultralytics.com)**
+1. Crea un *dataset* de **segmentación** y sube fotos o videos grabados desde el parabrisas (de día, de noche,
+   con lluvia, calles de tierra…). Unas 500–1,500 imágenes es un buen comienzo.
+2. Etiqueta el contorno de cada bache (la herramienta de anotación inteligente ayuda). Clase recomendada:
+   `bache` (o `pothole`). Si quieres, agrega `alcantarilla` y `rejilla`: así el modelo aprende que una tapa no es
+   un bache, y la app no las sube.
+3. Entrena un modelo **YOLO26n-seg** (o YOLO11n-seg) a **640**. Para correr en un celular conviene el tamaño
+   *n* (nano); el *s* es más preciso pero va más lento.
+4. Exporta a **ONNX** (tamaño fijo, sin *dynamic*) y descarga el archivo. También sirve el `best.pt`: el workflow
+   lo exporta por ti a **384 × 640**, una entrada rectangular para video 16:9 (como `rect=True`: casi sin relleno,
+   así el modelo usa sus píxeles en la calle y corre más rápido).
+
+**2 · Instalarlo en la app**
+1. En GitHub abre `data/` → **Add file → Upload files**, crea la carpeta `modelos` y sube el archivo
+   (p. ej. `data/modelos/best.onnx`). Si pesa más de 25 MB, en lugar de subirlo usa un enlace directo de descarga.
+2. Ve a **Actions → Instalar modelo de baches → Run workflow**. En **archivo** pon la ruta (o el enlace). En
+   **precisión** puedes poner el *mAP50* de máscaras que te muestra Ultralytics.
+3. El workflow lee las clases y el tamaño del propio archivo, lo deja en `public/modelos/` y hace commit. Vercel lo
+   publica solo; los celulares lo descargan una vez y lo guardan.
+4. En `public/modelos/baches.json` quedan los umbrales: `umbral` (0.15) para ser candidato, `umbrales` por clase para
+   aceptarlo (bache/pothole 0.25, grieta 0.20, lo demás 0.35) y `confirmar` (0.5): la confianza que un bache debe
+   alcanzar en algún cuadro para subirlo al mapa. Se pueden ajustar editando ese archivo.
+
+También se puede instalar a mano: `npm run instalar-modelo -- ruta/al/best.onnx`.
+
+**3 · Pruebas (sin publicar nada)**
+- En `/medir` activa **"Recorrido de prueba"** y escribe una nota (p. ej. "Calle 300 a 30 km/h"): los baches de la
+  cámara se guardan con esa nota, pero **no se publican** en el mapa. Salen en el CSV de **/estadisticas → Baches de
+  la cámara** (columna `prueba`), con su foto, tamaño, calle y precisión del GPS.
+- Mide algunos de esos baches con **Medida de referencia** y toca **Guardar**: en **/estadisticas → Precisión de la
+  cámara** aparece cada uno contra lo que midió la cámara, con el error medio y el MAPE (y su CSV).
+- Para tener el video, graba la pantalla del celular (iPhone: Centro de control → Grabar pantalla; Android: Ajustes
+  rápidos → Grabar pantalla).
+
+**4 · Antes de salir a medir**
+- Mide con cinta la **altura de la cámara** sobre el piso y escríbela en `/medir`.
+- Toca **Probar y calibrar**: con el vehículo estacionado en piso plano, pon delante (a 5–8 m) un rectángulo de
+  medida conocida, congela la imagen y toca sus 4 esquinas. Se guarda en el celular.
+- Para verificar (como el GT-001 de InGeniia con su tablero ChArUco): en `/medir` → **Medida de referencia**, toma
+  una foto desde arriba de un bache con una hoja carta al lado (mejor 4 hojas juntas), toca las 4 esquinas de la hoja
+  y el borde del bache: una homografía da su área real. Compárala con la que dio la cámara (en el mapa o en el CSV de
+  **/estadisticas → Baches de la cámara**): error = (cámara − referencia) / referencia.
+
+> ⚠️ Ultralytics YOLO tiene licencia **AGPL-3.0**: si usas sus modelos, el código de la app debe seguir siendo
+> público (este repositorio lo es) o se necesita una licencia empresarial de Ultralytics.
+
+### Calles para ubicar los baches (OpenStreetMap)
+Para que la cámara acomode cada bache dentro de su calle y guarde el nombre de la calle, carga las calles del
+municipio una vez (y cada pocos meses, para tener las nuevas):
+
+1. En Supabase → SQL Editor corre `01_esquema.sql`, `02_funciones.sql` y `03_seguridad.sql`.
+2. GitHub → **Actions → Importar calles → Run workflow** (usa los mismos secretos que "Importar colonias").
+   O en tu computadora: `npm run importar-calles`.
+
+Sin calles cargadas todo funciona igual, solo que el bache queda donde lo puso el GPS y sin nombre de calle.
+Si falta una calle o tiene mal el nombre, se puede corregir en <https://www.openstreetmap.org> y volver a importar.
 
 ### Reporte ejecutivo (panel privado)
 En `https://<tu-dominio>/panel` hay un resumen con números clave, reportes por día y por tipo, colonias con más

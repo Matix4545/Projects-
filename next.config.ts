@@ -16,6 +16,19 @@ const nextConfig: NextConfig = {
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'" },
         ],
       },
+      // Motor de IA y modelos de baches: el nombre lleva la versión o la fecha, así que no cambian nunca
+      {
+        source: "/ort/:ruta*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        source: "/modelos/:archivo(baches-.*\\.onnx)",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        source: "/modelos/baches.json",
+        headers: [{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" }],
+      },
     ];
   },
 };

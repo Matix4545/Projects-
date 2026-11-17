@@ -15,6 +15,7 @@ import {
   type DetalleSucia,
   type EstadoAgua,
   type TipoPin,
+  NIVELES_BACHE,
 } from "@/lib/constantes";
 import { enviar, zonaDePunto } from "@/lib/datos";
 import { largoM, puntoMedio } from "@/lib/tramos";
@@ -338,11 +339,17 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
                     key={t}
                     texto={SUBTIPOS_PELIGROSOS.has(t) ? `⚠️ ${ETIQUETAS[t]}` : ETIQUETAS[t]}
                     color={SUBTIPOS_PELIGROSOS.has(t) ? "peligro" : null}
+                    punto={paso === "bache" ? NIVELES_BACHE.find((n) => n.clave === t)?.color : undefined}
                     disabled={bloqueado}
                     onClick={() => enviarReporte(t)}
                   />
                 ))}
               </div>
+              {paso === "bache" && (
+                <p className="px-1 text-[13px] text-ios-secundario">
+                  {NIVELES_BACHE.map((n) => `${n.nombre}: ${n.rango}`).join(" · ")}. Una llanta mide unos 60 cm.
+                </p>
+              )}
             </>
           )}
 
@@ -398,11 +405,14 @@ function BotonTipo({ emoji, texto, color, onClick }: { emoji: string; texto: str
 function BotonOpcion({
   texto,
   color,
+  punto,
   disabled,
   onClick,
 }: {
   texto: string;
   color: string | null;
+  /** Puntito de color antes del texto (el nivel del bache) */
+  punto?: string;
   disabled: boolean;
   onClick: () => void;
 }) {
@@ -419,7 +429,14 @@ function BotonOpcion({
       className={`boton min-h-[54px] rounded-[14px] px-3 text-[16px] leading-tight ${estilo}`}
       style={color && color !== "peligro" ? { background: color } : undefined}
     >
-      {texto}
+      {punto ? (
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden className="h-3 w-3 rounded-full" style={{ background: punto }} />
+          {texto}
+        </span>
+      ) : (
+        texto
+      )}
     </button>
   );
 }

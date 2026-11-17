@@ -1,0 +1,103 @@
+# Instala en la app el modelo que detecta baches con la cámara (/medir, solo equipo).
+# El modelo se entrena en Ultralytics Platform (o con "yolo train") y se exporta a ONNX.
+# Se corre a mano: GitHub → pestaña "Actions" → "Instalar modelo de baches" → "Run workflow".
+#
+#   archivo: ruta de un archivo que subiste al repositorio (p. ej. data/modelos/best.onnx o best.pt)
+#            o un enlace https directo al archivo (.onnx o .pt).
+#   Si es .pt, aquí mismo se exporta a ONNX.
+# Al terminar hace un commit con public/modelos/ en esta misma rama; Vercel lo publica solo.
+name: Instalar modelo de baches
+
+on:
+  workflow_dispatch:
+    inputs:
+      archivo:
+        description: "Ruta en el repositorio (data/modelos/best.onnx o .pt) o enlace https directo"
+        required: true
+        default: "data/modelos/best.onnx"
+      precision:
+        description: "Opcional: mAP50 de máscaras que muestra Ultralytics (p. ej. 0.78)"
+        required: false
+        default: ""
+      nota:
+        description: "Opcional: de dónde salió (p. ej. Ultralytics Platform, 1,200 fotos de Cajeme)"
+        required: false
+        default: ""
+      tamano:
+        description: "Solo para .pt: tamaño de entrada al exportar. 640 (cuadrado) o 384,640 (rectangular para video 16:9: menos relleno, más rápido)"
+        required: false
+        default: "384,640"
+
+permissions:
+  contents: write
+
+jobs:
+  instalar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Conseguir el archivo
+        env:
+          ARCHIVO: ${{ inputs.archivo }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/modelo"
+          if [[ "$ARCHIVO" == https://* ]]; then
+            curl -fsSL "$ARCHIVO" -o "$RUNNER_TEMP/modelo/descargado"
+            ORIGEN="$RUNNER_TEMP/modelo/descargado"
+          else
+            if [ ! -f "$ARCHIVO" ]; then echo "::error::No existe $ARCHIVO en el repositorio"; exit 1; fi
+            ORIGEN="$ARCHIVO"
+          fi
+          # Un .pt de PyTorch es un zip (empieza con "PK"); un .onnx no
+          if [ "$(head -c 2 "$ORIGEN")" = "PK" ]; then
+            cp "$ORIGEN" "$RUNNER_TEMP/modelo/best.pt"
+            echo "TIPO=pt" >> "$GITHUB_ENV"
+          else
+            cp "$ORIGEN" "$RUNNER_TEMP/modelo/best.onnx"
+            echo "TIPO=onnx" >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: env.TIPO == 'pt'
+        with:
+          python-version: "3.12"
+
+      - name: Exportar el .pt a ONNX
+        if: env.TIPO == 'pt'
+        env:
+          TAMANO: ${{ inputs.tamano }}
+        run: |
+          pip install --quiet torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet ultralytics onnx onnxslim
+          cd "$RUNNER_TEMP/modelo"
+          python - <<'PY'
+          import os
+          from ultralytics import YOLO
+          t = [int(x) for x in (os.environ.get("TAMANO") or "640").replace(" ", "").split(",") if x]
+          YOLO("best.pt").export(format="onnx", imgsz=t if len(t) == 2 else t[0], opset=17, simplify=True)
+          PY
+          ls -la
+
+      - name: Instalar en public/modelos
+        env:
+          PRECISION: ${{ inputs.precision }}
+          NOTA: ${{ inputs.nota }}
+        run: node scripts/instalar-modelo.mjs "$RUNNER_TEMP/modelo/best.onnx" --precision "$PRECISION" --nota "$NOTA"
+
+      - name: Guardar el modelo en el repositorio
+        env:
+          ARCHIVO: ${{ inputs.archivo }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git add -A public/modelos
+          # El archivo que se subió a data/modelos ya no hace falta (pesa varios MB)
+          if [[ "$ARCHIVO" == data/modelos/* ]] && [ -f "$ARCHIVO" ]; then git rm -q "$ARCHIVO"; fi
+          git commit -m "Modelo de baches instalado ($(jq -r .archivo public/modelos/baches.json))"
+          git push

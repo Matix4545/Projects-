@@ -170,6 +170,14 @@ as $$
     'creado_en', p.creado_en,
     'arreglado_en', p.arreglado_en,
     'colonia', z.nombre,
+    -- Baches de la cámara: origen y tamaño medido (null en los demás)
+    'origen', p.origen,
+    'area_m2', p.area_m2,
+    'area_sd_m2', p.area_sd_m2,
+    'largo_m', p.largo_m,
+    'ancho_m', p.ancho_m,
+    'detecciones_camara', p.detecciones_camara,
+    'calle', p.calle,
     -- Tramo de calle como [[lat, lng], ...]; null en reportes de un solo punto
     'trazo', case when p.trazo is null then null else (
       select json_agg(json_build_array(round(st_y(d.geom)::numeric, 6), round(st_x(d.geom)::numeric, 6)) order by d.path)
@@ -376,6 +384,254 @@ as $$
         from t, st_dump(t.golpes) g
         where t.golpes is not null
       ) x), '[]'::json)
+  )
+$$;
+
+-- Nivel de un bache a partir del área medida (igual que nivelBache en lib/constantes.ts):
+-- diámetro equivalente < 45 cm chico, < 75 cm mediano, si no grande (rangos de ASTM D6433).
+-- Sin área medida queda como mediano.
+create or replace function public._tamano_bache(p_area real)
+returns text
+language sql immutable
+as $$
+  select case
+    when p_area is null                    then 'mediano'
+    when 2 * sqrt(p_area / pi()) < 0.45    then 'chico'
+    when 2 * sqrt(p_area / pi()) < 0.75    then 'mediano'
+    else 'grande'
+  end
+$$;
+
+-- Acomoda un punto (un bache) dentro de la calle por la que iba el vehículo.
+-- Busca a menos de 25 m el tramo de calle con la misma dirección que el vehículo (±35°, en
+-- cualquier sentido, para no confundirse con la calle que cruza en una esquina). Si el punto quedó
+-- fuera del ancho de esa calle (por el error del GPS) lo mueve hacia el centro, hasta la orilla; si
+-- ya está dentro (con 1 m de tolerancia por el trazo de OSM), no lo mueve. Sin calles importadas o
+-- sin una calle compatible cerca, devuelve el punto tal cual y calle null.
+create or replace function public.ubicar_en_calle(p_lng double precision, p_lat double precision, p_rumbo real)
+returns table (lng double precision, lat double precision, calle text, ajuste_m real)
+language plpgsql stable security definer
+set search_path = public, extensions
+as $$
+declare
+  v_punto geometry := st_setsrid(st_makepoint(p_lng, p_lat), 4326);
+  v_nombre text;
+  v_ancho real;
+  v_seg geometry;
+  v_d double precision;
+  v_mitad real;
+  v_nuevo geometry;
+begin
+  select c.nombre, c.ancho_m, s.geom, st_distance(s.geom::geography, v_punto::geography)
+    into v_nombre, v_ancho, v_seg, v_d
+    from calles c
+    cross join lateral st_dumpsegments(c.geom) s
+   where c.geom && st_expand(v_punto, 0.00025)
+     and st_dwithin(s.geom::geography, v_punto::geography, 25)
+     and (p_rumbo is null or (
+           select least(x, 360 - x)
+             from (select mod(abs(degrees(st_azimuth(st_startpoint(s.geom)::geography, st_endpoint(s.geom)::geography)) - p_rumbo)::numeric, 360) as x) y
+         ) not between 35 and 145)
+   order by 4
+   limit 1;
+
+  if not found then
+    return query select p_lng, p_lat, null::text, 0::real;
+    return;
+  end if;
+  v_mitad := v_ancho / 2;
+  if v_d <= v_mitad + 1 then
+    return query select p_lng, p_lat, v_nombre, 0::real;
+    return;
+  end if;
+  -- Del punto más cercano del eje de la calle hacia el bache, hasta la orilla
+  v_nuevo := st_lineinterpolatepoint(st_makeline(st_closestpoint(v_seg, v_punto), v_punto), least(1, v_mitad / v_d));
+  return query select st_x(v_nuevo), st_y(v_nuevo), v_nombre, (v_d - v_mitad)::real;
+end;
+$$;
+
+-- Carga calles de OpenStreetMap (scripts/importar-calles.mjs). Solo el servidor (service_role).
+create or replace function public.importar_calles(p_calles jsonb, p_borrar_antes boolean default false)
+returns int
+language plpgsql volatile security definer
+set search_path = public, extensions
+as $$
+declare
+  v_n int;
+begin
+  if p_borrar_antes then
+    delete from calles;
+  end if;
+  insert into calles (osm_id, nombre, tipo, sentido_unico, ancho_m, geom)
+  select c->>'osm_id', nullif(c->>'nombre', ''), c->>'tipo', coalesce((c->>'sentido_unico')::boolean, false),
+         (c->>'ancho_m')::real, st_setsrid(st_geomfromgeojson((c->'geom')::text), 4326)
+    from jsonb_array_elements(p_calles) c
+  on conflict (osm_id) do update
+    set nombre = excluded.nombre, tipo = excluded.tipo, sentido_unico = excluded.sentido_unico,
+        ancho_m = excluded.ancho_m, geom = excluded.geom;
+  get diagnostics v_n = row_count;
+  return v_n;
+end;
+$$;
+
+-- Registra un bache detectado con la cámara (/api/baches-camara, solo equipo).
+--  1. Lo acomoda dentro de la calle por la que iba el vehículo (ubicar_en_calle).
+--  2. Si hay un bache activo a menos de 8 m, se le suma la detección: su tamaño pasa a ser la
+--     mediana de las detecciones (chico, mediano o grande; "peligroso" lo deciden los vecinos y no se
+--     cambia) y, si lo creó la cámara, su ubicación es el promedio de todas sus pasadas.
+--  3. Si no hay, se crea un bache nuevo con su tamaño medido. Si no se pudo medir, NO se publica
+--     (no se sabe si es chico, mediano o grande): solo queda la detección.
+-- En un recorrido de prueba (p.prueba = la nota) solo se guarda la detección: no se publica ni
+-- cambia ningún bache del mapa.
+-- Devuelve {pin_id, nuevo, calle}; pin_id null si no se publicó.
+create or replace function public.registrar_bache_camara(p jsonb)
+returns json
+language plpgsql volatile security definer
+set search_path = public, extensions
+as $$
+declare
+  v_lat    double precision := (p->>'lat')::double precision;
+  v_lng    double precision := (p->>'lng')::double precision;
+  v_gps    geometry := st_setsrid(st_makepoint(v_lng, v_lat), 4326);
+  v_punto  geometry;
+  v_sesion uuid := (p->>'sesion')::uuid;
+  v_area   real := (p->>'area_m2')::real;
+  v_prueba text := nullif(trim(p->>'prueba'), '');
+  v_calle  text;
+  v_ajuste real;
+  v_pin    bigint;
+  v_nuevo  boolean := false;
+  v_visto  boolean := false;
+begin
+  select u.lng, u.lat, u.calle, u.ajuste_m into v_lng, v_lat, v_calle, v_ajuste
+    from ubicar_en_calle(v_lng, v_lat, (p->>'rumbo')::real) u;
+  v_punto := st_setsrid(st_makepoint(v_lng, v_lat), 4326);
+
+  if v_prueba is not null then
+    insert into detecciones_bache (sesion, fecha, ubicacion, ubicacion_gps, area_m2, area_sd_m2, largo_m, ancho_m,
+                                   confianza, confianza_max, cuadros, medidas, distancia_m, foto_ruta,
+                                   modelo, altura_m, fov, plataforma, calle, rumbo, precision_m, ajuste_m, prueba)
+    values (v_sesion, (p->>'fecha')::date, v_punto, v_gps, v_area, (p->>'area_sd_m2')::real,
+            (p->>'largo_m')::real, (p->>'ancho_m')::real, (p->>'confianza')::real, (p->>'confianza_max')::real,
+            (p->>'cuadros')::int, coalesce((p->>'medidas')::int, 0), (p->>'distancia_m')::real, p->>'foto_ruta',
+            p->>'modelo', (p->>'altura_m')::real, (p->>'fov')::real, p->>'plataforma',
+            v_calle, (p->>'rumbo')::real, (p->>'precision_m')::real, v_ajuste, left(v_prueba, 60));
+    return json_build_object('pin_id', null, 'nuevo', false, 'calle', v_calle, 'prueba', true);
+  end if;
+
+  select r.id into v_pin
+    from reportes_pin r
+   where r.tipo = 'bache' and r.estado = 'activo'
+     and r.ubicacion && st_expand(v_punto, 0.0002)        -- ~20 m, usa el índice
+     and st_dwithin(r.ubicacion::geography, v_punto::geography, 8)
+   order by r.ubicacion <-> v_punto
+   limit 1;
+
+  if v_pin is null and v_area is not null then
+    insert into reportes_pin (tipo, subtipo, ubicacion, zona_id, foto_ruta, dispositivo_hash, ip_hash,
+                              origen, area_m2, area_sd_m2, largo_m, ancho_m, detecciones_camara, calle)
+    values ('bache', _tamano_bache(v_area), v_punto, (zona_de_punto(v_lng, v_lat)->>'id')::bigint,
+            p->>'foto_ruta', 'camara', 'camara', 'camara',
+            v_area, (p->>'area_sd_m2')::real, (p->>'largo_m')::real, (p->>'ancho_m')::real, 1, v_calle)
+    returning id into v_pin;
+    v_nuevo := true;
+  elsif v_pin is not null then
+    -- El mismo recorrido no cuenta dos veces el mismo bache (p. ej. dio la vuelta a la manzana)
+    select exists (select 1 from detecciones_bache d where d.pin_id = v_pin and d.sesion = v_sesion) into v_visto;
+  end if;
+
+  insert into detecciones_bache (pin_id, sesion, fecha, ubicacion, ubicacion_gps, area_m2, area_sd_m2, largo_m, ancho_m,
+                                 confianza, confianza_max, cuadros, medidas, distancia_m, foto_ruta,
+                                 modelo, altura_m, fov, plataforma, calle, rumbo, precision_m, ajuste_m)
+  values (v_pin, v_sesion, (p->>'fecha')::date, v_punto, v_gps, v_area, (p->>'area_sd_m2')::real,
+          (p->>'largo_m')::real, (p->>'ancho_m')::real, (p->>'confianza')::real, (p->>'confianza_max')::real,
+          (p->>'cuadros')::int, coalesce((p->>'medidas')::int, 0), (p->>'distancia_m')::real, p->>'foto_ruta',
+          p->>'modelo', (p->>'altura_m')::real, (p->>'fov')::real, p->>'plataforma',
+          v_calle, (p->>'rumbo')::real, (p->>'precision_m')::real, v_ajuste);
+
+  if v_pin is not null and not v_nuevo then
+    update reportes_pin r set
+      ultima_actividad   = now(),
+      detecciones_camara = r.detecciones_camara + case when v_visto then 0 else 1 end,
+      foto_ruta          = coalesce(r.foto_ruta, p->>'foto_ruta'),
+      calle              = coalesce(r.calle, v_calle),
+      area_m2            = coalesce(m.area, r.area_m2),
+      area_sd_m2         = coalesce(m.sd, r.area_sd_m2),
+      largo_m            = coalesce(m.largo, r.largo_m),
+      ancho_m            = coalesce(m.ancho, r.ancho_m),
+      subtipo            = case when m.area is not null and r.subtipo <> 'peligroso' then _tamano_bache(m.area) else r.subtipo end,
+      ubicacion          = case when r.origen = 'camara' then m.centro else r.ubicacion end
+    from (
+      select percentile_cont(0.5) within group (order by d.area_m2) filter (where d.area_m2 is not null)::real as area,
+             case when count(d.area_m2) >= 2 then stddev_samp(d.area_m2) else max(d.area_sd_m2) end::real as sd,
+             percentile_cont(0.5) within group (order by d.largo_m) filter (where d.area_m2 is not null)::real as largo,
+             percentile_cont(0.5) within group (order by d.ancho_m) filter (where d.area_m2 is not null)::real as ancho,
+             st_centroid(st_collect(d.ubicacion)) as centro
+        from detecciones_bache d
+       where d.pin_id = v_pin
+    ) m
+    where r.id = v_pin;
+  end if;
+
+  return json_build_object('pin_id', v_pin, 'nuevo', v_nuevo, 'calle', v_calle);
+end;
+$$;
+
+-- Detecciones de la cámara para análisis (CSV del equipo)
+create or replace function public.exportar_detecciones_bache(p_dias int default 3650)
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  select coalesce(json_agg(x order by x.fecha desc, x.id), '[]'::json)
+  from (
+    select d.id, d.fecha, d.sesion, d.pin_id, d.area_m2, d.area_sd_m2, d.largo_m, d.ancho_m,
+           d.confianza, d.confianza_max, d.cuadros, d.medidas, d.distancia_m, d.modelo,
+           d.altura_m, d.fov, d.plataforma, d.foto_ruta, d.calle, d.rumbo, d.precision_m, d.ajuste_m, d.prueba,
+           round(st_y(d.ubicacion)::numeric, 6) as lat,
+           round(st_x(d.ubicacion)::numeric, 6) as lng
+    from detecciones_bache d
+    where d.fecha > current_date - least(greatest(coalesce(p_dias, 3650), 1), 3650)
+    order by d.fecha desc
+    limit 200000
+  ) x
+$$;
+
+-- Precisión de la cámara: cada medida de referencia contra la mediana de lo que midió la cámara a
+-- menos de 10 m (de todos los recorridos, de prueba o no). error = (cámara − referencia) / referencia.
+create or replace function public.comparar_referencias(p_dias int default 365)
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  with r as (
+    select * from mediciones_referencia
+    where fecha > current_date - least(greatest(coalesce(p_dias, 365), 1), 3650)
+  ),
+  c as (
+    select r.id, r.fecha, r.nota, r.referencia, r.area_m2 as area_ref, r.largo_m, r.ancho_m, r.precision_m,
+           round(st_y(r.ubicacion)::numeric, 6) as lat, round(st_x(r.ubicacion)::numeric, 6) as lng,
+           d.area as area_camara, d.n as detecciones, d.dist_m, d.calle,
+           case when d.area is not null and r.area_m2 > 0 then round(((d.area - r.area_m2) / r.area_m2 * 100)::numeric, 1) end as error_pct
+      from r
+      left join lateral (
+        select percentile_cont(0.5) within group (order by x.area_m2)::real as area,
+               count(*) as n,
+               round(min(st_distance(x.ubicacion::geography, r.ubicacion::geography))::numeric, 1) as dist_m,
+               max(x.calle) as calle
+          from detecciones_bache x
+         where x.area_m2 is not null
+           and x.ubicacion && st_expand(r.ubicacion, 0.0002)
+           and st_dwithin(x.ubicacion::geography, r.ubicacion::geography, 10)
+        having count(*) > 0
+      ) d on true
+  )
+  select json_build_object(
+    'filas', coalesce((select json_agg(c order by c.fecha desc, c.id desc) from c), '[]'::json),
+    'referencias', (select count(*) from c),
+    'comparados', (select count(*) from c where error_pct is not null),
+    'error_medio', (select round(avg(error_pct), 2) from c),
+    'mape', (select round(avg(abs(error_pct)), 2) from c)
   )
 $$;
 

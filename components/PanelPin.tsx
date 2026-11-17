@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { esLinea, tituloReporte } from "@/lib/constantes";
+import { esLinea, nivelBache, tituloReporte } from "@/lib/constantes";
 import { enviar, type Pin } from "@/lib/datos";
 import { urlFoto } from "@/lib/supabase/navegador";
 import { haceCuanto, horaLocal } from "@/lib/tiempo";
@@ -72,7 +72,7 @@ export function PanelPin({
             pin={{ ...pin, estado: conteos.estado, arreglado_en: pin.arreglado_en ?? (arreglado ? new Date().toISOString() : null) }}
           />
           <p className="text-[15px] text-ios-secundario">
-            {[pin.colonia, horaLocal(pin.creado_en), conteos.confirmaciones > 0 ? `+${conteos.confirmaciones} lo confirman` : null]
+            {[pin.calle, pin.colonia, horaLocal(pin.creado_en), conteos.confirmaciones > 0 ? `+${conteos.confirmaciones} lo confirman` : null]
               .filter(Boolean)
               .join(" · ")}
           </p>
@@ -80,7 +80,7 @@ export function PanelPin({
         ) : (
           <>
             <p className="text-[15px] text-ios-secundario">
-              {pin.colonia ? `${pin.colonia} · ` : ""}Reportado {haceCuanto(pin.creado_en)} ({horaLocal(pin.creado_en)})
+              {[pin.calle, pin.colonia].filter(Boolean).map((x) => `${x} · `).join("")}Reportado {haceCuanto(pin.creado_en)} ({horaLocal(pin.creado_en)})
             </p>
             {arreglado && (
               <p className="rounded-xl bg-ios-verde/12 px-3 py-2.5 text-[15px] font-medium text-[#248a3d]">
@@ -90,6 +90,8 @@ export function PanelPin({
             )}
           </>
         )}
+
+        <MedidaCamara pin={pin} />
 
         {pin.foto && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -139,5 +141,41 @@ export function PanelPin({
         {equipo && <p className="text-center font-mono text-xs text-ios-terciario">Folio {folio(pin.id)}</p>}
       </div>
     </HojaInferior>
+  );
+}
+
+/** Tamaño medido por la cámara del parabrisas (solo baches que vio la cámara) */
+function MedidaCamara({ pin }: { pin: Pin }) {
+  const vistas = pin.detecciones_camara ?? 0;
+  if (pin.area_m2 == null && vistas === 0) return null;
+  const cm = (m?: number | null) => (m == null ? null : `${Math.round(m * 100)}`);
+  const nivel = nivelBache(pin.area_m2);
+  return (
+    <div className="rounded-2xl bg-ios-fondo px-4 py-3 text-[15px]">
+      {nivel && (
+        <p className="mb-1 flex items-center gap-2 text-[13px] font-semibold">
+          <span className="rounded-full px-2.5 py-0.5 text-white" style={{ background: nivel.color, color: nivel.clave === "grande" ? "#ffffff" : "#1c1c1e" }}>
+            {nivel.nombre}
+          </span>
+          <span className="font-normal text-ios-secundario">{nivel.rango} de diámetro</span>
+        </p>
+      )}
+      {pin.area_m2 != null && (
+        <p>
+          <span className="text-[22px] font-bold tabular-nums">{pin.area_m2.toFixed(2)} m²</span>
+          {pin.area_sd_m2 != null && <span className="text-ios-secundario"> ± {pin.area_sd_m2.toFixed(2)}</span>}
+          {pin.largo_m != null && pin.ancho_m != null && (
+            <span className="text-ios-secundario">
+              {" "}
+              · {cm(pin.largo_m)} × {cm(pin.ancho_m)} cm
+            </span>
+          )}
+        </p>
+      )}
+      <p className="text-[13px] text-ios-secundario">
+        📷 {pin.origen === "camara" ? "Detectado" : "Confirmado"} con la cámara del equipo
+        {vistas > 1 ? ` en ${vistas} recorridos` : ""}. Medida sobre el plano de la calle; es aproximada.
+      </p>
+    </div>
   );
 }

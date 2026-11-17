@@ -33,6 +33,38 @@ export const esLinea = (tipo: TipoPin) => TIPOS_LINEA.has(tipo);
 export const LARGO_MIN_TRAMO = 20;
 export const LARGO_MAX_TRAMO = 3000;
 
+/**
+ * Niveles de bache por tamaño: el diámetro equivalente (el de un círculo con la misma área).
+ * Los cortes de 45 y 75 cm son los rangos de diámetro de la norma ASTM D6433 para baches; la norma
+ * además usa la profundidad, que la cámara no ve, así que esto es tamaño, no gravedad.
+ */
+export const NIVELES_BACHE = [
+  { clave: "chico", nombre: "Chico", rango: "menos de 45 cm", hastaCm: 45, color: "#16a34a" }, // verde
+  { clave: "mediano", nombre: "Mediano", rango: "de 45 a 75 cm", hastaCm: 75, color: "#facc15" }, // amarillo
+  { clave: "grande", nombre: "Grande", rango: "más de 75 cm", hastaCm: Infinity, color: "#dc2626" }, // rojo
+] as const;
+
+export type NivelBache = (typeof NIVELES_BACHE)[number];
+
+/** Diámetro (cm) de un círculo con esa área (m²) */
+export const diametroEquivalenteCm = (area_m2: number) => 200 * Math.sqrt(area_m2 / Math.PI);
+
+/** Nivel de un bache por su área medida; null si no se pudo medir */
+export function nivelBache(area_m2: number | null | undefined): NivelBache | null {
+  if (area_m2 == null || !(area_m2 >= 0)) return null;
+  const d = diametroEquivalenteCm(area_m2);
+  return NIVELES_BACHE.find((n) => d < n.hastaCm) ?? NIVELES_BACHE[2];
+}
+
+/**
+ * Color de un bache en el mapa según su tamaño: verde, amarillo, rojo. "Peligroso" (lo eligen los
+ * vecinos) se ve como ya se veía en Reporta Cajeme: el punto más grande y con borde rojo, aquí en rojo.
+ */
+export function colorBache(subtipo: string) {
+  if (subtipo === "peligroso") return NIVELES_BACHE[2].color;
+  return NIVELES_BACHE.find((n) => n.clave === subtipo)?.color ?? NIVELES_BACHE[1].color;
+}
+
 /** Subtipos que se marcan con borde rojo en el mapa */
 export const SUBTIPOS_PELIGROSOS = new Set(["peligroso", "sin_tapa", "cables_expuestos", "quema"]);
 
