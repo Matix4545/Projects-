@@ -150,7 +150,8 @@ test("niveles: chico < 45 cm ≤ mediano < 75 cm ≤ grande (diámetro equivalen
   assert.ok(Math.abs(diametroEquivalenteCm(Math.PI * 0.25 ** 2) - 50) < 1e-9);
   // Grande rojo, mediano amarillo, chico verde
   assert.deepEqual(["chico", "mediano", "grande"].map(colorBache), ["#16a34a", "#facc15", "#dc2626"]);
-  assert.notEqual(colorBache("peligroso"), colorBache("grande"));
+  // Peligroso: rojo como grande; se distingue por el borde rojo y el tamaño, como ya era en Reporta Cajeme
+  assert.equal(colorBache("peligroso"), colorBache("grande"));
 });
 
 test("medida de referencia: una hoja carta en la foto basta para medir el bache", () => {

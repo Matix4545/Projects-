@@ -19,7 +19,8 @@
   cámara contra la realidad.
 - **Niveles de bache** por diámetro equivalente (rangos de ASTM D6433): chico (menos de 45 cm),
   mediano (45–75 cm) y grande (más de 75 cm), los mismos tamaños que ya usan los vecinos. En el mapa:
-  **chico verde, mediano amarillo, grande rojo** (peligroso rojo oscuro); el formulario explica los tamaños.
+  **chico verde, mediano amarillo, grande rojo** (peligroso en rojo con su borde rojo de siempre); el
+  formulario explica los tamaños.
 - Un bache de la cámara se publica como un reporte normal ("Bache mediano"…). Si no se pudo medir no se
   publica; si cae sobre uno ya reportado, su tamaño pasa a ser el medido (salvo "peligroso").
 - **Ubicación con GPS más precisa:** la posición de cada cuadro se interpola entre lecturas del GPS (con la
@@ -28,6 +29,10 @@
   ubicación.
 - El mapa muestra el tamaño medido, el nivel y en cuántos recorridos lo vio la cámara.
 - `/estadisticas`: descarga de todas las detecciones en CSV.
+- **Recorrido de prueba**: con la casilla activada, los baches de la cámara se guardan con la nota de la
+  prueba pero no se publican en el mapa.
+- **Medida de referencia guardada** (con la ubicación del celular) y sección **"Precisión de la cámara"** en
+  `/estadisticas`: cada referencia contra lo que midió la cámara a menos de 10 m, error medio y MAPE, con CSV.
 - Workflow **“Instalar modelo de baches”**: instala un modelo entrenado en Ultralytics Platform
   (`.onnx` o `.pt`) desde el repositorio o un enlace.
 - Requiere correr `01_esquema.sql`, `02_funciones.sql` y `03_seguridad.sql`.

@@ -293,3 +293,25 @@ alter table public.detecciones_bache add column if not exists rumbo         real
 alter table public.detecciones_bache add column if not exists precision_m   real;  -- precisión del GPS (m)
 alter table public.detecciones_bache add column if not exists ajuste_m      real;  -- cuánto se movió para quedar en la calle
 alter table public.detecciones_bache add column if not exists ubicacion_gps extensions.geometry(Point, 4326); -- antes del ajuste
+
+-- Recorridos de prueba con la cámara: las detecciones se guardan con la nota de la prueba
+-- ("Calle 300 a 30 km/h") y NO se publican en el mapa
+alter table public.detecciones_bache add column if not exists prueba text check (char_length(prueba) <= 60);
+
+-- Medidas de referencia (verdad de campo): un bache medido a pie con una foto desde arriba y una
+-- hoja de tamaño conocido (/medir → Medida de referencia). Se comparan con lo que midió la cámara
+-- en el mismo lugar para saber qué tan precisa es (error y MAPE en /estadisticas).
+create table if not exists public.mediciones_referencia (
+  id           bigint generated always as identity primary key,
+  fecha        date   not null,
+  ubicacion    extensions.geometry(Point, 4326) not null,  -- GPS del celular junto al bache
+  precision_m  real,
+  area_m2      real   not null,
+  largo_m      real,
+  ancho_m      real,
+  perimetro_m  real,
+  referencia   text check (referencia in ('carta', 'carta4', 'otra')),
+  nota         text check (char_length(nota) <= 60),
+  creado_en    timestamptz not null default now()
+);
+create index if not exists mediciones_referencia_geom_idx on public.mediciones_referencia using gist (ubicacion);

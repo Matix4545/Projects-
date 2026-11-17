@@ -27,6 +27,8 @@ export function MedidaReferencia({ onCerrar }: { onCerrar: () => void }) {
   const [hoja, setHoja] = useState<Px[]>([]);
   const [contorno, setContorno] = useState<Px[]>([]);
   const [lupa, setLupa] = useState<Px | null>(null);
+  const [nota, setNota] = useState("");
+  const [guardado, setGuardado] = useState<"no" | "guardando" | "si" | string>("no");
 
   const puntos = fase === "hoja" ? hoja : contorno;
   const setPuntos = fase === "hoja" ? setHoja : setContorno;
@@ -41,6 +43,7 @@ export function MedidaReferencia({ onCerrar }: { onCerrar: () => void }) {
       setImg(i);
       setHoja([]);
       setContorno([]);
+      setGuardado("no");
       setFase("hoja");
     };
     i.src = URL.createObjectURL(archivo);
@@ -104,6 +107,36 @@ export function MedidaReferencia({ onCerrar }: { onCerrar: () => void }) {
       ctx.stroke();
     }
   }, [img, hoja, contorno, fase, lupa]);
+
+  /** Guarda la medida con la ubicación del celular (parado junto al bache) */
+  async function guardar() {
+    if (!resultado) return;
+    setGuardado("guardando");
+    try {
+      const p = await new Promise<GeolocationPosition>((ok, mal) =>
+        navigator.geolocation.getCurrentPosition(ok, mal, { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 }),
+      );
+      const r = await fetch("/api/equipo/referencias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lat: p.coords.latitude,
+          lng: p.coords.longitude,
+          precision_m: Math.round(p.coords.accuracy),
+          area_m2: Math.round(resultado.area_m2 * 10000) / 10000,
+          largo_m: Math.round(resultado.largo_m * 1000) / 1000,
+          ancho_m: Math.round(resultado.ancho_m * 1000) / 1000,
+          perimetro_m: Math.round(resultado.perimetro_m * 1000) / 1000,
+          referencia: ref,
+          nota: nota.trim() || undefined,
+        }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      setGuardado(r.ok && j.ok ? "si" : (j.error ?? "No se pudo guardar."));
+    } catch {
+      setGuardado("Sin ubicación: activa el GPS y el permiso de ubicación para este sitio.");
+    }
+  }
 
   const aImagen = (e: React.PointerEvent<HTMLCanvasElement>): Px => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -241,14 +274,42 @@ export function MedidaReferencia({ onCerrar }: { onCerrar: () => void }) {
               </p>
             </div>
             <PlanoMetrico piso={resultado.piso} ancho={medida.ancho / 100} largo={medida.largo / 100} />
-            <p className="text-[13px] text-ios-secundario">
-              Compárala con la que dio la cámara para ese bache (en el mapa o en el CSV de /estadisticas). Error = (cámara − referencia) / referencia.
-            </p>
+            {guardado === "si" ? (
+              <p className="rounded-xl bg-ios-verde/12 px-3 py-2.5 text-[15px] text-[#248a3d]">
+                ✓ Guardada. Se compara sola con lo que mida la cámara a menos de 10 m (en Estadísticas → Precisión de la cámara).
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <label className="campo flex items-center gap-2 text-[15px]">
+                  <span className="shrink-0">Nota</span>
+                  <input
+                    value={nota}
+                    onChange={(e) => setNota(e.target.value.slice(0, 60))}
+                    placeholder="Ej. Bache 3, Calle 300"
+                    className="min-w-0 flex-1 bg-transparent outline-none"
+                  />
+                </label>
+                <button onClick={guardar} disabled={guardado === "guardando"} className="boton boton-exito w-full">
+                  {guardado === "guardando" ? "Guardando… (buscando GPS)" : "Guardar para comparar con la cámara"}
+                </button>
+                {guardado !== "no" && guardado !== "guardando" && <p className="text-[14px] text-ios-rojo">{guardado}</p>}
+                <p className="text-[13px] text-ios-secundario">
+                  Guárdala parado junto al bache: se usa la ubicación del celular. Error = (cámara − referencia) / referencia.
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => setFase("bache")} className="boton boton-tenue">
                 Corregir
               </button>
-              <button onClick={() => setFase("foto")} className="boton boton-principal">
+              <button
+                onClick={() => {
+                  setFase("foto");
+                  setGuardado("no");
+                  setNota("");
+                }}
+                className="boton boton-principal"
+              >
                 Otro bache
               </button>
             </div>

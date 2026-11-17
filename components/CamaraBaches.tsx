@@ -36,6 +36,8 @@ export type BacheSubido = {
   publicado?: boolean;
   /** Calle donde quedó (de OpenStreetMap) */
   calle?: string | null;
+  /** Se guardó como parte de un recorrido de prueba (no se publica) */
+  prueba?: boolean;
 };
 
 export type ControlCamara = {
@@ -67,6 +69,7 @@ export function CamaraBaches({
   abajoRespaldo,
   sesion,
   plataforma,
+  prueba,
   onBaches,
   ref,
 }: {
@@ -78,6 +81,8 @@ export function CamaraBaches({
   abajoRespaldo: Vec3 | null;
   sesion: string;
   plataforma: string;
+  /** Nota del recorrido de prueba: los baches se guardan pero no se publican; null = recorrido normal */
+  prueba: string | null;
   onBaches: (b: BacheSubido[]) => void;
   ref?: Ref<ControlCamara>;
 }) {
@@ -102,8 +107,8 @@ export function CamaraBaches({
   const vivo = useRef(true);
 
   // Valores que cambian sin reiniciar la cámara
-  const params = useRef({ alturaM, fovLargo, abajoRespaldo, sesion, plataforma, onBaches });
-  params.current = { alturaM, fovLargo, abajoRespaldo, sesion, plataforma, onBaches };
+  const params = useRef({ alturaM, fovLargo, abajoRespaldo, sesion, plataforma, prueba, onBaches });
+  params.current = { alturaM, fovLargo, abajoRespaldo, sesion, plataforma, prueba, onBaches };
 
   const publicar = () => params.current.onBaches([...subidos.current]);
 
@@ -123,6 +128,7 @@ export function CamaraBaches({
             plataforma: params.current.plataforma,
             altura_m: params.current.alturaM,
             fov: params.current.fovLargo,
+            prueba: params.current.prueba,
             baches: lote.map((b, k) => ({
               lat: b.lat,
               lng: b.lng,
@@ -148,7 +154,7 @@ export function CamaraBaches({
           break;
         }
         if (!res.ok) throw new Error(String(res.status));
-        const r = (await res.json()) as { resultados?: { pin_id: number | null; nuevo: boolean; calle?: string | null }[] };
+        const r = (await res.json()) as { resultados?: { pin_id: number | null; nuevo: boolean; calle?: string | null; prueba?: boolean }[] };
         lote.forEach((b, k) => {
           const s = subidos.current[b.i];
           const x = r.resultados?.[k];
@@ -157,6 +163,7 @@ export function CamaraBaches({
             s.nuevo = x?.nuevo;
             s.publicado = x ? x.pin_id != null : undefined;
             s.calle = x?.calle ?? null;
+            s.prueba = !!x?.prueba;
           }
         });
         cola.current = cola.current.slice(lote.length);

@@ -52,6 +52,7 @@ export default async function PaginaEstadisticas() {
     p_mala: UMBRALES.mala,
   });
   const { data: distribucion } = await supabaseServidor().rpc("rugosidad_distribucion");
+  const { data: precision } = await supabaseServidor().rpc("comparar_referencias", { p_dias: 3650 });
   const estimacion = estimar(((distribucion as GrupoMedido[] | null) ?? []).map((g) => ({ ...g, m: Number(g.m) })));
 
   return (
@@ -74,6 +75,7 @@ export default async function PaginaEstadisticas() {
       )}
 
       <Recorridos r={(rugosidad as ResumenRugosidad | null) ?? null} />
+      <PrecisionCamara p={(precision as PrecisionCamara | null) ?? null} />
       <Economia e={estimacion} />
 
       <p className="mt-10 px-4 text-xs text-ios-secundario">
@@ -302,6 +304,53 @@ function Recorridos({ r }: { r: ResumenRugosidad | null }) {
           ⬇️ Baches de la cámara (CSV)
         </a>
       </div>
+    </Seccion>
+  );
+}
+
+type PrecisionCamara = {
+  referencias: number;
+  comparados: number;
+  error_medio: number | null;
+  mape: number | null;
+  filas: { id: number; fecha: string; nota: string | null; area_ref: number; area_camara: number | null; error_pct: number | null; detecciones: number | null; calle: string | null }[];
+};
+
+/** Medidas de referencia (hoja carta) contra lo que midió la cámara: qué tan precisa es */
+function PrecisionCamara({ p }: { p: PrecisionCamara | null }) {
+  const pct = (x: number | null) => (x == null ? "—" : `${x > 0 ? "+" : ""}${x.toFixed(1)}%`);
+  return (
+    <Seccion
+      titulo="🎯 Precisión de la cámara"
+      nota="Cada medida de referencia (foto desde arriba con hoja carta, en /medir) contra la mediana de lo que midió la cámara a menos de 10 m. Error = (cámara − referencia) / referencia; MAPE = promedio del error sin signo."
+    >
+      {!p || p.referencias === 0 ? (
+        <Vacio texto="Aún no hay medidas de referencia. Mide algunos baches con la hoja carta en /medir → Medida de referencia." />
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <Tarjeta titulo="Comparados" valor={`${num(p.comparados)} de ${num(p.referencias)}`} nota="con medida de la cámara cerca" />
+            <Tarjeta titulo="Error medio" valor={pct(p.error_medio)} nota="+ la cámara mide de más" />
+            <Tarjeta titulo="MAPE" valor={p.mape == null ? "—" : `${p.mape.toFixed(1)}%`} nota="error promedio sin signo" />
+          </div>
+          <div className="mt-4">
+            <Tabla
+              encabezados={["Fecha", "Nota", "Referencia", "Cámara", "Error"]}
+              numericas={[2, 3, 4]}
+              filas={p.filas.map((f) => [
+                f.fecha,
+                <span key={f.id}>{[f.nota, f.calle].filter(Boolean).join(" · ") || "—"}</span>,
+                `${f.area_ref.toFixed(3)} m²`,
+                f.area_camara == null ? "sin medir" : `${f.area_camara.toFixed(3)} m²`,
+                pct(f.error_pct),
+              ])}
+            />
+          </div>
+        </>
+      )}
+      <a href="/api/equipo/referencias/csv" className="boton boton-tenue mt-4 min-h-9 rounded-full px-4 text-[15px]">
+        ⬇️ Precisión de la cámara (CSV)
+      </a>
     </Seccion>
   );
 }

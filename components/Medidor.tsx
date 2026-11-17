@@ -264,6 +264,7 @@ export function Medidor() {
   const resumen = resumir(tramos);
   const bachesEnviados = baches.filter((b) => b.enviado).length;
   const enElMapa = baches.filter((b) => b.enviado && b.publicado !== false).length;
+  const guardadosPrueba = baches.filter((b) => b.prueba).length;
   const sinMedida = baches.filter((b) => b.area_m2 == null).length;
   const kmMedidos = (estado?.distancia_m ?? 0) / 1000;
 
@@ -299,7 +300,11 @@ export function Medidor() {
           </Bloque>
           <Bloque
             sinRelleno
-            nota={esPrueba ? "Para calibrar: misma calle, mismo carril, velocidad constante. No pongas datos personales." : undefined}
+            nota={
+              esPrueba
+                ? "Para calibrar: misma calle, mismo carril, velocidad constante. No pongas datos personales. Los baches de la cámara se guardan con esta nota pero NO se publican en el mapa."
+                : undefined
+            }
           >
             <div className="flex items-center justify-between px-4 py-2.5 text-[16px]">
               Recorrido de prueba
@@ -350,6 +355,7 @@ export function Medidor() {
                 abajoRespaldo={camara.abajo}
                 sesion={sesion.current}
                 plataforma={plataforma()}
+                prueba={esPrueba ? nota.trim() || "Recorrido de prueba" : null}
                 onBaches={setBaches}
               />
               <div className="grid grid-cols-3 gap-2.5">
@@ -359,7 +365,8 @@ export function Medidor() {
               </div>
               <p className="px-1 text-[14px] text-ios-secundario">
                 {baches.length} {baches.length === 1 ? "bache detectado" : "baches detectados"}
-                {sinMedida > 0 && ` (${sinMedida} sin medir: solo se suman a un bache que ya esté en el mapa)`} · {enElMapa} en el mapa
+                {sinMedida > 0 && ` (${sinMedida} sin medir: solo se suman a un bache que ya esté en el mapa)`} ·{" "}
+                {esPrueba ? `${guardadosPrueba} guardados (prueba: no se publican)` : `${enElMapa} en el mapa`}
               </p>
             </>
           )}
@@ -484,7 +491,7 @@ function ResumenBaches({ baches }: { baches: BacheSubido[] }) {
               </a>
               <span className="shrink-0 text-[13px] text-ios-secundario">
                 {Math.round(b.confianza * 100)}% ·{" "}
-                {!b.enviado ? "pendiente" : b.publicado === false ? "no se subió" : b.nuevo ? "nuevo" : "ya estaba"}
+                {!b.enviado ? "pendiente" : b.prueba ? "guardado (prueba)" : b.publicado === false ? "no se subió" : b.nuevo ? "nuevo" : "ya estaba"}
               </span>
             </div>
           );

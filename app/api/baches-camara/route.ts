@@ -40,6 +40,8 @@ const Lote = z.object({
   plataforma: z.enum(["android", "ios", "otro"]),
   altura_m: Num(0.3, 5),
   fov: Num(20, 140),
+  /** Recorrido de prueba: la nota; los baches se guardan pero no se publican en el mapa */
+  prueba: z.string().trim().max(60).nullable().optional(),
   baches: z.array(Bache).min(1).max(MAX_POR_LOTE),
 });
 
@@ -68,7 +70,7 @@ export async function POST(req: Request) {
   if (errCupo) return error("Error al guardar. Intenta más tarde.", 500);
   if (!hayCupo) return error("Se llegó al límite de baches de hoy.", 429);
 
-  const resultados: { pin_id: number | null; nuevo: boolean; calle?: string | null; error?: string }[] = [];
+  const resultados: { pin_id: number | null; nuevo: boolean; calle?: string | null; prueba?: boolean; error?: string }[] = [];
   for (const b of lote.baches) {
     if (!dentroDeCajeme(b.lat, b.lng)) {
       resultados.push({ pin_id: null, nuevo: false, error: "fuera de Cajeme" });
@@ -112,6 +114,7 @@ export async function POST(req: Request) {
         altura_m: lote.altura_m,
         fov: lote.fov,
         plataforma: lote.plataforma,
+        prueba: lote.prueba || null,
       },
     });
     if (err) {
@@ -120,8 +123,8 @@ export async function POST(req: Request) {
       return error("Error al guardar. ¿Ya corriste los .sql nuevos?", 500);
     }
     // pin_id null: no se pudo medir y no había un bache ahí, así que no se publica (solo queda la detección)
-    const d = data as { pin_id: number | null; nuevo: boolean; calle: string | null };
-    resultados.push({ pin_id: d.pin_id, nuevo: d.nuevo, calle: d.calle });
+    const d = data as { pin_id: number | null; nuevo: boolean; calle: string | null; prueba?: boolean };
+    resultados.push({ pin_id: d.pin_id, nuevo: d.nuevo, calle: d.calle, prueba: !!d.prueba });
   }
   return ok({ resultados });
 }

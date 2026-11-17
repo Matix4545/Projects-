@@ -43,8 +43,7 @@ export const NIVELES_BACHE = [
   { clave: "mediano", nombre: "Mediano", rango: "de 45 a 75 cm", hastaCm: 75, color: "#facc15" }, // amarillo
   { clave: "grande", nombre: "Grande", rango: "más de 75 cm", hastaCm: Infinity, color: "#dc2626" }, // rojo
 ] as const;
-/** Bache peligroso (lo eligen los vecinos; la cámara no ve la profundidad): rojo oscuro con borde rojo */
-export const COLOR_BACHE_PELIGROSO = "#7f1d1d";
+
 export type NivelBache = (typeof NIVELES_BACHE)[number];
 
 /** Diámetro (cm) de un círculo con esa área (m²) */
@@ -57,9 +56,12 @@ export function nivelBache(area_m2: number | null | undefined): NivelBache | nul
   return NIVELES_BACHE.find((n) => d < n.hastaCm) ?? NIVELES_BACHE[2];
 }
 
-/** Color de un bache en el mapa según su tamaño (verde, amarillo, rojo; peligroso rojo oscuro) */
+/**
+ * Color de un bache en el mapa según su tamaño: verde, amarillo, rojo. "Peligroso" (lo eligen los
+ * vecinos) se ve como ya se veía en Reporta Cajeme: el punto más grande y con borde rojo, aquí en rojo.
+ */
 export function colorBache(subtipo: string) {
-  if (subtipo === "peligroso") return COLOR_BACHE_PELIGROSO;
+  if (subtipo === "peligroso") return NIVELES_BACHE[2].color;
   return NIVELES_BACHE.find((n) => n.clave === subtipo)?.color ?? NIVELES_BACHE[1].color;
 }
 

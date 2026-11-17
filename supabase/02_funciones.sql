@@ -481,6 +481,8 @@ $$;
 --     cambia) y, si lo creó la cámara, su ubicación es el promedio de todas sus pasadas.
 --  3. Si no hay, se crea un bache nuevo con su tamaño medido. Si no se pudo medir, NO se publica
 --     (no se sabe si es chico, mediano o grande): solo queda la detección.
+-- En un recorrido de prueba (p.prueba = la nota) solo se guarda la detección: no se publica ni
+-- cambia ningún bache del mapa.
 -- Devuelve {pin_id, nuevo, calle}; pin_id null si no se publicó.
 create or replace function public.registrar_bache_camara(p jsonb)
 returns json
@@ -494,6 +496,7 @@ declare
   v_punto  geometry;
   v_sesion uuid := (p->>'sesion')::uuid;
   v_area   real := (p->>'area_m2')::real;
+  v_prueba text := nullif(trim(p->>'prueba'), '');
   v_calle  text;
   v_ajuste real;
   v_pin    bigint;
@@ -503,6 +506,18 @@ begin
   select u.lng, u.lat, u.calle, u.ajuste_m into v_lng, v_lat, v_calle, v_ajuste
     from ubicar_en_calle(v_lng, v_lat, (p->>'rumbo')::real) u;
   v_punto := st_setsrid(st_makepoint(v_lng, v_lat), 4326);
+
+  if v_prueba is not null then
+    insert into detecciones_bache (sesion, fecha, ubicacion, ubicacion_gps, area_m2, area_sd_m2, largo_m, ancho_m,
+                                   confianza, confianza_max, cuadros, medidas, distancia_m, foto_ruta,
+                                   modelo, altura_m, fov, plataforma, calle, rumbo, precision_m, ajuste_m, prueba)
+    values (v_sesion, (p->>'fecha')::date, v_punto, v_gps, v_area, (p->>'area_sd_m2')::real,
+            (p->>'largo_m')::real, (p->>'ancho_m')::real, (p->>'confianza')::real, (p->>'confianza_max')::real,
+            (p->>'cuadros')::int, coalesce((p->>'medidas')::int, 0), (p->>'distancia_m')::real, p->>'foto_ruta',
+            p->>'modelo', (p->>'altura_m')::real, (p->>'fov')::real, p->>'plataforma',
+            v_calle, (p->>'rumbo')::real, (p->>'precision_m')::real, v_ajuste, left(v_prueba, 60));
+    return json_build_object('pin_id', null, 'nuevo', false, 'calle', v_calle, 'prueba', true);
+  end if;
 
   select r.id into v_pin
     from reportes_pin r
@@ -572,7 +587,7 @@ as $$
   from (
     select d.id, d.fecha, d.sesion, d.pin_id, d.area_m2, d.area_sd_m2, d.largo_m, d.ancho_m,
            d.confianza, d.confianza_max, d.cuadros, d.medidas, d.distancia_m, d.modelo,
-           d.altura_m, d.fov, d.plataforma, d.foto_ruta, d.calle, d.rumbo, d.precision_m, d.ajuste_m,
+           d.altura_m, d.fov, d.plataforma, d.foto_ruta, d.calle, d.rumbo, d.precision_m, d.ajuste_m, d.prueba,
            round(st_y(d.ubicacion)::numeric, 6) as lat,
            round(st_x(d.ubicacion)::numeric, 6) as lng
     from detecciones_bache d
@@ -580,6 +595,44 @@ as $$
     order by d.fecha desc
     limit 200000
   ) x
+$$;
+
+-- Precisión de la cámara: cada medida de referencia contra la mediana de lo que midió la cámara a
+-- menos de 10 m (de todos los recorridos, de prueba o no). error = (cámara − referencia) / referencia.
+create or replace function public.comparar_referencias(p_dias int default 365)
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  with r as (
+    select * from mediciones_referencia
+    where fecha > current_date - least(greatest(coalesce(p_dias, 365), 1), 3650)
+  ),
+  c as (
+    select r.id, r.fecha, r.nota, r.referencia, r.area_m2 as area_ref, r.largo_m, r.ancho_m, r.precision_m,
+           round(st_y(r.ubicacion)::numeric, 6) as lat, round(st_x(r.ubicacion)::numeric, 6) as lng,
+           d.area as area_camara, d.n as detecciones, d.dist_m, d.calle,
+           case when d.area is not null and r.area_m2 > 0 then round(((d.area - r.area_m2) / r.area_m2 * 100)::numeric, 1) end as error_pct
+      from r
+      left join lateral (
+        select percentile_cont(0.5) within group (order by x.area_m2)::real as area,
+               count(*) as n,
+               round(min(st_distance(x.ubicacion::geography, r.ubicacion::geography))::numeric, 1) as dist_m,
+               max(x.calle) as calle
+          from detecciones_bache x
+         where x.area_m2 is not null
+           and x.ubicacion && st_expand(r.ubicacion, 0.0002)
+           and st_dwithin(x.ubicacion::geography, r.ubicacion::geography, 10)
+        having count(*) > 0
+      ) d on true
+  )
+  select json_build_object(
+    'filas', coalesce((select json_agg(c order by c.fecha desc, c.id desc) from c), '[]'::json),
+    'referencias', (select count(*) from c),
+    'comparados', (select count(*) from c where error_pct is not null),
+    'error_medio', (select round(avg(error_pct), 2) from c),
+    'mape', (select round(avg(abs(error_pct)), 2) from c)
+  )
 $$;
 
 -- Tramos de rugosidad para análisis (CSV del equipo): todo lo medido, con los datos de calibración

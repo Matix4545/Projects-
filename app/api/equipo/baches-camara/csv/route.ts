@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 const COLUMNAS = [
   "id",
   "fecha",
+  "prueba",
   "sesion",
   "pin_id",
   "lat",

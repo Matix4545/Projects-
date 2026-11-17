@@ -10,7 +10,7 @@ servicios públicos: **agua**, **baches** y **drenaje**. Es anónimo, está en e
 | Reporte | Cómo se reporta | Qué se ve en el mapa |
 |---|---|---|
 | 💧 **Agua** | Por colonia: sin agua · baja presión · agua sucia (mal olor, turbia, sedimentos, color extraño) · con agua | Cada colonia se pinta con el estado que más se reportó en 24 h: 🟥 sin agua · 🟧 baja presión · 🟪 sucia · 🟩 con agua · ⬜ sin reportes. En empate gana el más grave. |
-| 🕳️ **Bache** | Punto exacto (GPS o tocando el mapa) + tamaño, foto y comentario opcionales | Círculo por tamaño: 🟢 chico (menos de 45 cm) · 🟡 mediano (45–75 cm) · 🔴 grande (más de 75 cm); peligroso en rojo oscuro con borde rojo |
+| 🕳️ **Bache** | Punto exacto (GPS o tocando el mapa) + tamaño, foto y comentario opcionales | Círculo por tamaño: 🟢 chico (menos de 45 cm) · 🟡 mediano (45–75 cm) · 🔴 grande (más de 75 cm); peligroso con borde rojo (como siempre) |
 | 🚧 **Drenaje** | Punto exacto + tipo (tapado, aguas negras, sin tapa, mal olor) | Círculo café |
 | 💡 **Alumbrado** | Punto exacto + tipo (apagada o fundida, parpadea, poste dañado, cables expuestos) | Círculo celeste |
 | 🚶 **Banqueta** | Punto exacto + tipo (quebrada, incompleta, obstruida) | Círculo rosa |
@@ -279,7 +279,16 @@ La app no trae modelo: hay que entrenarlo con fotos de calles (de preferencia de
 
 También se puede instalar a mano: `npm run instalar-modelo -- ruta/al/best.onnx`.
 
-**3 · Antes de salir a medir**
+**3 · Pruebas (sin publicar nada)**
+- En `/medir` activa **"Recorrido de prueba"** y escribe una nota (p. ej. "Calle 300 a 30 km/h"): los baches de la
+  cámara se guardan con esa nota, pero **no se publican** en el mapa. Salen en el CSV de **/estadisticas → Baches de
+  la cámara** (columna `prueba`), con su foto, tamaño, calle y precisión del GPS.
+- Mide algunos de esos baches con **Medida de referencia** y toca **Guardar**: en **/estadisticas → Precisión de la
+  cámara** aparece cada uno contra lo que midió la cámara, con el error medio y el MAPE (y su CSV).
+- Para tener el video, graba la pantalla del celular (iPhone: Centro de control → Grabar pantalla; Android: Ajustes
+  rápidos → Grabar pantalla).
+
+**4 · Antes de salir a medir**
 - Mide con cinta la **altura de la cámara** sobre el piso y escríbela en `/medir`.
 - Toca **Probar y calibrar**: con el vehículo estacionado en piso plano, pon delante (a 5–8 m) un rectángulo de
   medida conocida, congela la imagen y toca sus 4 esquinas. Se guarda en el celular.
