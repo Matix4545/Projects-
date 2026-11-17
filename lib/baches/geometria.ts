@@ -351,15 +351,6 @@ export function rumboEntre(a: [number, number], b: [number, number]) {
   return ((Math.atan2(e, n) / RAD) % 360 + 360) % 360;
 }
 
-/** Tamaño para el mapa a partir del área medida (los mismos nombres que usan los vecinos) */
-export function tamanoPorArea(area_m2: number | null | undefined): "chico" | "mediano" | "grande" | "peligroso" {
-  if (area_m2 == null) return "mediano";
-  if (area_m2 < 0.25) return "chico";
-  if (area_m2 < 1) return "mediano";
-  if (area_m2 < 2.5) return "grande";
-  return "peligroso";
-}
-
 // ---------------------------------------------------------------------------
 // Medida de referencia (verdad de campo): homografía con una hoja de tamaño conocido
 // ---------------------------------------------------------------------------

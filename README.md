@@ -10,7 +10,7 @@ servicios públicos: **agua**, **baches** y **drenaje**. Es anónimo, está en e
 | Reporte | Cómo se reporta | Qué se ve en el mapa |
 |---|---|---|
 | 💧 **Agua** | Por colonia: sin agua · baja presión · agua sucia (mal olor, turbia, sedimentos, color extraño) · con agua | Cada colonia se pinta con el estado que más se reportó en 24 h: 🟥 sin agua · 🟧 baja presión · 🟪 sucia · 🟩 con agua · ⬜ sin reportes. En empate gana el más grave. |
-| 🕳️ **Bache** | Punto exacto (GPS o tocando el mapa) + tamaño, foto y comentario opcionales | Círculo amarillo (más grande si es más grande; borde rojo si es peligroso) |
+| 🕳️ **Bache** | Punto exacto (GPS o tocando el mapa) + tamaño, foto y comentario opcionales | Círculo por tamaño: 🟡 chico (menos de 45 cm) · 🟠 mediano (45–75 cm) · 🟤 grande (más de 75 cm); borde rojo si es peligroso |
 | 🚧 **Drenaje** | Punto exacto + tipo (tapado, aguas negras, sin tapa, mal olor) | Círculo café |
 | 💡 **Alumbrado** | Punto exacto + tipo (apagada o fundida, parpadea, poste dañado, cables expuestos) | Círculo celeste |
 | 🚶 **Banqueta** | Punto exacto + tipo (quebrada, incompleta, obstruida) | Círculo rosa |
@@ -36,6 +36,10 @@ celular en el parabrisas, mientras se maneja:
    cuadro se descarta.
 4. Se sube solo al mapa (con un recorte de foto). Si ya había un bache activo a **menos de 8 m**, se le suma la
    detección y se recalcula su tamaño.
+5. Cada bache medido queda en un **nivel** según su diámetro equivalente (el de un círculo con la misma área), con
+   los cortes de la norma ASTM D6433: **chico** menos de 45 cm (< 0.16 m²), **mediano** de 45 a 75 cm, **grande**
+   más de 75 cm (> 0.44 m²). Los mismos niveles que eligen los vecinos al reportar. La norma también usa la
+   profundidad, que la cámara no ve: el nivel es de tamaño, no de gravedad.
 
 Si el modelo tiene varias clases (p. ej. `pothole`, `manhole`, `grate`), solo se suben las que se llaman
 bache / pothole; las alcantarillas y rejillas se dibujan en azul, pero no cuentan.

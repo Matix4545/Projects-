@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { esLinea, tituloReporte } from "@/lib/constantes";
+import { esLinea, nivelBache, tituloReporte } from "@/lib/constantes";
 import { enviar, type Pin } from "@/lib/datos";
 import { urlFoto } from "@/lib/supabase/navegador";
 import { haceCuanto, horaLocal } from "@/lib/tiempo";
@@ -149,8 +149,17 @@ function MedidaCamara({ pin }: { pin: Pin }) {
   const vistas = pin.detecciones_camara ?? 0;
   if (pin.area_m2 == null && vistas === 0) return null;
   const cm = (m?: number | null) => (m == null ? null : `${Math.round(m * 100)}`);
+  const nivel = nivelBache(pin.area_m2);
   return (
     <div className="rounded-2xl bg-ios-fondo px-4 py-3 text-[15px]">
+      {nivel && (
+        <p className="mb-1 flex items-center gap-2 text-[13px] font-semibold">
+          <span className="rounded-full px-2.5 py-0.5 text-white" style={{ background: nivel.color, color: nivel.clave === "chico" ? "#3a2f00" : "white" }}>
+            {nivel.nombre}
+          </span>
+          <span className="font-normal text-ios-secundario">{nivel.rango} de diámetro</span>
+        </p>
+      )}
       {pin.area_m2 != null && (
         <p>
           <span className="text-[22px] font-bold tabular-nums">{pin.area_m2.toFixed(2)} m²</span>

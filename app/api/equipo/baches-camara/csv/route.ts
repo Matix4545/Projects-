@@ -1,3 +1,4 @@
+import { nivelBache } from "@/lib/constantes";
 import { sesionPanelValida } from "@/lib/panel";
 import { supabaseServidor } from "@/lib/supabase/servidor";
 
@@ -13,6 +14,7 @@ const COLUMNAS = [
   "lat",
   "lng",
   "area_m2",
+  "nivel",
   "area_sd_m2",
   "largo_m",
   "ancho_m",
@@ -45,7 +47,9 @@ export async function GET(req: Request) {
     console.error("exportar_detecciones_bache:", error.message);
     return new Response("Error al generar el archivo. ¿Ya corriste los .sql?", { status: 500 });
   }
-  const filas = (data as Record<string, unknown>[]).map((f) => COLUMNAS.map((c) => celda(f[c])).join(","));
+  const filas = (data as Record<string, unknown>[]).map((f) =>
+    COLUMNAS.map((c) => celda(c === "nivel" ? nivelBache(f.area_m2 as number | null)?.clave : f[c])).join(","),
+  );
   const csv = "﻿" + [COLUMNAS.join(","), ...filas].join("\r\n");
   const hoy = new Date().toISOString().slice(0, 10);
   return new Response(csv, {

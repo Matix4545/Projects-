@@ -17,7 +17,10 @@
   clase: 0.15 para ser candidato; bache 0.25, grieta 0.20, lo demás 0.35; 0.5 para subirlo al mapa.
 - **Medida de referencia** con una hoja carta (homografía de 4 puntos) para comprobar la medida de la
   cámara contra la realidad.
-- El mapa muestra el tamaño medido y en cuántos recorridos lo vio la cámara.
+- **Niveles de bache** por diámetro equivalente (rangos de ASTM D6433): chico (menos de 45 cm),
+  mediano (45–75 cm) y grande (más de 75 cm). En el mapa cada nivel tiene su color (amarillo,
+  naranja, café), también los que reportan los vecinos; el formulario explica los tamaños.
+- El mapa muestra el tamaño medido, el nivel y en cuántos recorridos lo vio la cámara.
 - `/estadisticas`: descarga de todas las detecciones en CSV.
 - Workflow **“Instalar modelo de baches”**: instala un modelo entrenado en Ultralytics Platform
   (`.onnx` o `.pt`) desde el repositorio o un enlace.

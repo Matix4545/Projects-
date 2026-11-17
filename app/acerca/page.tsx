@@ -128,6 +128,11 @@ export default function Acerca() {
         <li>
           Si ya había un bache reportado a menos de 8 m, se le suma la detección en lugar de crear otro.
         </li>
+        <li>
+          Cada bache queda en un nivel según su diámetro equivalente: <strong>chico</strong> (menos de 45 cm),{" "}
+          <strong>mediano</strong> (de 45 a 75 cm) o <strong>grande</strong> (más de 75 cm), los rangos de la norma ASTM
+          D6433. Es tamaño, no gravedad: la cámara no ve la profundidad.
+        </li>
       </ul>
       <p className="text-[13px] text-ios-secundario">
         La medida es aproximada (supone la calle plana) y no mide la profundidad. Solo se guarda un recorte del bache,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { NIVELES_BACHE, nivelBache } from "@/lib/constantes";
 import { COLOR_CLASE, MotorRugosidad, clasificar, resumir, type EstadoMedicion, type Tramo } from "@/lib/rugosidad";
 import { BloqueCamara, abrirCamara, pedirPermisoOrientacion, useAjustesCamara, useDetector } from "./AjustesCamara";
 import { CamaraBaches, type BacheSubido, type ControlCamara } from "./CamaraBaches";
@@ -262,6 +263,7 @@ export function Medidor() {
 
   const resumen = resumir(tramos);
   const bachesEnviados = baches.filter((b) => b.enviado).length;
+  const sinMedida = baches.filter((b) => b.area_m2 == null).length;
   const kmMedidos = (estado?.distancia_m ?? 0) / 1000;
 
   return (
@@ -349,10 +351,15 @@ export function Medidor() {
                 plataforma={plataforma()}
                 onBaches={setBaches}
               />
-              <div className="grid grid-cols-2 gap-2.5">
-                <Dato titulo="Baches detectados" valor={String(baches.length)} color="#ff3b30" />
-                <Dato titulo="Subidos al mapa" valor={String(bachesEnviados)} color="#34c759" />
+              <div className="grid grid-cols-3 gap-2.5">
+                {NIVELES_BACHE.map((n) => (
+                  <Dato key={n.clave} titulo={`${n.nombre}s`} valor={String(baches.filter((b) => nivelBache(b.area_m2)?.clave === n.clave).length)} color={n.color} />
+                ))}
               </div>
+              <p className="px-1 text-[14px] text-ios-secundario">
+                {baches.length} {baches.length === 1 ? "bache detectado" : "baches detectados"}
+                {sinMedida > 0 && ` (${sinMedida} sin medir)`} · {bachesEnviados} subidos al mapa
+              </p>
             </>
           )}
           <div className="rounded-3xl bg-white px-5 py-6 text-center">
@@ -435,37 +442,52 @@ export function Medidor() {
   );
 }
 
-/** Lista de baches que detectó la cámara en el recorrido */
+/** Baches que detectó la cámara en el recorrido, de los más grandes a los más chicos */
 function ResumenBaches({ baches }: { baches: BacheSubido[] }) {
   const nuevos = baches.filter((b) => b.nuevo).length;
   const medidos = baches.filter((b) => b.area_m2 != null);
   const total = medidos.reduce((s, b) => s + b.area_m2!, 0);
+  const ordenados = [...baches].sort((a, b) => (b.area_m2 ?? -1) - (a.area_m2 ?? -1));
   return (
-    <Bloque
-      titulo={`Baches con la cámara · ${baches.length}`}
-      sinRelleno
-      nota={
-        baches.length
-          ? `${nuevos} nuevos en el mapa; ${baches.filter((b) => b.enviado && !b.nuevo).length} ya estaban reportados y se les sumó la detección.${medidos.length ? ` Área total medida: ${total.toFixed(2)} m².` : ""}`
-          : "No se detectaron baches en este recorrido."
-      }
-    >
-      {baches.slice(-30).map((b, i) => (
-        <div key={i} className="flex items-center justify-between border-b border-ios-separador px-4 py-2.5 text-[15px] last:border-0">
-          <a
-            href={`https://www.google.com/maps?q=${b.lat.toFixed(6)},${b.lng.toFixed(6)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-ios-azul"
-          >
-            🕳️ {b.area_m2 != null ? `${b.area_m2.toFixed(2)} m²${b.area_sd != null ? ` ± ${b.area_sd.toFixed(2)}` : ""}` : "sin medida"}
-          </a>
-          <span className="text-[13px] text-ios-secundario">
-            {Math.round(b.confianza * 100)}% · {b.enviado ? (b.nuevo ? "nuevo" : "ya estaba") : "pendiente"}
-          </span>
-        </div>
-      ))}
-    </Bloque>
+    <>
+      <div className="grid grid-cols-3 gap-2.5">
+        {NIVELES_BACHE.map((n) => (
+          <Dato key={n.clave} titulo={`${n.nombre}s`} valor={String(medidos.filter((b) => nivelBache(b.area_m2)?.clave === n.clave).length)} color={n.color} />
+        ))}
+      </div>
+      <Bloque
+        titulo={`Baches con la cámara · ${baches.length}`}
+        sinRelleno
+        nota={
+          baches.length
+            ? `${nuevos} nuevos en el mapa; ${baches.filter((b) => b.enviado && !b.nuevo).length} ya estaban reportados y se les sumó la detección.${medidos.length ? ` Área total medida: ${total.toFixed(2)} m².` : ""} Chico: ${NIVELES_BACHE[0].rango}; mediano: ${NIVELES_BACHE[1].rango}; grande: ${NIVELES_BACHE[2].rango} (diámetro equivalente).`
+            : "No se detectaron baches en este recorrido."
+        }
+      >
+        {ordenados.slice(0, 40).map((b, i) => {
+          const n = nivelBache(b.area_m2);
+          return (
+            <div key={i} className="flex items-center justify-between gap-2 border-b border-ios-separador px-4 py-2.5 text-[15px] last:border-0">
+              <a
+                href={`https://www.google.com/maps?q=${b.lat.toFixed(6)},${b.lng.toFixed(6)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 text-ios-azul"
+              >
+                <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: n?.color ?? "#d1d1d6" }} />
+                <span>
+                  <span className="font-medium text-ios-etiqueta">{n ? n.nombre : "Sin medir"}</span>{" "}
+                  {b.area_m2 != null && `${b.area_m2.toFixed(2)} m²${b.area_sd != null ? ` ± ${b.area_sd.toFixed(2)}` : ""}`}
+                </span>
+              </a>
+              <span className="shrink-0 text-[13px] text-ios-secundario">
+                {Math.round(b.confianza * 100)}% · {b.enviado ? (b.nuevo ? "nuevo" : "ya estaba") : "pendiente"}
+              </span>
+            </div>
+          );
+        })}
+      </Bloque>
+    </>
   );
 }
 

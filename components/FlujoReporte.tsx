@@ -15,6 +15,7 @@ import {
   type DetalleSucia,
   type EstadoAgua,
   type TipoPin,
+  NIVELES_BACHE,
 } from "@/lib/constantes";
 import { enviar, zonaDePunto } from "@/lib/datos";
 import { largoM, puntoMedio } from "@/lib/tramos";
@@ -343,6 +344,11 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
                   />
                 ))}
               </div>
+              {paso === "bache" && (
+                <p className="px-1 text-[13px] text-ios-secundario">
+                  {NIVELES_BACHE.map((n) => `${n.nombre}: ${n.rango}`).join(" · ")}. Una llanta mide unos 60 cm.
+                </p>
+              )}
             </>
           )}
 

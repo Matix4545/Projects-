@@ -18,11 +18,11 @@ import {
   rumboEntre,
   sueloALatLng,
   sueloAPixel,
-  tamanoPorArea,
   type Px,
   type Suelo,
   type Vec3,
 } from "../lib/baches/geometria.ts";
+import { colorBache, diametroEquivalenteCm, nivelBache } from "../lib/constantes.ts";
 
 const cerca = (a: number, b: number, tol: number, msg?: string) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ""} ${a} ≉ ${b} (±${tol})`);
 
@@ -139,12 +139,16 @@ test("del piso al mapa", () => {
   cerca(rumboEntre(origen, p), 90 + (Math.atan2(2, 10) * 180) / Math.PI, 0.01);
 });
 
-test("tamaño por área", () => {
-  assert.equal(tamanoPorArea(0.1), "chico");
-  assert.equal(tamanoPorArea(0.35), "mediano");
-  assert.equal(tamanoPorArea(1.4), "grande");
-  assert.equal(tamanoPorArea(4), "peligroso");
-  assert.equal(tamanoPorArea(null), "mediano");
+test("niveles: chico < 45 cm ≤ mediano < 75 cm ≤ grande (diámetro equivalente)", () => {
+  assert.equal(nivelBache(0.1)?.clave, "chico"); // 36 cm
+  assert.equal(nivelBache(0.158)?.clave, "chico"); // 44.9 cm
+  assert.equal(nivelBache(0.16)?.clave, "mediano"); // 45.1 cm
+  assert.equal(nivelBache(0.3517)?.clave, "mediano"); // el bache de InGeniia: 67 cm
+  assert.equal(nivelBache(0.45)?.clave, "grande"); // 75.7 cm
+  assert.equal(nivelBache(4)?.clave, "grande");
+  assert.equal(nivelBache(null), null);
+  assert.ok(Math.abs(diametroEquivalenteCm(Math.PI * 0.25 ** 2) - 50) < 1e-9);
+  assert.equal(colorBache("peligroso"), colorBache("grande"));
 });
 
 test("medida de referencia: una hoja carta en la foto basta para medir el bache", () => {

@@ -386,17 +386,18 @@ as $$
   )
 $$;
 
--- Tamaño de un bache para el mapa a partir del área medida (igual que lib/baches/geometria.ts)
+-- Nivel de un bache a partir del área medida (igual que nivelBache en lib/constantes.ts):
+-- diámetro equivalente < 45 cm chico, < 75 cm mediano, si no grande (rangos de ASTM D6433).
+-- Sin área medida queda como mediano.
 create or replace function public._tamano_bache(p_area real)
 returns text
 language sql immutable
 as $$
   select case
-    when p_area is null then 'mediano'
-    when p_area < 0.25  then 'chico'
-    when p_area < 1     then 'mediano'
-    when p_area < 2.5   then 'grande'
-    else 'peligroso'
+    when p_area is null                    then 'mediano'
+    when 2 * sqrt(p_area / pi()) < 0.45    then 'chico'
+    when 2 * sqrt(p_area / pi()) < 0.75    then 'mediano'
+    else 'grande'
   end
 $$;
 

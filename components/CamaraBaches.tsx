@@ -17,6 +17,7 @@ import {
   type Vec3,
 } from "@/lib/baches/geometria";
 import type { Detector } from "@/lib/baches/modelo";
+import { nivelBache } from "@/lib/constantes";
 import { Movimiento } from "@/lib/baches/movimiento";
 import { Orientacion } from "@/lib/baches/sensores";
 import { Seguimiento, type BacheConfirmado } from "@/lib/baches/seguimiento";
@@ -381,25 +382,31 @@ function dibujar(
       ctx.fillText(texto, x + 5, Math.max(0, y - 18) + 12);
       return;
     }
-    const ok = m?.enZona;
+    // Medido: color de su nivel (chico, mediano, grande). Sin medir todavía: blanco punteado
+    const nivel = m?.enZona ? nivelBache(m.area_m2) : null;
+    const color = nivel?.color ?? "#e5e5ea";
     ctx.beginPath();
     b.contorno.forEach((p, j) => (j ? ctx.lineTo(...px(p)) : ctx.moveTo(...px(p))));
     ctx.closePath();
-    ctx.fillStyle = ok ? "rgba(255,59,48,0.32)" : "rgba(255,149,0,0.22)";
+    ctx.fillStyle = `${color}${nivel ? "66" : "2e"}`;
     ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = ok ? "#ff3b30" : "#ff9500";
+    ctx.lineWidth = nivel ? 2.5 : 1.5;
+    ctx.strokeStyle = color;
+    if (!nivel) ctx.setLineDash([5, 4]);
     ctx.stroke();
-    const etiqueta = `BACHE ${Math.round(b.confianza * 100)}% · ${
-      !m ? "sin medida" : ok ? `${m.area_m2.toFixed(2)} m²` : { lejos: "lejos", cerca: "cerca", rasante: "lejos", borde: "cortado", chico: "chico" }[m.motivo!]
-    }`;
+    ctx.setLineDash([]);
+    const etiqueta = nivel
+      ? `${nivel.nombre.toUpperCase()} · ${m!.area_m2.toFixed(2)} m² · ${Math.round(b.confianza * 100)}%`
+      : `BACHE ${Math.round(b.confianza * 100)}% · ${
+          !m ? "sin medida" : { lejos: "midiendo…", cerca: "muy cerca", rasante: "midiendo…", borde: "cortado", chico: "muy lejos" }[m.motivo!]
+        }`;
     const [x, y] = px([b.caja[0], b.caja[1]]);
     ctx.font = "600 11px ui-monospace, monospace";
     const ancho = ctx.measureText(etiqueta).width + 10;
     const ty = Math.max(0, y - 18);
     ctx.fillStyle = "rgba(0,0,0,0.65)";
     ctx.fillRect(x, ty, ancho, 16);
-    ctx.fillStyle = ok ? "#ff6b61" : "#ffb340";
+    ctx.fillStyle = color;
     ctx.fillText(etiqueta, x + 5, ty + 12);
   });
 }
