@@ -148,7 +148,9 @@ test("niveles: chico < 45 cm ≤ mediano < 75 cm ≤ grande (diámetro equivalen
   assert.equal(nivelBache(4)?.clave, "grande");
   assert.equal(nivelBache(null), null);
   assert.ok(Math.abs(diametroEquivalenteCm(Math.PI * 0.25 ** 2) - 50) < 1e-9);
-  assert.equal(colorBache("peligroso"), colorBache("grande"));
+  // Grande rojo, mediano amarillo, chico verde
+  assert.deepEqual(["chico", "mediano", "grande"].map(colorBache), ["#16a34a", "#facc15", "#dc2626"]);
+  assert.notEqual(colorBache("peligroso"), colorBache("grande"));
 });
 
 test("medida de referencia: una hoja carta en la foto basta para medir el bache", () => {

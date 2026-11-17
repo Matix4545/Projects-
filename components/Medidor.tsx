@@ -263,6 +263,7 @@ export function Medidor() {
 
   const resumen = resumir(tramos);
   const bachesEnviados = baches.filter((b) => b.enviado).length;
+  const enElMapa = baches.filter((b) => b.enviado && b.publicado !== false).length;
   const sinMedida = baches.filter((b) => b.area_m2 == null).length;
   const kmMedidos = (estado?.distancia_m ?? 0) / 1000;
 
@@ -358,7 +359,7 @@ export function Medidor() {
               </div>
               <p className="px-1 text-[14px] text-ios-secundario">
                 {baches.length} {baches.length === 1 ? "bache detectado" : "baches detectados"}
-                {sinMedida > 0 && ` (${sinMedida} sin medir)`} · {bachesEnviados} subidos al mapa
+                {sinMedida > 0 && ` (${sinMedida} sin medir: solo se suman a un bache que ya esté en el mapa)`} · {enElMapa} en el mapa
               </p>
             </>
           )}
@@ -460,7 +461,7 @@ function ResumenBaches({ baches }: { baches: BacheSubido[] }) {
         sinRelleno
         nota={
           baches.length
-            ? `${nuevos} nuevos en el mapa; ${baches.filter((b) => b.enviado && !b.nuevo).length} ya estaban reportados y se les sumó la detección.${medidos.length ? ` Área total medida: ${total.toFixed(2)} m².` : ""} Chico: ${NIVELES_BACHE[0].rango}; mediano: ${NIVELES_BACHE[1].rango}; grande: ${NIVELES_BACHE[2].rango} (diámetro equivalente).`
+            ? `${nuevos} nuevos en el mapa; ${baches.filter((b) => b.enviado && !b.nuevo && b.publicado !== false).length} ya estaban reportados y se les sumó la detección.${baches.some((b) => b.publicado === false) ? ` ${baches.filter((b) => b.publicado === false).length} no se subieron: no se pudieron medir y no había un bache reportado ahí.` : ""}${medidos.length ? ` Área total medida: ${total.toFixed(2)} m².` : ""} Chico: ${NIVELES_BACHE[0].rango}; mediano: ${NIVELES_BACHE[1].rango}; grande: ${NIVELES_BACHE[2].rango} (diámetro equivalente).`
             : "No se detectaron baches en este recorrido."
         }
       >
@@ -478,10 +479,12 @@ function ResumenBaches({ baches }: { baches: BacheSubido[] }) {
                 <span>
                   <span className="font-medium text-ios-etiqueta">{n ? n.nombre : "Sin medir"}</span>{" "}
                   {b.area_m2 != null && `${b.area_m2.toFixed(2)} m²${b.area_sd != null ? ` ± ${b.area_sd.toFixed(2)}` : ""}`}
+                  {b.calle && <span className="block text-[13px] text-ios-secundario">{b.calle}</span>}
                 </span>
               </a>
               <span className="shrink-0 text-[13px] text-ios-secundario">
-                {Math.round(b.confianza * 100)}% · {b.enviado ? (b.nuevo ? "nuevo" : "ya estaba") : "pendiente"}
+                {Math.round(b.confianza * 100)}% ·{" "}
+                {!b.enviado ? "pendiente" : b.publicado === false ? "no se subió" : b.nuevo ? "nuevo" : "ya estaba"}
               </span>
             </div>
           );

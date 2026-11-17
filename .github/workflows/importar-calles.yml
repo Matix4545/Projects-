@@ -1,0 +1,52 @@
+# Descarga las calles de Cajeme de OpenStreetMap y las sube a Supabase (tabla "calles").
+# Con ellas, cada bache que detecta la cámara se acomoda dentro de la calle por la que iba el
+# vehículo y se guarda el nombre de la calle. Conviene correrlo de nuevo cada pocos meses.
+# Se corre a mano: GitHub → pestaña "Actions" → "Importar calles" → "Run workflow".
+# Necesita los secretos NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (los mismos de "Importar colonias").
+name: Importar calles
+
+on:
+  workflow_dispatch:
+    inputs:
+      solo_revisar:
+        description: "Solo revisar: descarga y muestra el resumen SIN cambiar la base de datos"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Importar calles y subirlas a Supabase
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SOLO_REVISAR: ${{ inputs.solo_revisar }}
+        run: |
+          if [ "$SOLO_REVISAR" = "true" ]; then
+            npm run importar-calles -- --sin-subir
+          else
+            npm run importar-calles
+          fi
+
+      - name: Guardar el mapa de calles para revisarlo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: calles
+          path: data/calles.geojson
+          if-no-files-found: ignore

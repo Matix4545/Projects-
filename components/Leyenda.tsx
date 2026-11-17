@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Equis } from "./HojaInferior";
-import { COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, TIPOS_PIN, esLinea, textoPeriodo, NIVELES_BACHE } from "@/lib/constantes";
+import { COLOR_ARREGLADO, COLOR_ESTADO, INFO_PIN, TIPOS_PIN, esLinea, textoPeriodo, NIVELES_BACHE, COLOR_BACHE_PELIGROSO } from "@/lib/constantes";
 
 const FILAS: [string, string, "zona" | "pin" | "linea"][] = [
   [COLOR_ESTADO.sin_agua, "Sin agua", "zona"],
@@ -12,7 +12,10 @@ const FILAS: [string, string, "zona" | "pin" | "linea"][] = [
   [COLOR_ESTADO.ninguno, "Sin reportes en el periodo", "zona"],
   ...TIPOS_PIN.flatMap((t): [string, string, "pin" | "linea"][] =>
     t === "bache"
-      ? NIVELES_BACHE.map((n): [string, string, "pin"] => [n.color, `${INFO_PIN.bache.emoji} Bache ${n.nombre.toLowerCase()} (${n.rango})`, "pin"])
+      ? [
+          ...NIVELES_BACHE.map((n): [string, string, "pin"] => [n.color, `${INFO_PIN.bache.emoji} Bache ${n.nombre.toLowerCase()} (${n.rango})`, "pin"]),
+          [COLOR_BACHE_PELIGROSO, `${INFO_PIN.bache.emoji} Bache peligroso`, "pin"],
+        ]
       : [[INFO_PIN[t].color, `${INFO_PIN[t].emoji} ${INFO_PIN[t].nombre}`, esLinea(t) ? "linea" : "pin"]],
   ),
   [COLOR_ARREGLADO, "Ya lo arreglaron", "pin"],

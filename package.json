@@ -14,6 +14,7 @@
     "importar-zonas": "node scripts/importar-zonas.mjs",
     "importar-secciones": "node scripts/importar-secciones.mjs",
     "importar-localidades": "node scripts/importar-localidades.mjs",
+    "importar-calles": "node scripts/importar-calles.mjs",
     "instalar-modelo": "node scripts/instalar-modelo.mjs"
   },
   "engines": {

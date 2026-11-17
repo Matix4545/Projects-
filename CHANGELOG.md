@@ -18,8 +18,14 @@
 - **Medida de referencia** con una hoja carta (homografía de 4 puntos) para comprobar la medida de la
   cámara contra la realidad.
 - **Niveles de bache** por diámetro equivalente (rangos de ASTM D6433): chico (menos de 45 cm),
-  mediano (45–75 cm) y grande (más de 75 cm). En el mapa cada nivel tiene su color (amarillo,
-  naranja, café), también los que reportan los vecinos; el formulario explica los tamaños.
+  mediano (45–75 cm) y grande (más de 75 cm), los mismos tamaños que ya usan los vecinos. En el mapa:
+  **chico verde, mediano amarillo, grande rojo** (peligroso rojo oscuro); el formulario explica los tamaños.
+- Un bache de la cámara se publica como un reporte normal ("Bache mediano"…). Si no se pudo medir no se
+  publica; si cae sobre uno ya reportado, su tamaño pasa a ser el medido (salvo "peligroso").
+- **Ubicación con GPS más precisa:** la posición de cada cuadro se interpola entre lecturas del GPS (con la
+  hora de cada lectura); el bache se acomoda dentro de la calle por la que iba el vehículo (calles de
+  OpenStreetMap, workflow **"Importar calles"**), se guarda el nombre de la calle y cada pasada afina su
+  ubicación.
 - El mapa muestra el tamaño medido, el nivel y en cuántos recorridos lo vio la cámara.
 - `/estadisticas`: descarga de todas las detecciones en CSV.
 - Workflow **“Instalar modelo de baches”**: instala un modelo entrenado en Ultralytics Platform

@@ -10,7 +10,7 @@ servicios públicos: **agua**, **baches** y **drenaje**. Es anónimo, está en e
 | Reporte | Cómo se reporta | Qué se ve en el mapa |
 |---|---|---|
 | 💧 **Agua** | Por colonia: sin agua · baja presión · agua sucia (mal olor, turbia, sedimentos, color extraño) · con agua | Cada colonia se pinta con el estado que más se reportó en 24 h: 🟥 sin agua · 🟧 baja presión · 🟪 sucia · 🟩 con agua · ⬜ sin reportes. En empate gana el más grave. |
-| 🕳️ **Bache** | Punto exacto (GPS o tocando el mapa) + tamaño, foto y comentario opcionales | Círculo por tamaño: 🟡 chico (menos de 45 cm) · 🟠 mediano (45–75 cm) · 🟤 grande (más de 75 cm); borde rojo si es peligroso |
+| 🕳️ **Bache** | Punto exacto (GPS o tocando el mapa) + tamaño, foto y comentario opcionales | Círculo por tamaño: 🟢 chico (menos de 45 cm) · 🟡 mediano (45–75 cm) · 🔴 grande (más de 75 cm); peligroso en rojo oscuro con borde rojo |
 | 🚧 **Drenaje** | Punto exacto + tipo (tapado, aguas negras, sin tapa, mal olor) | Círculo café |
 | 💡 **Alumbrado** | Punto exacto + tipo (apagada o fundida, parpadea, poste dañado, cables expuestos) | Círculo celeste |
 | 🚶 **Banqueta** | Punto exacto + tipo (quebrada, incompleta, obstruida) | Círculo rosa |
@@ -34,8 +34,18 @@ celular en el parabrisas, mientras se maneja:
    (3–14 m adelante y sin tocar el borde de la imagen).
 3. El mismo bache aparece en varios cuadros: se juntan y se publica la **mediana**. Una detección vista en un solo
    cuadro se descarta.
-4. Se sube solo al mapa (con un recorte de foto). Si ya había un bache activo a **menos de 8 m**, se le suma la
-   detección y se recalcula su tamaño.
+4. Se sube solo al mapa como un reporte de bache normal (con un recorte de foto): un bache mediano queda como
+   **"Bache mediano"**, igual que si lo reportara un vecino. Si ya había un bache activo a **menos de 8 m**, se le
+   suma la detección y su tamaño pasa a ser el medido (salvo "peligroso", que lo deciden los vecinos). Un bache que
+   no se pudo medir **no se publica** (no se sabe si es chico, mediano o grande); solo se suma a uno que ya exista.
+   - **Ubicación con GPS lo más precisa posible:** cada cuadro de video toma la posición del GPS *interpolada* entre
+     la lectura anterior y la siguiente, con la hora en que se tomó cada lectura (no se adivina con la velocidad), y
+     el bache se ubica a la distancia y del lado que midió la cámara. Las lecturas con más de ±20 m de error no se
+     usan.
+   - **En la calle:** si por el error del GPS el bache quedó fuera del ancho de la calle por la que iba el vehículo
+     (calles de OpenStreetMap, ver "Calles para ubicar los baches"), se mueve hacia adentro hasta la orilla; en una
+     esquina se elige la calle según hacia dónde iba. Se guarda el nombre de la calle.
+   - Cada pasada por el mismo bache afina su ubicación (promedio de todas sus detecciones).
 5. Cada bache medido queda en un **nivel** según su diámetro equivalente (el de un círculo con la misma área), con
    los cortes de la norma ASTM D6433: **chico** menos de 45 cm (< 0.16 m²), **mediano** de 45 a 75 cm, **grande**
    más de 75 cm (> 0.44 m²). Los mismos niveles que eligen los vecinos al reportar. La norma también usa la
@@ -280,6 +290,17 @@ También se puede instalar a mano: `npm run instalar-modelo -- ruta/al/best.onnx
 
 > ⚠️ Ultralytics YOLO tiene licencia **AGPL-3.0**: si usas sus modelos, el código de la app debe seguir siendo
 > público (este repositorio lo es) o se necesita una licencia empresarial de Ultralytics.
+
+### Calles para ubicar los baches (OpenStreetMap)
+Para que la cámara acomode cada bache dentro de su calle y guarde el nombre de la calle, carga las calles del
+municipio una vez (y cada pocos meses, para tener las nuevas):
+
+1. En Supabase → SQL Editor corre `01_esquema.sql`, `02_funciones.sql` y `03_seguridad.sql`.
+2. GitHub → **Actions → Importar calles → Run workflow** (usa los mismos secretos que "Importar colonias").
+   O en tu computadora: `npm run importar-calles`.
+
+Sin calles cargadas todo funciona igual, solo que el bache queda donde lo puso el GPS y sin nombre de calle.
+Si falta una calle o tiene mal el nombre, se puede corregir en <https://www.openstreetmap.org> y volver a importar.
 
 ### Reporte ejecutivo (panel privado)
 En `https://<tu-dominio>/panel` hay un resumen con números clave, reportes por día y por tipo, colonias con más

@@ -72,7 +72,7 @@ export function PanelPin({
             pin={{ ...pin, estado: conteos.estado, arreglado_en: pin.arreglado_en ?? (arreglado ? new Date().toISOString() : null) }}
           />
           <p className="text-[15px] text-ios-secundario">
-            {[pin.colonia, horaLocal(pin.creado_en), conteos.confirmaciones > 0 ? `+${conteos.confirmaciones} lo confirman` : null]
+            {[pin.calle, pin.colonia, horaLocal(pin.creado_en), conteos.confirmaciones > 0 ? `+${conteos.confirmaciones} lo confirman` : null]
               .filter(Boolean)
               .join(" · ")}
           </p>
@@ -80,7 +80,7 @@ export function PanelPin({
         ) : (
           <>
             <p className="text-[15px] text-ios-secundario">
-              {pin.colonia ? `${pin.colonia} · ` : ""}Reportado {haceCuanto(pin.creado_en)} ({horaLocal(pin.creado_en)})
+              {[pin.calle, pin.colonia].filter(Boolean).map((x) => `${x} · `).join("")}Reportado {haceCuanto(pin.creado_en)} ({horaLocal(pin.creado_en)})
             </p>
             {arreglado && (
               <p className="rounded-xl bg-ios-verde/12 px-3 py-2.5 text-[15px] font-medium text-[#248a3d]">

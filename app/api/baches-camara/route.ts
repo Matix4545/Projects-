@@ -29,6 +29,8 @@ const Bache = z.object({
   cuadros: z.number().int().min(1).max(10_000),
   medidas: z.number().int().min(0).max(10_000),
   distancia_m: Num(0, 200),
+  rumbo: Num(0, 360).nullable().optional(),
+  precision_m: Num(0, 200).nullable().optional(),
   foto: z.string().regex(/^foto_\d{1,2}$/).nullable(),
 });
 const Lote = z.object({
@@ -66,7 +68,7 @@ export async function POST(req: Request) {
   if (errCupo) return error("Error al guardar. Intenta más tarde.", 500);
   if (!hayCupo) return error("Se llegó al límite de baches de hoy.", 429);
 
-  const resultados: { pin_id: number | null; nuevo: boolean; error?: string }[] = [];
+  const resultados: { pin_id: number | null; nuevo: boolean; calle?: string | null; error?: string }[] = [];
   for (const b of lote.baches) {
     if (!dentroDeCajeme(b.lat, b.lng)) {
       resultados.push({ pin_id: null, nuevo: false, error: "fuera de Cajeme" });
@@ -103,6 +105,8 @@ export async function POST(req: Request) {
         cuadros: b.cuadros,
         medidas: b.medidas,
         distancia_m: b.distancia_m,
+        rumbo: b.rumbo ?? null,
+        precision_m: b.precision_m ?? null,
         foto_ruta: fotoRuta,
         modelo: lote.modelo,
         altura_m: lote.altura_m,
@@ -115,8 +119,9 @@ export async function POST(req: Request) {
       if (fotoRuta) await db.storage.from("fotos").remove([fotoRuta]);
       return error("Error al guardar. ¿Ya corriste los .sql nuevos?", 500);
     }
-    const d = data as { pin_id: number; nuevo: boolean };
-    resultados.push({ pin_id: d.pin_id, nuevo: d.nuevo });
+    // pin_id null: no se pudo medir y no había un bache ahí, así que no se publica (solo queda la detección)
+    const d = data as { pin_id: number | null; nuevo: boolean; calle: string | null };
+    resultados.push({ pin_id: d.pin_id, nuevo: d.nuevo, calle: d.calle });
   }
   return ok({ resultados });
 }

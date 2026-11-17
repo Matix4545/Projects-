@@ -20,6 +20,10 @@ export type Observacion<F = unknown> = {
   ancho_m: number | null;
   /** Foto u otro dato de este cuadro (se guarda el del mejor cuadro) */
   foto?: F;
+  /** Rumbo del vehículo (grados): sirve para acomodar el bache en la calle por la que iba */
+  rumbo?: number;
+  /** Precisión del GPS en ese instante (m) */
+  precision?: number;
 };
 
 export type BacheConfirmado<F = unknown> = {
@@ -37,6 +41,9 @@ export type BacheConfirmado<F = unknown> = {
   medidas: number;
   distancia_m: number;
   foto?: F;
+  rumbo: number | null;
+  /** Mediana de la precisión del GPS en sus cuadros (m) */
+  precision_m: number | null;
 };
 
 export const OPCIONES_SEGUIMIENTO = {
@@ -138,6 +145,8 @@ export class Seguimiento<F = unknown> {
       medidas: buenas.length,
       distancia_m: r2(mediana((buenas.length ? buenas : p.obs).map((o) => o.distancia))),
       foto: mejor.foto,
+      rumbo: mejor.rumbo ?? null,
+      precision_m: p.obs.some((o) => o.precision != null) ? r2(mediana(p.obs.flatMap((o) => (o.precision != null ? [o.precision] : [])))) : null,
     });
   }
 

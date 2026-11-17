@@ -126,7 +126,13 @@ export default function Acerca() {
           grado cambia mucho la distancia. El área publicada es la mediana de varios cuadros.
         </li>
         <li>
-          Si ya había un bache reportado a menos de 8 m, se le suma la detección en lugar de crear otro.
+          Su ubicación sale del GPS en el instante exacto de ese cuadro, más la distancia y el lado a los que lo vio la
+          cámara. Si por el error del GPS quedó fuera de la calle por la que iba el vehículo (calles de OpenStreetMap), se
+          acomoda dentro de ella. Cada pasada afina la ubicación.
+        </li>
+        <li>
+          Si ya había un bache reportado a menos de 8 m, se le suma la detección en lugar de crear otro. Si no se pudo
+          medir, no se publica.
         </li>
         <li>
           Cada bache queda en un nivel según su diámetro equivalente: <strong>chico</strong> (menos de 45 cm),{" "}

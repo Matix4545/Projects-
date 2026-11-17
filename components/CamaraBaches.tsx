@@ -18,9 +18,9 @@ import {
 } from "@/lib/baches/geometria";
 import type { Detector } from "@/lib/baches/modelo";
 import { nivelBache } from "@/lib/constantes";
-import { Movimiento } from "@/lib/baches/movimiento";
+import { Movimiento, ahora, horaDeLectura } from "@/lib/baches/movimiento";
 import { Orientacion } from "@/lib/baches/sensores";
-import { Seguimiento, type BacheConfirmado } from "@/lib/baches/seguimiento";
+import { Seguimiento, type BacheConfirmado, type Observacion } from "@/lib/baches/seguimiento";
 import { clasesDeBache, type Bache } from "@/lib/baches/yolo";
 
 /** Lo que se ve y se sube de cada bache confirmado */
@@ -32,6 +32,10 @@ export type BacheSubido = {
   confianza: number;
   enviado: boolean;
   nuevo?: boolean;
+  /** false: no se subió al mapa porque no se pudo medir y no había un bache ahí */
+  publicado?: boolean;
+  /** Calle donde quedó (de OpenStreetMap) */
+  calle?: string | null;
 };
 
 export type ControlCamara = {
@@ -42,6 +46,13 @@ export type ControlCamara = {
 type Pendiente = Omit<BacheConfirmado<HTMLCanvasElement>, "pos" | "foto"> & { lat: number; lng: number; foto: Blob | null; i: number };
 
 const ENVIO_CADA_MS = 20_000;
+/** Precisión mínima del GPS para ubicar baches (m) */
+const PRECISION_MAX_M = 20;
+/** Un cuadro espera a la siguiente lectura del GPS para interpolar su posición, hasta este tiempo (s) */
+const ESPERA_GPS_S = 1.5;
+
+/** Lo que se midió de un bache en un cuadro, antes de saber dónde iba el vehículo */
+type Medicion = Omit<Observacion<HTMLCanvasElement>, "t" | "pos" | "rumbo" | "precision"> & { centro: [number, number] };
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -74,13 +85,16 @@ export function CamaraBaches({
   const lienzo = useRef<HTMLCanvasElement>(null);
   const [fps, setFps] = useState(0);
   const [pose, setPose] = useState<{ pitch: number; roll: number } | null>(null);
-  const [gpsOk, setGpsOk] = useState(false);
+  const [gps, setGps] = useState<number | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [descartados, setDescartados] = useState(0);
 
   const seguimiento = useRef(new Seguimiento<HTMLCanvasElement>(detector.info.confirmar ? { minConfianza: detector.info.confirmar } : {}));
   const orientacion = useRef(new Orientacion());
   const movimiento = useRef(new Movimiento());
+  /** Cuadros con baches esperando la siguiente lectura del GPS */
+  const pendientes = useRef<{ t: number; items: Medicion[] }[]>([]);
+  const procesar = useRef<(final?: boolean) => void>(() => {});
   const origen = useRef<[number, number] | null>(null);
   const cola = useRef<Pendiente[]>([]);
   const subidos = useRef<BacheSubido[]>([]);
@@ -121,6 +135,8 @@ export function CamaraBaches({
               cuadros: b.cuadros,
               medidas: b.medidas,
               distancia_m: b.distancia_m,
+              rumbo: b.rumbo,
+              precision_m: b.precision_m,
               foto: b.foto ? `foto_${k}` : null,
             })),
           }),
@@ -132,12 +148,15 @@ export function CamaraBaches({
           break;
         }
         if (!res.ok) throw new Error(String(res.status));
-        const r = (await res.json()) as { resultados?: { nuevo: boolean }[] };
+        const r = (await res.json()) as { resultados?: { pin_id: number | null; nuevo: boolean; calle?: string | null }[] };
         lote.forEach((b, k) => {
           const s = subidos.current[b.i];
+          const x = r.resultados?.[k];
           if (s) {
             s.enviado = true;
-            s.nuevo = r.resultados?.[k]?.nuevo;
+            s.nuevo = x?.nuevo;
+            s.publicado = x ? x.pin_id != null : undefined;
+            s.calle = x?.calle ?? null;
           }
         });
         cola.current = cola.current.slice(lote.length);
@@ -166,6 +185,7 @@ export function CamaraBaches({
   useImperativeHandle(ref, () => ({
     async terminar() {
       vivo.current = false;
+      procesar.current(true);
       await encolar(seguimiento.current.terminar());
       for (let intento = 0; intento < 3 && cola.current.length; intento++) {
         await enviarCola(intento === 2);
@@ -188,21 +208,40 @@ export function CamaraBaches({
     const vigia = navigator.geolocation.watchPosition(
       (p) => {
         const { latitude: lat, longitude: lng, speed, heading, accuracy } = p.coords;
-        if (accuracy > 30) {
-          setGpsOk(false);
-          return;
-        }
-        movimiento.current.lectura(lat, lng, performance.now() / 1000, speed, heading);
-        setGpsOk(true);
+        setGps(Math.round(accuracy));
+        if (accuracy > PRECISION_MAX_M) return;
+        // La hora en que se tomó la lectura, para interpolar la posición de cada cuadro
+        movimiento.current.lectura(lat, lng, horaDeLectura(p.timestamp), speed, heading, accuracy);
       },
-      () => setGpsOk(false),
+      () => setGps(null),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
     );
 
     const intervalo = setInterval(() => enviarCola(), ENVIO_CADA_MS);
 
-    /** Dónde iba la cámara en el instante t (la última lectura del GPS más lo que avanzó) */
-    const posicionEn = (t: number) => movimiento.current.posicionEn(t);
+    /**
+     * Ubica en el mapa los cuadros que ya tienen la lectura del GPS siguiente (posición interpolada)
+     * o que ya esperaron demasiado (extrapolada), en orden, y los pasa al seguimiento.
+     */
+    procesar.current = (final = false) => {
+      const cola = pendientes.current;
+      const tActual = ahora();
+      while (cola.length) {
+        const c = cola[0];
+        if (!final && !movimiento.current.cubre(c.t) && tActual - c.t < ESPERA_GPS_S) break;
+        cola.shift();
+        const pos = movimiento.current.posicionEn(c.t);
+        if (!pos) continue;
+        const obs: Observacion<HTMLCanvasElement>[] = c.items.map(({ centro, ...m }) => {
+          const [lat, lng] = sueloALatLng(centro, pos.lat, pos.lng, pos.rumbo);
+          origen.current ??= [lat, lng];
+          return { ...m, t: c.t, pos: aLocal([lat, lng], origen.current), rumbo: pos.rumbo, precision: pos.precision };
+        });
+        seguimiento.current.agregar(obs, c.t);
+      }
+      // Cierra lo que ya se dejó de ver (con el margen de los cuadros que aún esperan al GPS)
+      encolar(seguimiento.current.tomar(final ? undefined : tActual - ESPERA_GPS_S));
+    };
 
     // El cuadro que se analiza se congela aquí: el modelo, el recorte y el dibujo usan la misma imagen
     // (el video sigue avanzando mientras el modelo trabaja)
@@ -236,7 +275,8 @@ export function CamaraBaches({
           await esperar(250);
           continue;
         }
-        const t = performance.now() / 1000;
+        const t = ahora(); // misma escala que las lecturas del GPS
+        const tSensor = performance.now() / 1000;
         const vw = v.videoWidth;
         const vh = v.videoHeight;
         let res: Bache[];
@@ -251,22 +291,18 @@ export function CamaraBaches({
           continue;
         }
         const { alturaM: h, fovLargo: fov, abajoRespaldo: respaldo } = params.current;
-        const enVivo = t - orientacion.current.ultima < 2 ? orientacion.current.abajo() : null;
+        const enVivo = tSensor - orientacion.current.ultima < 2 ? orientacion.current.abajo() : null;
         const g = enVivo ?? respaldo;
         const cam = camaraDesdeFov(vw, vh, fov);
         const ejes = g ? ejesSuelo(g) : null;
-        const pos = posicionEn(t);
         const medidas: (Medida | null)[] = [];
-        const obs = [];
+        const items: Medicion[] = [];
         for (const b of res) {
           const m = g ? medirContorno(b.contorno, cam, g, h) : null;
           medidas.push(m);
-          if (!m || !pos || !esBache(b)) continue;
-          const [lat, lng] = sueloALatLng(m.centro, pos.lat, pos.lng, pos.rumbo);
-          origen.current ??= [lat, lng];
-          obs.push({
-            t,
-            pos: aLocal([lat, lng], origen.current),
+          if (!m || !esBache(b)) continue;
+          items.push({
+            centro: m.centro,
             distancia: m.centro[1],
             confianza: b.confianza,
             area_m2: m.enZona ? m.area_m2 : null,
@@ -275,16 +311,16 @@ export function CamaraBaches({
             foto: m.enZona || m.centro[1] < ZONA_DULCE.maxM ? recortar(b.caja, vw, vh) : undefined,
           });
         }
-        seguimiento.current.agregar(obs, t);
-        encolar(seguimiento.current.tomar(t));
+        if (items.length) pendientes.current.push({ t, items });
+        procesar.current();
         dibujar(lienzo.current, cuadro, vw, vh, cam, ejes, h, res, medidas, (b) => (esBache(b) ? null : (detector.info.clases?.[b.clase] ?? `clase ${b.clase}`)));
 
         cuadros++;
-        const ahora = performance.now();
-        if (ahora - ultimoFps > 1000) {
-          setFps(Math.round((cuadros * 10000) / (ahora - ultimoFps)) / 10);
+        const ms = performance.now();
+        if (ms - ultimoFps > 1000) {
+          setFps(Math.round((cuadros * 10000) / (ms - ultimoFps)) / 10);
           cuadros = 0;
-          ultimoFps = ahora;
+          ultimoFps = ms;
           setPose(g ? inclinacion(g) : null);
           setDescartados(seguimiento.current.descartados);
           if (!enVivo && !respaldo) setAviso("El celular no da su inclinación: no se puede medir el tamaño. Calibra la cámara antes de salir.");
@@ -318,12 +354,17 @@ export function CamaraBaches({
           {fps.toFixed(1)} cps · {detector.proveedor === "webgpu" ? "WebGPU" : "CPU"}
         </div>
         <div className="absolute right-2 top-2 rounded-full bg-black/55 px-2.5 py-1 font-mono text-[11px] text-white">
-          {pose ? `↓${pose.pitch.toFixed(1)}° ↻${pose.roll.toFixed(1)}°` : "sin inclinación"} · {gpsOk ? "GPS" : "sin GPS"}
+          {pose ? `↓${pose.pitch.toFixed(1)}° ↻${pose.roll.toFixed(1)}°` : "sin inclinación"} · {gps == null ? "sin GPS" : `GPS ±${gps} m`}
         </div>
       </div>
       {fps > 0 && fps < 2.5 && (
         <p className="rounded-2xl bg-ios-naranja/12 px-4 py-2.5 text-[14px] text-[#c93400]">
           Este celular analiza pocos cuadros por segundo: maneja a 30 km/h o menos para no perder baches.
+        </p>
+      )}
+      {gps != null && gps > PRECISION_MAX_M && (
+        <p className="rounded-2xl bg-ios-naranja/12 px-4 py-2.5 text-[14px] text-[#c93400]">
+          GPS impreciso (±{gps} m): los baches no se ubican hasta que mejore. Sal de entre edificios altos o espera un momento.
         </p>
       )}
       {aviso && <p className="rounded-2xl bg-ios-naranja/12 px-4 py-2.5 text-[14px] text-[#c93400]">{aviso}</p>}

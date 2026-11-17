@@ -271,3 +271,25 @@ create table if not exists public.detecciones_bache (
 create index if not exists detecciones_bache_pin_idx   on public.detecciones_bache (pin_id);
 create index if not exists detecciones_bache_geom_idx  on public.detecciones_bache using gist (ubicacion);
 create index if not exists detecciones_bache_fecha_idx on public.detecciones_bache (fecha desc);
+
+-- Calles de Cajeme (OpenStreetMap). Sirven para acomodar dentro de la calle los baches que ubica
+-- el GPS y para guardar el nombre de la calle. Se cargan con scripts/importar-calles.mjs
+-- (o el workflow "Importar calles"). Uso interno: el público no las lee.
+create table if not exists public.calles (
+  id            bigint generated always as identity primary key,
+  osm_id        text   not null unique,     -- "way/123456"
+  nombre        text,
+  tipo          text   not null,            -- highway de OSM: residential, primary…
+  sentido_unico boolean not null default false,
+  ancho_m       real   not null,            -- ancho estimado de banqueta a banqueta
+  geom          extensions.geometry(LineString, 4326) not null
+);
+create index if not exists calles_geom_idx on public.calles using gist (geom);
+
+-- Calle del bache y datos de la ubicación con GPS de cada detección
+alter table public.reportes_pin      add column if not exists calle         text;
+alter table public.detecciones_bache add column if not exists calle         text;
+alter table public.detecciones_bache add column if not exists rumbo         real;  -- hacia dónde iba el vehículo (°)
+alter table public.detecciones_bache add column if not exists precision_m   real;  -- precisión del GPS (m)
+alter table public.detecciones_bache add column if not exists ajuste_m      real;  -- cuánto se movió para quedar en la calle
+alter table public.detecciones_bache add column if not exists ubicacion_gps extensions.geometry(Point, 4326); -- antes del ajuste

@@ -23,6 +23,7 @@ alter table public.notas_pin     enable row level security;
 alter table public.secciones     enable row level security;
 alter table public.tramos_rugosidad enable row level security;
 alter table public.detecciones_bache enable row level security;
+alter table public.calles enable row level security;
 
 -- 2) Quitar cualquier permiso directo sobre tablas al público.
 revoke all on all tables    in schema public from anon, authenticated;

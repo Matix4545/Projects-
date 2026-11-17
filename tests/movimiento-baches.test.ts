@@ -35,3 +35,31 @@ test("detenido: sin rumbo no se ubica nada", () => {
   m.lectura(27.48, -109.94, 1, 0, null);
   assert.equal(m.posicionEn(1), null);
 });
+
+test("interpola entre la lectura anterior y la siguiente (no adivina)", () => {
+  const m = new Movimiento();
+  // Hacia el este a 10 m/s, una lectura por segundo
+  for (let t = 0; t <= 5; t++) m.lectura(27.48, -109.94 + (10 * t) / (111_320 * Math.cos((27.48 * Math.PI) / 180)), t, 10, 90, 4);
+  assert.equal(m.cubre(4.3), true);
+  assert.equal(m.cubre(5.2), false);
+  const p = m.posicionEn(3.25)!;
+  const este = (p.lng + 109.94) * 111_320 * Math.cos((27.48 * Math.PI) / 180);
+  assert.ok(Math.abs(este - 32.5) < 0.01, `este ${este}`);
+  assert.equal(p.interpolada, true);
+  assert.ok(Math.abs(p.rumbo - 90) < 0.5);
+  assert.equal(p.precision, 4);
+  // Después de la última lectura se extrapola (y se marca)
+  const q = m.posicionEn(5.5)!;
+  assert.equal(q.interpolada, false);
+  assert.ok(q.precision > 4);
+});
+
+test("da la vuelta: el rumbo es el del tramo entre lecturas", () => {
+  const m = new Movimiento();
+  const M = 111_132;
+  // Norte 3 s y luego este
+  const pts: [number, number][] = [[0, 0], [0, 10], [0, 20], [0, 30], [10, 30], [20, 30]];
+  pts.forEach(([e, n], t) => m.lectura(27.48 + n / M, -109.94 + e / 98_750, t, null, null, 5));
+  assert.ok(Math.abs(m.posicionEn(1.5)!.rumbo - 0) < 1);
+  assert.ok(Math.abs(m.posicionEn(4.5)!.rumbo - 90) < 1.5);
+});

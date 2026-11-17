@@ -30,6 +30,8 @@ export type Pin = {
   largo_m?: number | null;
   ancho_m?: number | null;
   detecciones_camara?: number;
+  /** Calle (de OpenStreetMap) donde quedó un bache de la cámara */
+  calle?: string | null;
 };
 
 export type DetalleZona = {

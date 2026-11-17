@@ -12,5 +12,6 @@ npm-debug.log*
 # zonas descargadas por scripts/importar-zonas.mjs
 data/zonas.geojson
 data/colonias-arcgis.geojson
+data/calles.geojson
 # motor de IA del navegador: lo copia scripts/copiar-ort.mjs desde node_modules
 public/ort/
