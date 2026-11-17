@@ -248,7 +248,9 @@ La app no trae modelo: hay que entrenarlo con fotos de calles (de preferencia de
    un bache, y la app no las sube.
 3. Entrena un modelo **YOLO26n-seg** (o YOLO11n-seg) a **640**. Para correr en un celular conviene el tamaño
    *n* (nano); el *s* es más preciso pero va más lento.
-4. Exporta a **ONNX** (tamaño fijo 640, sin *dynamic*) y descarga el archivo. También sirve el `best.pt`.
+4. Exporta a **ONNX** (tamaño fijo, sin *dynamic*) y descarga el archivo. También sirve el `best.pt`: el workflow
+   lo exporta por ti a **384 × 640**, una entrada rectangular para video 16:9 (como `rect=True`: casi sin relleno,
+   así el modelo usa sus píxeles en la calle y corre más rápido).
 
 **2 · Instalarlo en la app**
 1. En GitHub abre `data/` → **Add file → Upload files**, crea la carpeta `modelos` y sube el archivo
@@ -257,6 +259,9 @@ La app no trae modelo: hay que entrenarlo con fotos de calles (de preferencia de
    **precisión** puedes poner el *mAP50* de máscaras que te muestra Ultralytics.
 3. El workflow lee las clases y el tamaño del propio archivo, lo deja en `public/modelos/` y hace commit. Vercel lo
    publica solo; los celulares lo descargan una vez y lo guardan.
+4. En `public/modelos/baches.json` quedan los umbrales: `umbral` (0.15) para ser candidato, `umbrales` por clase para
+   aceptarlo (bache/pothole 0.25, grieta 0.20, lo demás 0.35) y `confirmar` (0.5): la confianza que un bache debe
+   alcanzar en algún cuadro para subirlo al mapa. Se pueden ajustar editando ese archivo.
 
 También se puede instalar a mano: `npm run instalar-modelo -- ruta/al/best.onnx`.
 

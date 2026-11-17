@@ -359,3 +359,71 @@ export function tamanoPorArea(area_m2: number | null | undefined): "chico" | "me
   if (area_m2 < 2.5) return "grande";
   return "peligroso";
 }
+
+// ---------------------------------------------------------------------------
+// Medida de referencia (verdad de campo): homografía con una hoja de tamaño conocido
+// ---------------------------------------------------------------------------
+// Si en la foto aparece un rectángulo de medida conocida (una hoja carta) sobre el mismo piso que
+// el bache, las 4 esquinas bastan para pasar cualquier punto de la foto al piso en metros, sin
+// calibrar la cámara ni saber su inclinación (como el tablero ChArUco de una medición de campo).
+
+export type Homografia = number[]; // 9 valores, fila por fila
+
+/** Homografía que lleva los 4 puntos `de` a los 4 puntos `a` (DLT con h33 = 1) */
+export function homografia(de: [number, number][], a: [number, number][]): Homografia | null {
+  if (de.length !== 4 || a.length !== 4) return null;
+  const M: number[][] = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = de[i];
+    const [X, Y] = a[i];
+    M.push([x, y, 1, 0, 0, 0, -x * X, -y * X, X]);
+    M.push([0, 0, 0, x, y, 1, -x * Y, -y * Y, Y]);
+  }
+  // Eliminación de Gauss con pivoteo parcial
+  for (let c = 0; c < 8; c++) {
+    let p = c;
+    for (let f = c + 1; f < 8; f++) if (Math.abs(M[f][c]) > Math.abs(M[p][c])) p = f;
+    if (Math.abs(M[p][c]) < 1e-12) return null; // tres puntos alineados
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let f = 0; f < 8; f++) {
+      if (f === c) continue;
+      const k = M[f][c] / M[c][c];
+      for (let j = c; j < 9; j++) M[f][j] -= k * M[c][j];
+    }
+  }
+  return [...Array.from({ length: 8 }, (_, i) => M[i][8] / M[i][i]), 1];
+}
+
+export function aplicarHomografia(H: Homografia, [x, y]: [number, number]): [number, number] {
+  const w = H[6] * x + H[7] * y + H[8];
+  return [(H[0] * x + H[1] * y + H[2]) / w, (H[3] * x + H[4] * y + H[5]) / w];
+}
+
+/**
+ * Mide un contorno tocado en una foto usando un rectángulo de referencia en el mismo piso.
+ * esquinas: las 4 esquinas de la hoja en orden alrededor; 1→2 mide anchoM y 2→3 largoM.
+ */
+export function medirConReferencia(esquinas: Px[], anchoM: number, largoM: number, contorno: Px[]) {
+  const H = homografia(esquinas, [
+    [0, 0],
+    [anchoM, 0],
+    [anchoM, largoM],
+    [0, largoM],
+  ]);
+  if (!H || contorno.length < 3) return null;
+  const piso = contorno.map((p) => aplicarHomografia(H, p));
+  const xs = piso.map((p) => p[0]);
+  const ys = piso.map((p) => p[1]);
+  let perimetro = 0;
+  for (let i = 0; i < piso.length; i++) {
+    const [p, q] = [piso[i], piso[(i + 1) % piso.length]];
+    perimetro += Math.hypot(q[0] - p[0], q[1] - p[1]);
+  }
+  return {
+    piso,
+    area_m2: area(piso),
+    perimetro_m: perimetro,
+    ancho_m: Math.max(...xs) - Math.min(...xs),
+    largo_m: Math.max(...ys) - Math.min(...ys),
+  };
+}

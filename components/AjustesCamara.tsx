@@ -7,6 +7,7 @@ import { Orientacion } from "@/lib/baches/sensores";
 import { dibujarPiso } from "./CamaraBaches";
 import { HojaInferior } from "./HojaInferior";
 import { Interruptor } from "./Interruptor";
+import { MedidaReferencia } from "./MedidaReferencia";
 import { Bloque } from "./Pagina";
 
 export type AjustesCamara = {
@@ -118,6 +119,7 @@ export async function abrirCamara() {
 /** Bloque de la página de inicio de /medir (solo equipo) */
 export function BloqueCamara({ ajustes, cambiar, estado }: { ajustes: AjustesCamara; cambiar: (c: Partial<AjustesCamara>) => void; estado: EstadoDetector }) {
   const [calibrando, setCalibrando] = useState(false);
+  const [referencia, setReferencia] = useState(false);
   const { info } = estado;
   const sinModelo = info === null;
   return (
@@ -128,7 +130,7 @@ export function BloqueCamara({ ajustes, cambiar, estado }: { ajustes: AjustesCam
         nota={
           ajustes.activa ? (
             <>
-              El celular va en el <strong>parabrisas</strong>, mirando al frente. Cada bache se mide en m² sobre el plano de la calle y se sube solo al mapa
+              El celular va en el <strong>parabrisas</strong>, acostado (horizontal) y mirando al frente. Cada bache se mide en m² sobre el plano de la calle y se sube solo al mapa
               (si ya había uno a menos de 8 m, se le suma la detección). Solo se envía un recorte del bache, nunca el video.
             </>
           ) : sinModelo ? (
@@ -191,7 +193,17 @@ export function BloqueCamara({ ajustes, cambiar, estado }: { ajustes: AjustesCam
             </div>
           </>
         )}
+        <div className="flex items-center justify-between gap-3 border-t border-ios-separador px-4 py-2.5 text-[16px]">
+          <span>
+            Medida de referencia
+            <span className="block text-[13px] text-ios-secundario">Foto desde arriba con una hoja carta: para comprobar a la cámara</span>
+          </span>
+          <button onClick={() => setReferencia(true)} className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">
+            Medir
+          </button>
+        </div>
       </Bloque>
+      {referencia && <MedidaReferencia onCerrar={() => setReferencia(false)} />}
       {calibrando && (
         <CalibrarCamara
           ajustes={ajustes}

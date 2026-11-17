@@ -140,12 +140,18 @@ function principal() {
   for (const viejo of readdirSync(carpeta)) if (/^baches-.*\.onnx$/.test(viejo)) unlinkSync(join(carpeta, viejo));
   copyFileSync(origen, join(carpeta, archivo));
 
+  // Política de aceptación por clase: un umbral global bajo para ser candidato y uno por clase
+  // para aceptarlo (los baches se aceptan antes; lo que no es bache necesita más seguridad)
+  const umbralDe = (n) => (/bache|pothole|hueco|pot[\s_-]?hole|socav/i.test(n) ? 0.25 : /crack|grieta|fisura/i.test(n) ? 0.2 : 0.35);
+  const nombres = clases.length ? clases : ["bache"];
   const precision = argumento("precision");
   const info = {
     archivo,
     imgsz,
-    clases: clases.length ? clases : ["bache"],
-    umbral: Number(argumento("umbral")) || 0.35,
+    clases: nombres,
+    umbral: Number(argumento("umbral")) || 0.15,
+    umbrales: Object.fromEntries(nombres.map((n) => [n, umbralDe(n)])),
+    confirmar: 0.5,
     fecha: ahora.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Hermosillo" }),
     ...(precision && Number(precision) > 0 ? { map50: Math.min(1, Number(precision) > 1 ? Number(precision) / 100 : Number(precision)) } : {}),
     ...(argumento("nota") ? { datos: argumento("nota").slice(0, 200) } : {}),

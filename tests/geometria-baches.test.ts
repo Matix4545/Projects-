@@ -9,9 +9,11 @@ import {
   camaraDesdeFov,
   ejesSuelo,
   fovDesdeFocal,
+  homografia,
   horizonteY,
   inclinacion,
   medirContorno,
+  medirConReferencia,
   pixelASuelo,
   rumboEntre,
   sueloALatLng,
@@ -143,4 +145,21 @@ test("tamaño por área", () => {
   assert.equal(tamanoPorArea(1.4), "grande");
   assert.equal(tamanoPorArea(4), "peligroso");
   assert.equal(tamanoPorArea(null), "mediano");
+});
+
+test("medida de referencia: una hoja carta en la foto basta para medir el bache", () => {
+  // Foto de pie junto al bache, desde arriba (cámara 70° hacia abajo, a 1.5 m), un poco ladeada
+  const g = abajoEnCamara(abajoDesdeOrientacion(20, 3), 0);
+  const ejes = ejesSuelo(g)!;
+  const cam2 = camaraDesdeFov(3024, 4032, 70);
+  const foto = (p: Suelo) => sueloAPixel(p, cam2, ejes, 1.5)!;
+  const hoja = ([[0.1, 0.3], [0.316, 0.3], [0.316, 0.579], [0.1, 0.579]] as Suelo[]).map(foto);
+  const real = bache(-0.35, 0.6, 0.28);
+  const r = medirConReferencia(hoja, 0.216, 0.279, real.map(foto))!;
+  cerca(r.area_m2, area(real), area(real) * 1e-6);
+  // Un error de 2 px al tocar las esquinas de la hoja cambia poco el área
+  const movida = hoja.map(([u, v], i) => [u + (i % 2 ? 2 : -2), v + (i < 2 ? 2 : -1)] as Px);
+  const r2 = medirConReferencia(movida, 0.216, 0.279, real.map(foto))!;
+  assert.ok(Math.abs(r2.area_m2 / area(real) - 1) < 0.05, `${r2.area_m2} vs ${area(real)}`);
+  assert.equal(homografia([[0, 0], [1, 1], [2, 2], [3, 3]], [[0, 0], [1, 0], [1, 1], [0, 1]]), null);
 });

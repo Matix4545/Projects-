@@ -16,8 +16,12 @@ export type InfoModelo = {
   /** Tamaño de entrada [alto, ancho] */
   imgsz: [number, number];
   clases?: string[];
-  /** Confianza mínima sugerida */
+  /** Confianza mínima para ser candidato (umbral global de adquisición) */
   umbral?: number;
+  /** Confianza para aceptar cada clase, por nombre (p. ej. {"pothole": 0.25, "manhole": 0.35}) */
+  umbrales?: Record<string, number>;
+  /** Confianza máxima que debe alcanzar un bache en algún cuadro para subirlo al mapa */
+  confirmar?: number;
   fecha?: string;
   /** Precisión de las máscaras en las fotos de validación (mAP50, 0–1) */
   map50?: number;
@@ -110,6 +114,7 @@ export class Detector {
   private lienzo: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private entrada: Float32Array;
+  private umbralPorClase: (number | undefined)[];
   /** Milisegundos de la última detección (para mostrar cuadros por segundo) */
   ms = 0;
 
@@ -125,6 +130,7 @@ export class Detector {
     this.lienzo.height = alto;
     this.ctx = this.lienzo.getContext("2d", { willReadFrequently: true })!;
     this.entrada = new Float32Array(3 * ancho * alto);
+    this.umbralPorClase = (info.clases ?? []).map((n) => info.umbrales?.[n]);
   }
 
   static async crear(info: InfoModelo, alProgreso?: (fraccion: number) => void): Promise<Detector> {
@@ -168,7 +174,7 @@ export class Detector {
     const b = lista.find((t) => t.dims.length === 4);
     if (!a || !b) throw new Error("El modelo no es de segmentación (faltan las máscaras).");
     const comoTensor = (t: Ort.Tensor): Tensor => ({ data: t.data as Float32Array, dims: t.dims });
-    const res = baches(comoTensor(a), comoTensor(b), lb, { umbral: umbral ?? this.info.umbral ?? 0.3 });
+    const res = baches(comoTensor(a), comoTensor(b), lb, { umbral: umbral ?? this.info.umbral ?? 0.25, umbralPorClase: this.umbralPorClase });
     for (const t of lista) t.dispose?.();
     this.ms = performance.now() - inicio;
     return res;

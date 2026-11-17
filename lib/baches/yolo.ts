@@ -265,12 +265,21 @@ export type Bache = {
   caja: [number, number, number, number];
 };
 
-/** De la salida del modelo a contornos en píxeles del cuadro original */
-export function baches(salida: Tensor, protos: Tensor, lb: Letterbox, opc: { umbral?: number; iou?: number; clases?: number[] } = {}): Bache[] {
+/**
+ * De la salida del modelo a contornos en píxeles del cuadro original.
+ * umbral: confianza mínima para ser candidato (adquisición); umbralPorClase: la que cada clase
+ * necesita para aceptarse (p. ej. bache 0.25, alcantarilla 0.35).
+ */
+export function baches(
+  salida: Tensor,
+  protos: Tensor,
+  lb: Letterbox,
+  opc: { umbral?: number; iou?: number; umbralPorClase?: (number | undefined)[] } = {},
+): Bache[] {
   const nm = protos.dims[1];
   const res: Bache[] = [];
   for (const det of decodificar(salida, nm, opc)) {
-    if (opc.clases && !opc.clases.includes(det.clase)) continue;
+    if (det.confianza < (opc.umbralPorClase?.[det.clase] ?? 0)) continue;
     const m = mascara(det, protos, lb);
     const lazo = contornoMayor(m.p, m.ancho, m.alto);
     if (!lazo) continue;

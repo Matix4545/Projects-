@@ -24,9 +24,9 @@ on:
         required: false
         default: ""
       tamano:
-        description: "Solo para .pt: tamaño de entrada al exportar"
+        description: "Solo para .pt: tamaño de entrada al exportar. 640 (cuadrado) o 384,640 (rectangular para video 16:9: menos relleno, más rápido)"
         required: false
-        default: "640"
+        default: "384,640"
 
 permissions:
   contents: write
@@ -76,7 +76,12 @@ jobs:
           pip install --quiet torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet ultralytics onnx onnxslim
           cd "$RUNNER_TEMP/modelo"
-          python -c "import os; from ultralytics import YOLO; YOLO('best.pt').export(format='onnx', imgsz=int(os.environ.get('TAMANO') or 640), opset=17, simplify=True)"
+          python - <<'PY'
+          import os
+          from ultralytics import YOLO
+          t = [int(x) for x in (os.environ.get("TAMANO") or "640").replace(" ", "").split(",") if x]
+          YOLO("best.pt").export(format="onnx", imgsz=t if len(t) == 2 else t[0], opset=17, simplify=True)
+          PY
           ls -la
 
       - name: Instalar en public/modelos

@@ -8,7 +8,6 @@ import {
   ejesSuelo,
   inclinacion,
   medirContorno,
-  rumboEntre,
   sueloALatLng,
   sueloAPixel,
   ZONA_DULCE,
@@ -18,6 +17,7 @@ import {
   type Vec3,
 } from "@/lib/baches/geometria";
 import type { Detector } from "@/lib/baches/modelo";
+import { Movimiento } from "@/lib/baches/movimiento";
 import { Orientacion } from "@/lib/baches/sensores";
 import { Seguimiento, type BacheConfirmado } from "@/lib/baches/seguimiento";
 import { clasesDeBache, type Bache } from "@/lib/baches/yolo";
@@ -38,7 +38,6 @@ export type ControlCamara = {
   terminar: () => Promise<void>;
 };
 
-type Fix = { lat: number; lng: number; vel: number; rumbo: number | null; t: number };
 type Pendiente = Omit<BacheConfirmado<HTMLCanvasElement>, "pos" | "foto"> & { lat: number; lng: number; foto: Blob | null; i: number };
 
 const ENVIO_CADA_MS = 20_000;
@@ -78,9 +77,9 @@ export function CamaraBaches({
   const [aviso, setAviso] = useState<string | null>(null);
   const [descartados, setDescartados] = useState(0);
 
-  const seguimiento = useRef(new Seguimiento<HTMLCanvasElement>());
+  const seguimiento = useRef(new Seguimiento<HTMLCanvasElement>(detector.info.confirmar ? { minConfianza: detector.info.confirmar } : {}));
   const orientacion = useRef(new Orientacion());
-  const fix = useRef<Fix | null>(null);
+  const movimiento = useRef(new Movimiento());
   const origen = useRef<[number, number] | null>(null);
   const cola = useRef<Pendiente[]>([]);
   const subidos = useRef<BacheSubido[]>([]);
@@ -179,25 +178,21 @@ export function CamaraBaches({
     vivo.current = true;
     const v = video.current!;
     v.srcObject = stream;
-    v.play().catch(() => setAviso("Toca el video para iniciar la cámara."));
+    v.play().catch(() => {});
+    const revisarVideo = setTimeout(() => v.paused && setAviso("Toca el video para iniciar la cámara."), 2000);
+    v.onplaying = () => setAviso((a) => (a?.startsWith("Toca el video") ? null : a));
 
     const alOrientar = (e: DeviceOrientationEvent) => orientacion.current.lectura(e.beta, e.gamma, performance.now() / 1000);
     window.addEventListener("deviceorientation", alOrientar);
 
     const vigia = navigator.geolocation.watchPosition(
       (p) => {
-        const t = performance.now() / 1000;
-        const previo = fix.current;
         const { latitude: lat, longitude: lng, speed, heading, accuracy } = p.coords;
         if (accuracy > 30) {
           setGpsOk(false);
           return;
         }
-        let rumbo = previo?.rumbo ?? null;
-        if (speed != null && speed > 1.5 && heading != null && Number.isFinite(heading)) rumbo = heading;
-        else if (previo && Math.hypot(...aLocal([lat, lng], [previo.lat, previo.lng])) > 3) rumbo = rumboEntre([previo.lat, previo.lng], [lat, lng]);
-        const vel = speed != null && speed >= 0 ? speed : previo && t > previo.t ? Math.hypot(...aLocal([lat, lng], [previo.lat, previo.lng])) / (t - previo.t) : 0;
-        fix.current = { lat, lng, vel, rumbo, t };
+        movimiento.current.lectura(lat, lng, performance.now() / 1000, speed, heading);
         setGpsOk(true);
       },
       () => setGpsOk(false),
@@ -207,14 +202,11 @@ export function CamaraBaches({
     const intervalo = setInterval(() => enviarCola(), ENVIO_CADA_MS);
 
     /** Dónde iba la cámara en el instante t (la última lectura del GPS más lo que avanzó) */
-    const posicionEn = (t: number) => {
-      const f = fix.current;
-      if (!f || f.rumbo == null || t - f.t > 5) return null;
-      const avance = f.vel * Math.min(Math.max(t - f.t, 0), 2);
-      const [lat, lng] = sueloALatLng([0, avance], f.lat, f.lng, f.rumbo);
-      return { lat, lng, rumbo: f.rumbo };
-    };
+    const posicionEn = (t: number) => movimiento.current.posicionEn(t);
 
+    // El cuadro que se analiza se congela aquí: el modelo, el recorte y el dibujo usan la misma imagen
+    // (el video sigue avanzando mientras el modelo trabaja)
+    const cuadro = document.createElement("canvas");
     const recortar = (caja: Bache["caja"], vw: number, vh: number) => {
       const [x1, y1, x2, y2] = caja;
       const mx = (x2 - x1) * 0.5;
@@ -228,7 +220,7 @@ export function CamaraBaches({
       const c = document.createElement("canvas");
       c.width = Math.round(sw * k);
       c.height = Math.round(sh * k);
-      c.getContext("2d")!.drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+      c.getContext("2d")!.drawImage(cuadro, sx, sy, sw, sh, 0, 0, c.width, c.height);
       return c;
     };
 
@@ -249,7 +241,9 @@ export function CamaraBaches({
         const vh = v.videoHeight;
         let res: Bache[];
         try {
-          res = await detector.detectar(v, vw, vh);
+          if (cuadro.width !== vw || cuadro.height !== vh) [cuadro.width, cuadro.height] = [vw, vh];
+          cuadro.getContext("2d")!.drawImage(v, 0, 0, vw, vh);
+          res = await detector.detectar(cuadro, vw, vh);
         } catch (e) {
           console.error(e);
           setAviso("El detector falló en este cuadro; reintentando…");
@@ -283,7 +277,7 @@ export function CamaraBaches({
         }
         seguimiento.current.agregar(obs, t);
         encolar(seguimiento.current.tomar(t));
-        dibujar(lienzo.current, vw, vh, cam, ejes, h, res, medidas, (b) => (esBache(b) ? null : (detector.info.clases?.[b.clase] ?? `clase ${b.clase}`)));
+        dibujar(lienzo.current, cuadro, vw, vh, cam, ejes, h, res, medidas, (b) => (esBache(b) ? null : (detector.info.clases?.[b.clase] ?? `clase ${b.clase}`)));
 
         cuadros++;
         const ahora = performance.now();
@@ -294,6 +288,9 @@ export function CamaraBaches({
           setPose(g ? inclinacion(g) : null);
           setDescartados(seguimiento.current.descartados);
           if (!enVivo && !respaldo) setAviso("El celular no da su inclinación: no se puede medir el tamaño. Calibra la cámara antes de salir.");
+          // Modelo rectangular horizontal con el celular vertical: casi toda la entrada sería relleno
+          const [ah, aw] = detector.info.imgsz;
+          if (aw > ah * 1.2 && vh > vw) setAviso("Pon el celular acostado (horizontal): este modelo espera video horizontal y así ve mejor la calle.");
         }
         // Deja respirar a la página entre cuadro y cuadro
         await new Promise((r) => requestAnimationFrame(() => r(null)));
@@ -306,6 +303,7 @@ export function CamaraBaches({
       window.removeEventListener("deviceorientation", alOrientar);
       navigator.geolocation.clearWatch(vigia);
       clearInterval(intervalo);
+      clearTimeout(revisarVideo);
     };
     // La cámara y el detector se crean una vez por recorrido
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -337,6 +335,8 @@ export function CamaraBaches({
 /** Dibuja la zona de medición en el piso y los baches detectados sobre el video */
 function dibujar(
   c: HTMLCanvasElement | null,
+  /** El cuadro analizado: se pinta debajo para que los contornos coincidan con lo que vio el modelo */
+  cuadro: HTMLCanvasElement,
   vw: number,
   vh: number,
   cam: Camara,
@@ -357,7 +357,7 @@ function dibujar(
   }
   const ctx = c.getContext("2d")!;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, w, alto);
+  ctx.drawImage(cuadro, 0, 0, w, alto);
   const k = w / vw;
   const px = ([x, y]: [number, number]) => [x * k, y * k] as const;
 

@@ -99,6 +99,19 @@ test("RGBA a planos", () => {
   [1, 0, 0, 1, 0.2, 0].forEach((v, i) => assert.ok(Math.abs(t[i] - v) < 1e-6));
 });
 
+test("umbral por clase: candidato con el global, aceptado con el de su clase", () => {
+  const lb = calcularLetterbox(640, 640, 640, 640);
+  const s = salidaClasica([
+    [320, 320, 100, 80, 0.3],
+    [150, 150, 60, 60, 0.2],
+  ]);
+  // Una mancha grande que cubre las dos cajas
+  const p = protos(80, 80, 60, 60);
+  assert.equal(baches(s, p, lb, { umbral: 0.15 }).length, 2);
+  assert.equal(baches(s, p, lb, { umbral: 0.15, umbralPorClase: [0.25] }).length, 1);
+  assert.equal(baches(s, p, lb, { umbral: 0.15, umbralPorClase: [0.35] }).length, 0);
+});
+
 test("clases: solo cuentan los baches en un modelo con varias clases", () => {
   assert.equal(clasesDeBache(["bache"]), null);
   assert.equal(clasesDeBache(undefined), null);
