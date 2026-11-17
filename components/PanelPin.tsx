@@ -91,6 +91,8 @@ export function PanelPin({
           </>
         )}
 
+        <MedidaCamara pin={pin} />
+
         {pin.foto && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={urlFoto(pin.foto)} alt={`Foto del reporte: ${titulo}`} loading="lazy" className="max-h-72 w-full rounded-2xl bg-ios-relleno object-cover" />
@@ -139,5 +141,32 @@ export function PanelPin({
         {equipo && <p className="text-center font-mono text-xs text-ios-terciario">Folio {folio(pin.id)}</p>}
       </div>
     </HojaInferior>
+  );
+}
+
+/** Tamaño medido por la cámara del parabrisas (solo baches que vio la cámara) */
+function MedidaCamara({ pin }: { pin: Pin }) {
+  const vistas = pin.detecciones_camara ?? 0;
+  if (pin.area_m2 == null && vistas === 0) return null;
+  const cm = (m?: number | null) => (m == null ? null : `${Math.round(m * 100)}`);
+  return (
+    <div className="rounded-2xl bg-ios-fondo px-4 py-3 text-[15px]">
+      {pin.area_m2 != null && (
+        <p>
+          <span className="text-[22px] font-bold tabular-nums">{pin.area_m2.toFixed(2)} m²</span>
+          {pin.area_sd_m2 != null && <span className="text-ios-secundario"> ± {pin.area_sd_m2.toFixed(2)}</span>}
+          {pin.largo_m != null && pin.ancho_m != null && (
+            <span className="text-ios-secundario">
+              {" "}
+              · {cm(pin.largo_m)} × {cm(pin.ancho_m)} cm
+            </span>
+          )}
+        </p>
+      )}
+      <p className="text-[13px] text-ios-secundario">
+        📷 {pin.origen === "camara" ? "Detectado" : "Confirmado"} con la cámara del equipo
+        {vistas > 1 ? ` en ${vistas} recorridos` : ""}. Medida sobre el plano de la calle; es aproximada.
+      </p>
+    </div>
   );
 }

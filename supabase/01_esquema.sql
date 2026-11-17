@@ -231,3 +231,43 @@ alter table public.tramos_rugosidad add column if not exists soporte    text che
 alter table public.tramos_rugosidad add column if not exists plataforma text check (plataforma in ('android', 'ios', 'otro'));
 -- Etiqueta de un recorrido de prueba ("Calle 300 a 40 km/h"); solo la ve el equipo
 alter table public.tramos_rugosidad add column if not exists nota       text check (char_length(nota) <= 60);
+
+-- Baches detectados con la cámara del parabrisas (/medir, solo equipo).
+-- Cada bache confirmado en un recorrido es una "detección". Si cae a menos de 8 m de un bache
+-- activo (de vecinos o de la cámara) se le suma; si no, se crea un bache nuevo en el mapa.
+alter table public.reportes_pin add column if not exists origen text not null default 'vecino';
+alter table public.reportes_pin drop constraint if exists reportes_pin_origen_check;
+alter table public.reportes_pin add constraint reportes_pin_origen_check check (origen in ('vecino', 'camara'));
+-- Tamaño medido sobre el plano de la calle: mediana de las detecciones (m², m)
+alter table public.reportes_pin add column if not exists area_m2            real;
+alter table public.reportes_pin add column if not exists area_sd_m2         real;
+alter table public.reportes_pin add column if not exists largo_m            real;
+alter table public.reportes_pin add column if not exists ancho_m            real;
+-- En cuántos recorridos distintos lo vio la cámara
+alter table public.reportes_pin add column if not exists detecciones_camara int not null default 0;
+
+create table if not exists public.detecciones_bache (
+  id            bigint generated always as identity primary key,
+  pin_id        bigint references public.reportes_pin (id) on delete set null,
+  sesion        uuid   not null,          -- id al azar del recorrido
+  fecha         date   not null,
+  ubicacion     extensions.geometry(Point, 4326) not null,   -- el bache, no el vehículo
+  area_m2       real,                     -- null si nunca quedó en la zona de medición
+  area_sd_m2    real,
+  largo_m       real,
+  ancho_m       real,
+  confianza     real   not null,
+  confianza_max real,
+  cuadros       int    not null,          -- en cuántos cuadros de video apareció
+  medidas       int    not null default 0, -- cuántos de esos cuadros sirvieron para medir
+  distancia_m   real,                     -- a qué distancia se midió (mediana)
+  foto_ruta     text,
+  modelo        text,                     -- archivo del modelo que lo detectó
+  altura_m      real,                     -- altura de la cámara usada para medir
+  fov           real,                     -- campo de visión usado para medir
+  plataforma    text check (plataforma in ('android', 'ios', 'otro')),
+  creado_en     timestamptz not null default now()
+);
+create index if not exists detecciones_bache_pin_idx   on public.detecciones_bache (pin_id);
+create index if not exists detecciones_bache_geom_idx  on public.detecciones_bache using gist (ubicacion);
+create index if not exists detecciones_bache_fecha_idx on public.detecciones_bache (fecha desc);

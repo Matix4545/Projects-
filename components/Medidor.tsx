@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { COLOR_CLASE, MotorRugosidad, clasificar, resumir, type EstadoMedicion, type Tramo } from "@/lib/rugosidad";
+import { BloqueCamara, abrirCamara, pedirPermisoOrientacion, useAjustesCamara, useDetector } from "./AjustesCamara";
+import { CamaraBaches, type BacheSubido, type ControlCamara } from "./CamaraBaches";
 import { Interruptor } from "./Interruptor";
 import { Bloque, Pagina } from "./Pagina";
 import { useTurnstile } from "./Turnstile";
@@ -61,6 +63,13 @@ export function Medidor() {
   const [pausa, setPausa] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [historico, setHistorico] = useState(0);
+  // Baches con la cámara: solo para el equipo (entró con la contraseña del panel)
+  const [equipo, setEquipo] = useState(false);
+  const [camara, cambiarCamara] = useAjustesCamara(vehiculo);
+  const detector = useDetector(equipo && camara.activa);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [baches, setBaches] = useState<BacheSubido[]>([]);
+  const control = useRef<ControlCamara>(null);
 
   const motor = useRef<MotorRugosidad | null>(null);
   const sesion = useRef("");
@@ -75,6 +84,10 @@ export function Medidor() {
     const s = leer("rc_soporte") as Soporte | null;
     if (s && SOPORTES.some(([k]) => k === s)) setSoporte(s);
     setHistorico(Number(leer("rc_km_medidos")) || 0);
+    fetch("/api/equipo/sesion")
+      .then((r) => r.json())
+      .then((r: { equipo?: boolean }) => setEquipo(!!r.equipo))
+      .catch(() => {});
     return () => limpiar.current();
   }, []);
 
@@ -151,6 +164,20 @@ export function Medidor() {
       return;
     }
 
+    // Cámara para los baches (si está activa y el detector ya está listo)
+    let video: MediaStream | null = null;
+    if (equipo && camara.activa && detector.detector) {
+      await pedirPermisoOrientacion();
+      try {
+        video = await abrirCamara();
+      } catch {
+        setError("Sin permiso de cámara no se pueden detectar baches. Actívalo en los ajustes del navegador o apaga “Detectar baches”.");
+        return;
+      }
+    }
+    setStream(video);
+    setBaches([]);
+
     guardar("rc_vehiculo", vehiculo);
     guardar("rc_soporte", soporte);
     motor.current = new MotorRugosidad();
@@ -215,22 +242,26 @@ export function Medidor() {
       document.removeEventListener("visibilitychange", alCambiarVisibilidad);
       clearInterval(intervalo);
       candado?.release().catch(() => {});
+      video?.getTracks().forEach((t) => t.stop());
     };
     setEstado(motor.current.estado());
     setFase("midiendo");
   }
 
   async function terminar() {
+    // La cámara cierra los baches que tenía a la vista y envía lo pendiente
+    const camaraLista = control.current?.terminar();
     limpiar.current();
     limpiar.current = () => {};
     setError(null);
     setFase("terminado");
-    await liberarYEnviar(true);
+    await Promise.all([liberarYEnviar(true), camaraLista]);
     // Un reintento más si quedó algo sin enviar
     if (cola.current.length) setTimeout(enviarCola, 5000);
   }
 
   const resumen = resumir(tramos);
+  const bachesEnviados = baches.filter((b) => b.enviado).length;
   const kmMedidos = (estado?.distancia_m ?? 0) / 1000;
 
   return (
@@ -248,6 +279,7 @@ export function Medidor() {
           <Bloque titulo="¿Dónde va el celular?">
             <Opciones opciones={SOPORTES} valor={soporte} onCambio={setSoporte} />
           </Bloque>
+          {equipo && <BloqueCamara ajustes={camara} cambiar={cambiarCamara} estado={detector} />}
           <Bloque titulo="Antes de empezar" sinRelleno>
             {[
               <>Pon el celular en un <strong className="font-semibold">soporte firme</strong> (no en el asiento ni en la mano).</>,
@@ -283,8 +315,12 @@ export function Medidor() {
             )}
           </Bloque>
           <div className="space-y-3">
-            <button onClick={empezar} className="boton boton-principal h-14 w-full text-[18px]">
-              Empezar a medir
+            <button
+              onClick={empezar}
+              disabled={equipo && camara.activa && detector.info !== null && !detector.detector && !detector.error}
+              className="boton boton-principal h-14 w-full text-[18px]"
+            >
+              {equipo && camara.activa && detector.info !== null && !detector.detector && !detector.error ? "Preparando el detector…" : "Empezar a medir"}
             </button>
             {historico > 0 && (
               <p className="text-center text-[15px] text-ios-secundario">
@@ -300,6 +336,25 @@ export function Medidor() {
 
       {fase === "midiendo" && (
         <>
+          {stream && detector.detector && (
+            <>
+              <CamaraBaches
+                ref={control}
+                stream={stream}
+                detector={detector.detector}
+                alturaM={camara.alturaCm / 100}
+                fovLargo={camara.fov}
+                abajoRespaldo={camara.abajo}
+                sesion={sesion.current}
+                plataforma={plataforma()}
+                onBaches={setBaches}
+              />
+              <div className="grid grid-cols-2 gap-2.5">
+                <Dato titulo="Baches detectados" valor={String(baches.length)} color="#ff3b30" />
+                <Dato titulo="Subidos al mapa" valor={String(bachesEnviados)} color="#34c759" />
+              </div>
+            </>
+          )}
           <div className="rounded-3xl bg-white px-5 py-6 text-center">
             <p className="flex items-center justify-center gap-2 text-[15px] font-medium text-ios-verde">
               <span className="relative flex h-2.5 w-2.5">
@@ -359,8 +414,11 @@ export function Medidor() {
               {estado && <NoMedido estado={estado} medidoKm={0} />}
             </>
           )}
+          {stream && <ResumenBaches baches={baches} />}
           <p className="px-4 text-[15px] text-ios-secundario">
-            {pendientesEnvio > 0 ? `Enviando ${pendientesEnvio} tramos… deja la página abierta un momento.` : "✓ Todo enviado."}
+            {pendientesEnvio > 0 || baches.length > bachesEnviados
+              ? `Enviando ${[pendientesEnvio > 0 && `${pendientesEnvio} tramos`, baches.length > bachesEnviados && `${baches.length - bachesEnviados} baches`].filter(Boolean).join(" y ")}… deja la página abierta un momento.`
+              : "✓ Todo enviado."}
           </p>
           <button onClick={() => setFase("inicio")} className="boton boton-tenue w-full">
             Medir otro recorrido
@@ -374,6 +432,40 @@ export function Medidor() {
         </p>
       )}
     </Pagina>
+  );
+}
+
+/** Lista de baches que detectó la cámara en el recorrido */
+function ResumenBaches({ baches }: { baches: BacheSubido[] }) {
+  const nuevos = baches.filter((b) => b.nuevo).length;
+  const medidos = baches.filter((b) => b.area_m2 != null);
+  const total = medidos.reduce((s, b) => s + b.area_m2!, 0);
+  return (
+    <Bloque
+      titulo={`Baches con la cámara · ${baches.length}`}
+      sinRelleno
+      nota={
+        baches.length
+          ? `${nuevos} nuevos en el mapa; ${baches.filter((b) => b.enviado && !b.nuevo).length} ya estaban reportados y se les sumó la detección.${medidos.length ? ` Área total medida: ${total.toFixed(2)} m².` : ""}`
+          : "No se detectaron baches en este recorrido."
+      }
+    >
+      {baches.slice(-30).map((b, i) => (
+        <div key={i} className="flex items-center justify-between border-b border-ios-separador px-4 py-2.5 text-[15px] last:border-0">
+          <a
+            href={`https://www.google.com/maps?q=${b.lat.toFixed(6)},${b.lng.toFixed(6)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-ios-azul"
+          >
+            🕳️ {b.area_m2 != null ? `${b.area_m2.toFixed(2)} m²${b.area_sd != null ? ` ± ${b.area_sd.toFixed(2)}` : ""}` : "sin medida"}
+          </a>
+          <span className="text-[13px] text-ios-secundario">
+            {Math.round(b.confianza * 100)}% · {b.enviado ? (b.nuevo ? "nuevo" : "ya estaba") : "pendiente"}
+          </span>
+        </div>
+      ))}
+    </Bloque>
   );
 }
 

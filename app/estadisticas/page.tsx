@@ -294,9 +294,14 @@ function Recorridos({ r }: { r: ResumenRugosidad | null }) {
           )}
         </>
       )}
-      <a href="/api/equipo/rugosidad/csv" className="boton boton-tenue mt-4 min-h-9 rounded-full px-4 text-[15px]">
-        ⬇️ Descargar tramos (CSV)
-      </a>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <a href="/api/equipo/rugosidad/csv" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">
+          ⬇️ Descargar tramos (CSV)
+        </a>
+        <a href="/api/equipo/baches-camara/csv" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">
+          ⬇️ Baches de la cámara (CSV)
+        </a>
+      </div>
     </Seccion>
   );
 }

@@ -1,5 +1,25 @@
 # Historial de versiones · Reporta Cajeme
 
+## 1.3 — 17 de noviembre de 2026
+
+### Baches con la cámara (solo equipo)
+- En `/medir`, con la sesión del equipo, se puede activar **“Detectar baches con la cámara”**: el
+  celular en el parabrisas detecta cada bache con un modelo de segmentación que corre **en el
+  celular** (onnxruntime-web, con WebGPU si hay; el video no se envía).
+- **Tamaño en m²** sobre el plano de la calle: el contorno se proyecta al piso con la altura de la
+  cámara, su inclinación (sensores) y el campo de visión; área con Gauss–Green. Solo se mide en la
+  “zona dulce” (3–14 m adelante, bache completo en la imagen) y se publica la mediana de varios cuadros.
+- **Calibración** con un rectángulo de medida conocida en el piso (hojas, tapete, cajón de
+  estacionamiento): ajusta el campo de visión y, si se quiere, la altura.
+- Los baches confirmados (vistos en varios cuadros) se suben solos con un recorte de foto. Si ya hay un
+  bache activo a menos de 8 m, se le suma la detección y se recalcula su tamaño.
+- Modelos con varias clases (p. ej. bache, alcantarilla, rejilla): solo se suben los baches.
+- El mapa muestra el tamaño medido y en cuántos recorridos lo vio la cámara.
+- `/estadisticas`: descarga de todas las detecciones en CSV.
+- Workflow **“Instalar modelo de baches”**: instala un modelo entrenado en Ultralytics Platform
+  (`.onnx` o `.pt`) desde el repositorio o un enlace.
+- Requiere correr `01_esquema.sql`, `02_funciones.sql` y `03_seguridad.sql`.
+
 ## 1.2.1 — 24 de octubre de 2026
 
 ### Medir recorrido (solo equipo)

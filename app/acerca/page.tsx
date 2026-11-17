@@ -105,6 +105,37 @@ export default function Acerca() {
       </div>
       </Bloque>
 
+      <Bloque id="camara" titulo="Baches medidos con la cámara (equipo)">
+      <div className="space-y-2 text-[16px] leading-relaxed">
+      <p>
+        El equipo puede recorrer la ciudad con un celular en el parabrisas que detecta los baches con la cámara y los
+        sube solos al mapa con su <strong>tamaño en m²</strong>. Todo se calcula en el celular: el video nunca sale de él.
+      </p>
+      <ul className="list-disc space-y-1.5 pl-5">
+        <li>
+          Un modelo de visión (segmentación de instancias tipo YOLO) dibuja el contorno de cada bache en la imagen.
+        </li>
+        <li>
+          Un bache lejano se ve chico y uno cercano grande. Para medirlo en metros, cada punto del contorno se proyecta
+          sobre el plano de la calle usando la altura de la cámara, su inclinación (sensores del celular) y su campo de
+          visión (calibrado con un rectángulo de medida conocida). El área sale con la fórmula del cordón de zapato
+          (Gauss–Green).
+        </li>
+        <li>
+          Solo se mide cuando el bache está entre 3 y 14 m adelante y completo en la imagen; lejos, un error de medio
+          grado cambia mucho la distancia. El área publicada es la mediana de varios cuadros.
+        </li>
+        <li>
+          Si ya había un bache reportado a menos de 8 m, se le suma la detección en lugar de crear otro.
+        </li>
+      </ul>
+      <p className="text-[13px] text-ios-secundario">
+        La medida es aproximada (supone la calle plana) y no mide la profundidad. Solo se guarda un recorte del bache,
+        sin metadatos, y la ubicación del bache, no la del vehículo.
+      </p>
+      </div>
+      </Bloque>
+
       <Bloque id="privacidad" titulo="Aviso de privacidad">
       <div className="space-y-2 text-[16px] leading-relaxed">
       <p>

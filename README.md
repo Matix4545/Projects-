@@ -22,6 +22,24 @@ servicios públicos: **agua**, **baches** y **drenaje**. Es anónimo, está en e
 - Al tocar una colonia se ven los conteos de 24 h y 7 días, la hora del último reporte y los comentarios recientes.
 - La barra de abajo muestra "X reportes en las últimas 24 h · Y colonias afectadas".
 
+### 🕳️📷 Baches con la cámara (solo equipo)
+
+En `/medir`, quien entró con la contraseña del panel puede activar **"Detectar baches con la cámara"**. Con el
+celular en el parabrisas, mientras se maneja:
+
+1. Un modelo de **segmentación** (YOLO, exportado a ONNX) corre **en el celular** y dibuja el contorno de cada
+   bache. El video nunca sale del teléfono.
+2. Cada contorno se **proyecta al plano de la calle** con la altura de la cámara, su inclinación (sensores del
+   celular) y su campo de visión → **área en m²** (Gauss–Green), largo y ancho. Solo se mide en la "zona dulce"
+   (3–14 m adelante y sin tocar el borde de la imagen).
+3. El mismo bache aparece en varios cuadros: se juntan y se publica la **mediana**. Una detección vista en un solo
+   cuadro se descarta.
+4. Se sube solo al mapa (con un recorte de foto). Si ya había un bache activo a **menos de 8 m**, se le suma la
+   detección y se recalcula su tamaño.
+
+Si el modelo tiene varias clases (p. ej. `pothole`, `manhole`, `grate`), solo se suben las que se llaman
+bache / pothole; las alcantarillas y rejillas se dibujan en azul, pero no cuentan.
+
 ### Antispam y privacidad
 
 - **Sin nombre, teléfono ni correo.** Solo se guarda un *hash* (huella cifrada irreversible) de la IP y de un ID
@@ -60,7 +78,9 @@ supabase/
   05_borrar_datos_prueba.sql
   06_zonas_aproximadas.sql  Zonas listas para pegar (si no puedes correr el script)
 scripts/importar-zonas.mjs  Descarga colonias de OpenStreetMap y rellena con hexágonos H3
-tests/                      Pruebas del filtro de groserías
+lib/baches/                 Cámara: geometría del plano de la calle, lectura del modelo YOLO, seguimiento entre cuadros
+scripts/instalar-modelo.mjs Instala un modelo .onnx en public/modelos/
+tests/                      Pruebas (groserías, rugosidad, geometría de baches…)
 ```
 
 ---
@@ -216,6 +236,38 @@ Cuando se agregan funciones nuevas, vuelve a correr en Supabase → SQL Editor, 
 - Si OpenStreetMap no responde: `npm run importar-zonas -- --aproximado` cubre la ciudad solo con hexágonos.
 - Para mejorar el mapa para todos, puedes dibujar las colonias que faltan directamente en
   <https://www.openstreetmap.org> (etiqueta `place=neighbourhood` + `name=...`) y volver a importar.
+
+### Modelo de baches para la cámara (Ultralytics Platform)
+La app no trae modelo: hay que entrenarlo con fotos de calles (de preferencia de Cajeme) e instalarlo.
+
+**1 · Entrenar en [Ultralytics Platform](https://platform.ultralytics.com)**
+1. Crea un *dataset* de **segmentación** y sube fotos o videos grabados desde el parabrisas (de día, de noche,
+   con lluvia, calles de tierra…). Unas 500–1,500 imágenes es un buen comienzo.
+2. Etiqueta el contorno de cada bache (la herramienta de anotación inteligente ayuda). Clase recomendada:
+   `bache` (o `pothole`). Si quieres, agrega `alcantarilla` y `rejilla`: así el modelo aprende que una tapa no es
+   un bache, y la app no las sube.
+3. Entrena un modelo **YOLO26n-seg** (o YOLO11n-seg) a **640**. Para correr en un celular conviene el tamaño
+   *n* (nano); el *s* es más preciso pero va más lento.
+4. Exporta a **ONNX** (tamaño fijo 640, sin *dynamic*) y descarga el archivo. También sirve el `best.pt`.
+
+**2 · Instalarlo en la app**
+1. En GitHub abre `data/` → **Add file → Upload files**, crea la carpeta `modelos` y sube el archivo
+   (p. ej. `data/modelos/best.onnx`). Si pesa más de 25 MB, en lugar de subirlo usa un enlace directo de descarga.
+2. Ve a **Actions → Instalar modelo de baches → Run workflow**. En **archivo** pon la ruta (o el enlace). En
+   **precisión** puedes poner el *mAP50* de máscaras que te muestra Ultralytics.
+3. El workflow lee las clases y el tamaño del propio archivo, lo deja en `public/modelos/` y hace commit. Vercel lo
+   publica solo; los celulares lo descargan una vez y lo guardan.
+
+También se puede instalar a mano: `npm run instalar-modelo -- ruta/al/best.onnx`.
+
+**3 · Antes de salir a medir**
+- Mide con cinta la **altura de la cámara** sobre el piso y escríbela en `/medir`.
+- Toca **Probar y calibrar**: con el vehículo estacionado en piso plano, pon delante (a 5–8 m) un rectángulo de
+  medida conocida, congela la imagen y toca sus 4 esquinas. Se guarda en el celular.
+- Para verificar, mide algunos baches con cinta y compáralos con el CSV de **/estadisticas → Baches de la cámara**.
+
+> ⚠️ Ultralytics YOLO tiene licencia **AGPL-3.0**: si usas sus modelos, el código de la app debe seguir siendo
+> público (este repositorio lo es) o se necesita una licencia empresarial de Ultralytics.
 
 ### Reporte ejecutivo (panel privado)
 En `https://<tu-dominio>/panel` hay un resumen con números clave, reportes por día y por tipo, colonias con más

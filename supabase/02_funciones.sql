@@ -170,6 +170,13 @@ as $$
     'creado_en', p.creado_en,
     'arreglado_en', p.arreglado_en,
     'colonia', z.nombre,
+    -- Baches de la cámara: origen y tamaño medido (null en los demás)
+    'origen', p.origen,
+    'area_m2', p.area_m2,
+    'area_sd_m2', p.area_sd_m2,
+    'largo_m', p.largo_m,
+    'ancho_m', p.ancho_m,
+    'detecciones_camara', p.detecciones_camara,
     -- Tramo de calle como [[lat, lng], ...]; null en reportes de un solo punto
     'trazo', case when p.trazo is null then null else (
       select json_agg(json_build_array(round(st_y(d.geom)::numeric, 6), round(st_x(d.geom)::numeric, 6)) order by d.path)
@@ -377,6 +384,114 @@ as $$
         where t.golpes is not null
       ) x), '[]'::json)
   )
+$$;
+
+-- Tamaño de un bache para el mapa a partir del área medida (igual que lib/baches/geometria.ts)
+create or replace function public._tamano_bache(p_area real)
+returns text
+language sql immutable
+as $$
+  select case
+    when p_area is null then 'mediano'
+    when p_area < 0.25  then 'chico'
+    when p_area < 1     then 'mediano'
+    when p_area < 2.5   then 'grande'
+    else 'peligroso'
+  end
+$$;
+
+-- Registra un bache detectado con la cámara (/api/baches-camara, solo equipo).
+-- Si hay un bache activo a menos de 8 m se le suma la detección y se recalcula su tamaño
+-- (mediana de todas sus detecciones); si no, se crea uno nuevo en el mapa.
+-- Devuelve {pin_id, nuevo}.
+create or replace function public.registrar_bache_camara(p jsonb)
+returns json
+language plpgsql volatile security definer
+set search_path = public, extensions
+as $$
+declare
+  v_lat    double precision := (p->>'lat')::double precision;
+  v_lng    double precision := (p->>'lng')::double precision;
+  v_punto  geometry := st_setsrid(st_makepoint(v_lng, v_lat), 4326);
+  v_sesion uuid := (p->>'sesion')::uuid;
+  v_area   real := (p->>'area_m2')::real;
+  v_pin    bigint;
+  v_nuevo  boolean := false;
+  v_visto  boolean := false;
+begin
+  select r.id into v_pin
+    from reportes_pin r
+   where r.tipo = 'bache' and r.estado = 'activo'
+     and r.ubicacion && st_expand(v_punto, 0.0002)        -- ~20 m, usa el índice
+     and st_dwithin(r.ubicacion::geography, v_punto::geography, 8)
+   order by r.ubicacion <-> v_punto
+   limit 1;
+
+  if v_pin is null then
+    insert into reportes_pin (tipo, subtipo, ubicacion, zona_id, foto_ruta, dispositivo_hash, ip_hash,
+                              origen, area_m2, area_sd_m2, largo_m, ancho_m, detecciones_camara)
+    values ('bache', _tamano_bache(v_area), v_punto, (zona_de_punto(v_lng, v_lat)->>'id')::bigint,
+            p->>'foto_ruta', 'camara', 'camara', 'camara',
+            v_area, (p->>'area_sd_m2')::real, (p->>'largo_m')::real, (p->>'ancho_m')::real, 1)
+    returning id into v_pin;
+    v_nuevo := true;
+  else
+    -- El mismo recorrido no cuenta dos veces el mismo bache (p. ej. dio la vuelta a la manzana)
+    select exists (select 1 from detecciones_bache d where d.pin_id = v_pin and d.sesion = v_sesion) into v_visto;
+  end if;
+
+  insert into detecciones_bache (pin_id, sesion, fecha, ubicacion, area_m2, area_sd_m2, largo_m, ancho_m,
+                                 confianza, confianza_max, cuadros, medidas, distancia_m, foto_ruta,
+                                 modelo, altura_m, fov, plataforma)
+  values (v_pin, v_sesion, (p->>'fecha')::date, v_punto, v_area, (p->>'area_sd_m2')::real,
+          (p->>'largo_m')::real, (p->>'ancho_m')::real, (p->>'confianza')::real, (p->>'confianza_max')::real,
+          (p->>'cuadros')::int, coalesce((p->>'medidas')::int, 0), (p->>'distancia_m')::real, p->>'foto_ruta',
+          p->>'modelo', (p->>'altura_m')::real, (p->>'fov')::real, p->>'plataforma');
+
+  if not v_nuevo then
+    update reportes_pin r set
+      ultima_actividad   = now(),
+      detecciones_camara = r.detecciones_camara + case when v_visto then 0 else 1 end,
+      foto_ruta          = coalesce(r.foto_ruta, p->>'foto_ruta'),
+      area_m2            = coalesce(m.area, r.area_m2),
+      area_sd_m2         = coalesce(m.sd, r.area_sd_m2),
+      largo_m            = coalesce(m.largo, r.largo_m),
+      ancho_m            = coalesce(m.ancho, r.ancho_m),
+      -- El tamaño que eligió un vecino no se cambia; el de la cámara se ajusta a la medida
+      subtipo            = case when r.origen = 'camara' and m.area is not null then _tamano_bache(m.area) else r.subtipo end
+    from (
+      select percentile_cont(0.5) within group (order by d.area_m2)::real as area,
+             case when count(*) >= 2 then stddev_samp(d.area_m2) else max(d.area_sd_m2) end::real as sd,
+             percentile_cont(0.5) within group (order by d.largo_m)::real as largo,
+             percentile_cont(0.5) within group (order by d.ancho_m)::real as ancho
+        from detecciones_bache d
+       where d.pin_id = v_pin and d.area_m2 is not null
+    ) m
+    where r.id = v_pin;
+  end if;
+
+  return json_build_object('pin_id', v_pin, 'nuevo', v_nuevo);
+end;
+$$;
+
+-- Detecciones de la cámara para análisis (CSV del equipo)
+create or replace function public.exportar_detecciones_bache(p_dias int default 3650)
+returns json
+language sql stable security definer
+set search_path = public, extensions
+as $$
+  select coalesce(json_agg(x order by x.fecha desc, x.id), '[]'::json)
+  from (
+    select d.id, d.fecha, d.sesion, d.pin_id, d.area_m2, d.area_sd_m2, d.largo_m, d.ancho_m,
+           d.confianza, d.confianza_max, d.cuadros, d.medidas, d.distancia_m, d.modelo,
+           d.altura_m, d.fov, d.plataforma, d.foto_ruta,
+           round(st_y(d.ubicacion)::numeric, 6) as lat,
+           round(st_x(d.ubicacion)::numeric, 6) as lng
+    from detecciones_bache d
+    where d.fecha > current_date - least(greatest(coalesce(p_dias, 3650), 1), 3650)
+    order by d.fecha desc
+    limit 200000
+  ) x
 $$;
 
 -- Tramos de rugosidad para análisis (CSV del equipo): todo lo medido, con los datos de calibración

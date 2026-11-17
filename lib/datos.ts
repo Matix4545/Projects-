@@ -23,6 +23,13 @@ export type Pin = {
   colonia: string | null;
   /** Tramo de calle [[lat, lng], ...] en calles cerradas / con baches */
   trazo?: [number, number][] | null;
+  /** Baches detectados con la cámara: tamaño medido sobre el plano de la calle */
+  origen?: "vecino" | "camara";
+  area_m2?: number | null;
+  area_sd_m2?: number | null;
+  largo_m?: number | null;
+  ancho_m?: number | null;
+  detecciones_camara?: number;
 };
 
 export type DetalleZona = {
