@@ -154,7 +154,7 @@ function MedidaCamara({ pin }: { pin: Pin }) {
     <div className="rounded-2xl bg-ios-fondo px-4 py-3 text-[15px]">
       {nivel && (
         <p className="mb-1 flex items-center gap-2 text-[13px] font-semibold">
-          <span className="rounded-full px-2.5 py-0.5 text-white" style={{ background: nivel.color, color: nivel.clave === "chico" ? "#3a2f00" : "white" }}>
+          <span className="rounded-full px-2.5 py-0.5 text-white" style={{ background: nivel.color, color: nivel.clave === "grande" ? "#ffffff" : "#1c1c1e" }}>
             {nivel.nombre}
           </span>
           <span className="font-normal text-ios-secundario">{nivel.rango} de diámetro</span>

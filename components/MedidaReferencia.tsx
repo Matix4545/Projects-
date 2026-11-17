@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { medirConReferencia, type Px } from "@/lib/baches/geometria";
+import { nivelBache } from "@/lib/constantes";
 import { HojaInferior } from "./HojaInferior";
 
 const REFERENCIAS = [
@@ -30,6 +31,7 @@ export function MedidaReferencia({ onCerrar }: { onCerrar: () => void }) {
   const puntos = fase === "hoja" ? hoja : contorno;
   const setPuntos = fase === "hoja" ? setHoja : setContorno;
   const resultado = fase === "resultado" ? medirConReferencia(hoja, medida.ancho / 100, medida.largo / 100, contorno) : null;
+  const nivel = nivelBache(resultado?.area_m2);
 
   function cargar(e: React.ChangeEvent<HTMLInputElement>) {
     const archivo = e.target.files?.[0];
@@ -222,6 +224,17 @@ export function MedidaReferencia({ onCerrar }: { onCerrar: () => void }) {
         {resultado && (
           <>
             <div className="rounded-2xl bg-ios-fondo px-4 py-3 text-center">
+              {nivel && (
+                <p className="flex items-center justify-center gap-2 text-[13px]">
+                  <span
+                    className="rounded-full px-2.5 py-0.5 font-semibold"
+                    style={{ background: nivel.color, color: nivel.clave === "grande" ? "#ffffff" : "#1c1c1e" }}
+                  >
+                    {nivel.nombre}
+                  </span>
+                  <span className="text-ios-secundario">{nivel.rango} de diámetro</span>
+                </p>
+              )}
               <p className="text-[34px] font-bold tabular-nums">{resultado.area_m2.toFixed(3)} m²</p>
               <p className="text-[15px] text-ios-secundario">
                 {Math.round(resultado.largo_m * 100)} × {Math.round(resultado.ancho_m * 100)} cm · perímetro {resultado.perimetro_m.toFixed(2)} m
