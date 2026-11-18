@@ -1,18 +1,24 @@
 {
-  "archivo": "baches-20261118-0000.onnx",
+  "archivo": "baches-20261118-0059.onnx",
   "imgsz": [
-    384,
+    640,
     640
   ],
   "clases": [
-    "pothole"
+    "bache",
+    "grieta",
+    "registro",
+    "rejilla"
   ],
   "umbral": 0.15,
   "umbrales": {
-    "pothole": 0.25
+    "bache": 0.25,
+    "grieta": 0.2,
+    "registro": 0.35,
+    "rejilla": 0.35
   },
   "confirmar": 0.5,
   "fecha": "17 nov 2026",
-  "datos": "Modelo público temporal: keremberke/yolov8n-pothole-segmentation (Hugging Face)",
-  "descripcion": "Ultralytics YOLOv8n-seg model trained on D:\\dev\\yolov5\\datasets\\Pothole-Detection-4/data.yaml"
+  "datos": "YOLO26n-seg entrenado en Ultralytics Platform con el dataset \"pothole\" de inGeniia (CC BY 4.0)",
+  "descripcion": "Ultralytics YOLO26n-seg model trained on /datasets/potholecajeme-ec249118/data.yaml"
 }
