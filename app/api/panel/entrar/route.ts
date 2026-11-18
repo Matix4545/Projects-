@@ -6,9 +6,14 @@ import { supabaseServidor } from "@/lib/supabase/servidor";
 export const runtime = "nodejs";
 
 const INTENTOS_POR_DIA = 10;
+/** Páginas a las que se puede regresar después de entrar (lista cerrada: nada de redirecciones abiertas) */
+const DESTINOS = new Set(["/panel", "/medir"]);
 
 export async function POST(req: Request) {
-  const volver = (error: string) => NextResponse.redirect(new URL(`/panel?error=${error}`, req.url), 303);
+  const form = await req.formData().catch(() => null);
+  const pedido = form?.get("volver");
+  const destino = typeof pedido === "string" && DESTINOS.has(pedido) ? pedido : "/panel";
+  const volver = (error: string) => NextResponse.redirect(new URL(`${destino}?error=${error}`, req.url), 303);
   if (!panelConfigurado()) return volver("sin-configurar");
 
   // Límite de intentos por IP para evitar que adivinen la contraseña
@@ -19,11 +24,10 @@ export async function POST(req: Request) {
   });
   if (!hayCupo) return volver("demasiados-intentos");
 
-  const form = await req.formData().catch(() => null);
   const clave = form?.get("clave");
   if (typeof clave !== "string" || !claveCorrecta(clave)) return volver("clave");
 
-  const res = NextResponse.redirect(new URL("/panel", req.url), 303);
+  const res = NextResponse.redirect(new URL(destino, req.url), 303);
   res.cookies.set(COOKIE_PANEL, tokenPanel(), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

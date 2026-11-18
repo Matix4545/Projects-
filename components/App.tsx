@@ -396,6 +396,15 @@ export function App() {
           <div className="flex shrink-0 items-center gap-1.5">
             {equipo && (
               <Link
+                href="/medir"
+                className="flex h-8 items-center gap-1 rounded-full bg-ios-azul px-3 text-[13px] font-semibold text-white"
+                title="Medir recorrido: baches con la cámara (solo equipo)"
+              >
+                <Coche /> Medir
+              </Link>
+            )}
+            {equipo && (
+              <Link
                 href="/estadisticas"
                 className="flex h-8 items-center gap-1 rounded-full bg-ios-etiqueta px-3 text-[13px] font-semibold text-white"
                 title="Estadísticas (solo equipo)"
@@ -571,6 +580,17 @@ export function App() {
         </div>
       )}
     </main>
+  );
+}
+
+function Coche() {
+  return (
+    <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden>
+      <path d="M2.2 5.2L3.4 2a1.5 1.5 0 0 1 1.4-1h4.4a1.5 1.5 0 0 1 1.4 1l1.2 3.2" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinejoin="round" />
+      <rect x="0.7" y="5" width="12.6" height="4.6" rx="1.4" fill="currentColor" />
+      <rect x="1.6" y="9" width="2.4" height="2.4" rx="0.8" fill="currentColor" />
+      <rect x="10" y="9" width="2.4" height="2.4" rx="0.8" fill="currentColor" />
+    </svg>
   );
 }
 

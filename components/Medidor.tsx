@@ -34,6 +34,11 @@ const plataforma = () => {
   return /android/i.test(ua) ? "android" : /iphone|ipad|ipod/i.test(ua) ? "ios" : "otro";
 };
 const ENVIO_CADA_MS = 5 * 60_000;
+const ERRORES_ENTRAR: Record<string, string> = {
+  clave: "Contraseña incorrecta.",
+  "demasiados-intentos": "Demasiados intentos. Vuelve a intentarlo mañana.",
+  "sin-configurar": "El acceso del equipo no está activado.",
+};
 
 const leer = (k: string) => {
   try {
@@ -65,6 +70,8 @@ export function Medidor() {
   const [pausa, setPausa] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [historico, setHistorico] = useState(0);
+  /** Error al entrar como equipo (regresa en ?error=) */
+  const [errorEntrar, setErrorEntrar] = useState<string | null>(null);
   // Baches con la cámara: solo para el equipo (entró con la contraseña del panel)
   const [equipo, setEquipo] = useState(false);
   const [camara, cambiarCamara] = useAjustesCamara(vehiculo);
@@ -86,6 +93,11 @@ export function Medidor() {
     const s = leer("rc_soporte") as Soporte | null;
     if (s && SOPORTES.some(([k]) => k === s)) setSoporte(s);
     setHistorico(Number(leer("rc_km_medidos")) || 0);
+    const e = new URLSearchParams(window.location.search).get("error");
+    if (e) {
+      setErrorEntrar(ERRORES_ENTRAR[e] ?? "No se pudo entrar.");
+      window.history.replaceState(null, "", window.location.pathname);
+    }
     fetch("/api/equipo/sesion")
       .then((r) => r.json())
       .then((r: { equipo?: boolean }) => setEquipo(!!r.equipo))
@@ -281,6 +293,7 @@ export function Medidor() {
     <Pagina
       titulo="Medir recorrido"
       ancho="max-w-md"
+      volver={fase === "midiendo" ? null : undefined}
       accion={<span className="rounded-full bg-ios-naranja/15 px-2.5 py-1 text-xs font-semibold text-[#c93400]">En prueba</span>}
       subtitulo={
         conCamara
@@ -290,6 +303,7 @@ export function Medidor() {
     >
       {fase === "inicio" && (
         <>
+          {!equipo && <EntrarEquipo error={errorEntrar} />}
           <Paso n={1} titulo="Coloca el celular">
             {conCamara && <DibujoParabrisas />}
             <p className="text-[15px] leading-snug text-ios-secundario">
@@ -489,6 +503,54 @@ export function Medidor() {
         </p>
       )}
     </Pagina>
+  );
+}
+
+/** Para el equipo: entrar con la contraseña sin salir de esta página (después regresa aquí) */
+function EntrarEquipo({ error }: { error: string | null }) {
+  const [abrio, setAbierto] = useState(false);
+  // Si regresó con error (contraseña incorrecta), el formulario queda abierto
+  const abierto = abrio || !!error;
+  return (
+    <section className="rounded-3xl bg-white p-4">
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ios-azul/12 text-ios-azul" aria-hidden>
+          <svg width="20" height="18" viewBox="0 0 20 18">
+            <path d="M2 5.5h3.5L7.5 3h5l2 2.5H18v10H2z" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinejoin="round" />
+            <circle cx="10" cy="10.2" r="3" stroke="currentColor" strokeWidth="1.7" fill="none" />
+          </svg>
+        </span>
+        <p className="min-w-0 flex-1 text-[15px] leading-snug">
+          <strong className="font-semibold">¿Eres del equipo?</strong>
+          <span className="block text-ios-secundario">Entra para buscar baches con la cámara.</span>
+        </p>
+        {!abierto && (
+          <button onClick={() => setAbierto(true)} className="boton boton-tenue min-h-9 shrink-0 rounded-full px-4 text-[15px]">
+            Entrar
+          </button>
+        )}
+      </div>
+      {abierto && (
+        <form action="/api/panel/entrar" method="post" className="mt-3 space-y-2.5">
+          <input type="hidden" name="volver" value="/medir" />
+          <label className="sr-only" htmlFor="clave-equipo">
+            Contraseña del equipo
+          </label>
+          <input
+            id="clave-equipo"
+            name="clave"
+            type="password"
+            required
+            autoFocus={!error}
+            autoComplete="current-password"
+            placeholder="Contraseña del equipo"
+            className="campo"
+          />
+          {error && <p className="text-[14px] text-ios-rojo">{error}</p>}
+          <button className="boton boton-principal h-12 w-full">Entrar</button>
+        </form>
+      )}
+    </section>
   );
 }
 

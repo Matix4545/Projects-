@@ -15,7 +15,8 @@ export function Pagina({
 }: {
   titulo: ReactNode;
   subtitulo?: ReactNode;
-  volver?: { href: string; texto: string };
+  /** null: sin enlace de regreso */
+  volver?: { href: string; texto: string } | null;
   /** Botón o enlace a la derecha de la barra */
   accion?: ReactNode;
   ancho?: string;
@@ -25,12 +26,16 @@ export function Pagina({
     <div className="min-h-dvh bg-ios-fondo pb-16 print:bg-white">
       <nav className="material sticky top-0 z-10 print:hidden !shadow-[0_0.5px_0_rgba(0,0,0,0.15)] pt-[env(safe-area-inset-top)]">
         <div className={`mx-auto flex h-11 items-center justify-between px-2 ${ancho}`}>
-          <Link href={volver.href} className="flex items-center gap-1 px-2 text-[17px] text-ios-azul">
-            <svg width="12" height="20" viewBox="0 0 12 20" aria-hidden>
-              <path d="M10 2L2 10l8 8" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {volver.texto}
-          </Link>
+          {volver ? (
+            <Link href={volver.href} className="flex items-center gap-1 px-2 text-[17px] text-ios-azul">
+              <svg width="12" height="20" viewBox="0 0 12 20" aria-hidden>
+                <path d="M10 2L2 10l8 8" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {volver.texto}
+            </Link>
+          ) : (
+            <span />
+          )}
           <div className="px-2">{accion}</div>
         </div>
       </nav>
