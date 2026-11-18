@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { calibrarConRectangulo, camaraDesdeFov, ejesSuelo, FOV_TIPICO, inclinacion, type Px, type Vec3 } from "@/lib/baches/geometria";
+import { calibrarConRectangulo, camaraDesdeFov, ejesSuelo, FOV_TIPICO, inclinacion, sueloAPixel, type Px, type Vec3 } from "@/lib/baches/geometria";
 import { Detector, leerInfoModelo, type InfoModelo } from "@/lib/baches/modelo";
 import { Orientacion } from "@/lib/baches/sensores";
 import { dibujarPiso } from "./CamaraBaches";
@@ -18,7 +18,13 @@ export type AjustesCamara = {
   calibrada: string | null;
   /** Inclinación guardada al calibrar, por si el celular no da orientación en vivo */
   abajo: Vec3 | null;
+  /** Día (AAAA-MM-DD) en que se revisó la cámara por última vez */
+  revisada: string | null;
 };
+
+/** Hoy en Cajeme, AAAA-MM-DD */
+export const hoy = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Hermosillo" });
+export const revisadaHoy = (a: AjustesCamara) => a.revisada === hoy();
 
 const ALTURA_POR_VEHICULO: Record<string, number> = { auto: 125, camioneta: 145, pickup: 160, moto: 110, otro: 130 };
 
@@ -39,7 +45,14 @@ const guardar = (k: string, v: string) => {
 
 /** Ajustes de la cámara guardados en este celular (la altura, por vehículo) */
 export function useAjustesCamara(vehiculo: string) {
-  const [a, setA] = useState<AjustesCamara>({ activa: false, alturaCm: ALTURA_POR_VEHICULO[vehiculo] ?? 130, fov: FOV_TIPICO, calibrada: null, abajo: null });
+  const [a, setA] = useState<AjustesCamara>({
+    activa: false,
+    alturaCm: ALTURA_POR_VEHICULO[vehiculo] ?? 130,
+    fov: FOV_TIPICO,
+    calibrada: null,
+    abajo: null,
+    revisada: null,
+  });
   useEffect(() => {
     const cal = (() => {
       try {
@@ -54,6 +67,7 @@ export function useAjustesCamara(vehiculo: string) {
       fov: cal?.fov ?? FOV_TIPICO,
       calibrada: cal?.fecha ?? null,
       abajo: cal?.abajo ?? null,
+      revisada: leer("rc_cam_revisada"),
     });
   }, [vehiculo]);
   const cambiar = (c: Partial<AjustesCamara>) =>
@@ -61,6 +75,7 @@ export function useAjustesCamara(vehiculo: string) {
       const n = { ...x, ...c };
       guardar("rc_cam_activa", n.activa ? "1" : "0");
       guardar(`rc_cam_altura_${vehiculo}`, String(n.alturaCm));
+      if (c.revisada !== undefined) guardar("rc_cam_revisada", n.revisada ?? "");
       if (c.fov !== undefined || c.abajo !== undefined) {
         guardar("rc_cam_calibracion", JSON.stringify({ fov: n.fov, fecha: n.calibrada, abajo: n.abajo }));
       }
@@ -116,129 +131,239 @@ export async function abrirCamara() {
   });
 }
 
-/** Bloque de la página de inicio de /medir (solo equipo) */
-export function BloqueCamara({ ajustes, cambiar, estado }: { ajustes: AjustesCamara; cambiar: (c: Partial<AjustesCamara>) => void; estado: EstadoDetector }) {
-  const [calibrando, setCalibrando] = useState(false);
-  const [referencia, setReferencia] = useState(false);
-  const { info } = estado;
-  const sinModelo = info === null;
+/** Palomita para lo que ya está bien */
+export function Palomita({ className = "" }: { className?: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden className={className}>
+      <path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const metros = (cm: number) => `${(cm / 100).toFixed(2)} m`;
+
+/** Línea de estado del detector: solo se muestra si hay algo que decir (descargando, error, modelo de prueba) */
+function LineaDetector({ estado }: { estado: EstadoDetector }) {
+  if (estado.error) return <p className="rounded-xl bg-ios-rojo/10 px-3 py-2 text-[14px] text-ios-rojo">{estado.error}</p>;
   return (
     <>
-      <Bloque
-        titulo="Baches con la cámara · solo equipo"
-        sinRelleno
-        nota={
-          ajustes.activa ? (
-            <>
-              El celular va en el <strong>parabrisas</strong>, acostado (horizontal) y mirando al frente. Cada bache se mide en m² sobre el plano de la calle y se sube solo al mapa
-              (si ya había uno a menos de 8 m, se le suma la detección). Solo se envía un recorte del bache, nunca el video.
-            </>
-          ) : sinModelo ? (
-            <>Aún no hay modelo entrenado. Córrelo en GitHub → Actions → “Entrenar detector de baches”.</>
-          ) : undefined
-        }
-      >
-        <div className="flex items-center justify-between px-4 py-2.5 text-[16px]">
-          Detectar baches con la cámara
-          <Interruptor etiqueta="Detectar baches con la cámara" activo={ajustes.activa && !sinModelo} onCambio={(v) => !sinModelo && cambiar({ activa: v })} />
+      {estado.progreso != null && (
+        <div className="space-y-1.5">
+          <p className="text-[14px] text-ios-secundario">Preparando el detector de baches… {Math.round(estado.progreso * 100)}%</p>
+          <div className="h-1.5 overflow-hidden rounded-full bg-ios-relleno">
+            <div className="h-full rounded-full bg-ios-azul transition-[width]" style={{ width: `${Math.round(estado.progreso * 100)}%` }} />
+          </div>
         </div>
-        {ajustes.activa && !sinModelo && (
-          <>
-            <label className="flex items-center justify-between gap-3 border-t border-ios-separador px-4 py-2.5 text-[16px]">
-              Altura de la cámara sobre el piso
-              <span className="flex items-center gap-1 text-ios-secundario">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={40}
-                  max={400}
-                  value={ajustes.alturaCm}
-                  onChange={(e) => cambiar({ alturaCm: Math.max(40, Math.min(400, Number(e.target.value) || 0)) })}
-                  className="w-16 bg-transparent text-right text-ios-etiqueta outline-none"
-                />
-                cm
-              </span>
-            </label>
-            <div className="flex items-center justify-between gap-3 border-t border-ios-separador px-4 py-2.5 text-[16px]">
-              <span>
-                Campo de visión
-                <span className="block text-[13px] text-ios-secundario">
-                  {ajustes.calibrada ? `${ajustes.fov.toFixed(1)}° · calibrado el ${ajustes.calibrada}` : `${ajustes.fov}° (típico, sin calibrar)`}
-                </span>
-              </span>
-              <button
-                onClick={async () => {
-                  await pedirPermisoOrientacion();
-                  setCalibrando(true);
-                }}
-                className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]"
-              >
-                Probar y calibrar
-              </button>
-            </div>
-            <div className="border-t border-ios-separador px-4 py-2.5 text-[14px] text-ios-secundario">
-              {estado.error ? (
-                <span className="text-ios-rojo">{estado.error}</span>
-              ) : estado.progreso != null ? (
-                `Descargando el detector… ${Math.round(estado.progreso * 100)}%`
-              ) : estado.detector ? (
-                <>
-                  ✓ Detector listo ({estado.detector.proveedor === "webgpu" ? "WebGPU" : "CPU"}){info?.fecha ? ` · modelo del ${info.fecha}` : ""}
-                  {info?.map50 != null ? ` · precisión ${Math.round(info.map50 * 100)}%` : ""}
-                </>
-              ) : (
-                "Preparando el detector…"
-              )}
-              {info?.sintetico && <span className="block font-medium text-[#c93400]">Modelo de PRUEBA (imágenes sintéticas): no detecta baches reales.</span>}
-            </div>
-          </>
-        )}
-        <div className="flex items-center justify-between gap-3 border-t border-ios-separador px-4 py-2.5 text-[16px]">
-          <span>
-            Medida de referencia
-            <span className="block text-[13px] text-ios-secundario">Foto desde arriba con una hoja carta: para comprobar a la cámara</span>
-          </span>
-          <button onClick={() => setReferencia(true)} className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">
-            Medir
-          </button>
-        </div>
-      </Bloque>
-      {referencia && <MedidaReferencia onCerrar={() => setReferencia(false)} />}
-      {calibrando && (
-        <CalibrarCamara
-          ajustes={ajustes}
-          onCerrar={() => setCalibrando(false)}
-          onGuardar={(c) => {
-            cambiar(c);
-            setCalibrando(false);
-          }}
-        />
       )}
+      {estado.info?.sintetico && <p className="text-[14px] font-medium text-[#c93400]">Modelo de PRUEBA (imágenes sintéticas): no detecta baches reales.</p>}
     </>
   );
 }
 
-/** Vista previa con la cuadrícula del piso y calibración con un rectángulo de medida conocida */
-function CalibrarCamara({ ajustes, onCerrar, onGuardar }: { ajustes: AjustesCamara; onCerrar: () => void; onGuardar: (c: Partial<AjustesCamara>) => void }) {
+/** Paso "Revisa la cámara" de /medir (equipo y voluntarios): prender la cámara y revisar que vea la calle */
+export function PasoCamara({ ajustes, cambiar, estado }: { ajustes: AjustesCamara; cambiar: (c: Partial<AjustesCamara>) => void; estado: EstadoDetector }) {
+  const [revisando, setRevisando] = useState(false);
+  const sinModelo = estado.info === null;
+  const activa = ajustes.activa && !sinModelo;
+  const abrir = async () => {
+    // En iPhone el permiso de orientación se pide dentro del toque
+    await pedirPermisoOrientacion();
+    setRevisando(true);
+  };
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3 rounded-2xl bg-ios-fondo px-4 py-3">
+        <span className="text-[16px] font-medium leading-tight">
+          Buscar baches con la cámara
+          <span className="block text-[13px] font-normal text-ios-secundario">
+            {sinModelo ? "Todavía no hay un modelo de baches instalado" : "Los mide y los sube al mapa solos"}
+          </span>
+        </span>
+        <Interruptor etiqueta="Detectar baches con la cámara" activo={activa} onCambio={(v) => !sinModelo && cambiar({ activa: v })} />
+      </div>
+      {activa && (
+        <>
+          <LineaDetector estado={estado} />
+          {revisadaHoy(ajustes) ? (
+            <div className="flex items-center justify-between gap-3">
+              <p className="flex items-center gap-1.5 text-[15px] font-medium text-[#248a3d]">
+                <Palomita />
+                Revisada hoy · altura {metros(ajustes.alturaCm)}
+              </p>
+              <button onClick={abrir} className="boton boton-tenue min-h-9 shrink-0 rounded-full px-4 text-[15px]">
+                Otra vez
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-[15px] leading-snug text-ios-secundario">Con el carro estacionado, revisa que la cámara vea bien la calle. Toma 30 segundos.</p>
+              <button onClick={abrir} className="boton boton-tenue h-12 w-full">
+                Revisar la cámara
+              </button>
+            </>
+          )}
+        </>
+      )}
+      {revisando && <RevisarCamara ajustes={ajustes} cambiar={cambiar} onCerrar={() => setRevisando(false)} />}
+    </>
+  );
+}
+
+/** Al final de /medir (solo equipo): medida a mano, ajuste fino y detalles técnicos */
+export function HerramientasEquipo({ ajustes, cambiar, estado }: { ajustes: AjustesCamara; cambiar: (c: Partial<AjustesCamara>) => void; estado: EstadoDetector }) {
+  const [referencia, setReferencia] = useState(false);
+  const [ajuste, setAjuste] = useState(false);
+  const { info, detector } = estado;
+  const fila = "flex items-center justify-between gap-3 border-t border-ios-separador px-4 py-3 text-[16px] first:border-0";
+  return (
+    <>
+      <Bloque titulo="Herramientas del equipo" sinRelleno>
+        <div className={fila}>
+          <span className="leading-tight">
+            Medir un bache a mano
+            <span className="block text-[13px] text-ios-secundario">Con una hoja carta, para comprobar que la cámara mide bien</span>
+          </span>
+          <button onClick={() => setReferencia(true)} className="boton boton-tenue min-h-9 shrink-0 rounded-full px-4 text-[15px]">
+            Medir
+          </button>
+        </div>
+        {ajustes.activa && info !== null && (
+          <div className={fila}>
+            <span className="leading-tight">
+              Ajuste fino de la cámara
+              <span className="block text-[13px] text-ios-secundario">Con hojas en el piso, si la franja verde no cae donde debe</span>
+            </span>
+            <button
+              onClick={async () => {
+                await pedirPermisoOrientacion();
+                setAjuste(true);
+              }}
+              className="boton boton-tenue min-h-9 shrink-0 rounded-full px-4 text-[15px]"
+            >
+              Ajustar
+            </button>
+          </div>
+        )}
+        <details className="group border-t border-ios-separador">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[16px] [&::-webkit-details-marker]:hidden">
+            Detalles técnicos
+            <svg width="8" height="13" viewBox="0 0 8 13" aria-hidden className="text-ios-terciario transition-transform group-open:rotate-90">
+              <path d="M1.5 1.5l5 5-5 5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </summary>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 px-4 pb-3.5 text-[14px]">
+            <dt className="text-ios-secundario">Detector</dt>
+            <dd>
+              {estado.error
+                ? "con error"
+                : detector
+                  ? `listo (${detector.proveedor === "webgpu" ? "WebGPU" : "CPU"})`
+                  : estado.progreso != null
+                    ? `descargando ${Math.round(estado.progreso * 100)}%`
+                    : ajustes.activa
+                      ? "preparando…"
+                      : "apagado"}
+            </dd>
+            <dt className="text-ios-secundario">Modelo</dt>
+            <dd>
+              {info === null ? "sin instalar" : info ? `${info.fecha ? `del ${info.fecha}` : "instalado"}${info.map50 != null ? ` · precisión ${Math.round(info.map50 * 100)}%` : ""}` : "…"}
+            </dd>
+            <dt className="text-ios-secundario">Campo de visión</dt>
+            <dd>{ajustes.calibrada ? `${ajustes.fov.toFixed(1)}° · ajustado el ${ajustes.calibrada}` : `${ajustes.fov}° (típico, sin ajuste fino)`}</dd>
+            <dt className="text-ios-secundario">Altura</dt>
+            <dd>{ajustes.alturaCm} cm</dd>
+          </dl>
+        </details>
+      </Bloque>
+      {referencia && <MedidaReferencia onCerrar={() => setReferencia(false)} />}
+      {ajuste && <RevisarCamara ajustes={ajustes} cambiar={cambiar} inicio="ajuste" onCerrar={() => setAjuste(false)} />}
+    </>
+  );
+}
+
+/** Cómo está colocado el celular, visto por sus sensores */
+type Revision = { pitch: number; roll: number; horizontal: boolean; apunta: "bien" | "arriba" | "abajo" };
+
+function revisarPose(g: Vec3, vw: number, vh: number, fov: number, h: number): Revision {
+  const { pitch, roll } = inclinacion(g);
+  const ejes = ejesSuelo(g);
+  let apunta: Revision["apunta"] = "bien";
+  if (!ejes) apunta = pitch > 0 ? "arriba" : "abajo";
+  else {
+    const cam = camaraDesdeFov(vw, vh, fov);
+    const y8 = sueloAPixel([0, 8], cam, ejes, h)?.[1];
+    const y14 = sueloAPixel([0, 14], cam, ejes, h)?.[1];
+    // Mira al cielo: la calle cercana se sale por abajo de la imagen
+    if (pitch < -2 || y8 == null || y8 > vh * 0.92) apunta = "abajo";
+    // Mira al cofre: lo lejano de la franja se sale por arriba
+    else if (y14 == null || y14 < vh * 0.06) apunta = "arriba";
+  }
+  return { pitch, roll, horizontal: vw >= vh, apunta };
+}
+
+type Punto = { estado: "bien" | "mal" | "info"; texto: string };
+
+function puntosRevision(r: Revision): Punto[] {
+  const giro = Math.abs(r.roll);
+  return [
+    r.horizontal ? { estado: "bien", texto: "Acostado (horizontal)" } : { estado: "info", texto: "Vertical: funciona, pero acostado ve más calle" },
+    giro > 45
+      ? { estado: "mal", texto: "La pantalla no giró: quita el bloqueo de rotación" }
+      : giro > 6
+        ? { estado: "mal", texto: `Está chueco (${Math.round(giro)}°): enderézalo` }
+        : { estado: "bien", texto: "Derecho" },
+    r.apunta === "bien"
+      ? { estado: "bien", texto: "Viendo la calle" }
+      : r.apunta === "abajo"
+        ? { estado: "mal", texto: "Apúntalo un poco más abajo, hacia la calle" }
+        : { estado: "mal", texto: "Apúntalo un poco más arriba" },
+  ];
+}
+
+/**
+ * Revisión de la cámara antes de salir: video en vivo con la franja donde se mide,
+ * estado claro (bien colocado / qué corregir) y la altura. Incluye el ajuste fino con un
+ * rectángulo de medida conocida (hojas carta, cajón de estacionamiento).
+ */
+function RevisarCamara({
+  ajustes,
+  cambiar,
+  onCerrar,
+  inicio = "revisar",
+}: {
+  ajustes: AjustesCamara;
+  cambiar: (c: Partial<AjustesCamara>) => void;
+  onCerrar: () => void;
+  inicio?: "revisar" | "ajuste";
+}) {
+  const [modo, setModo] = useState(inicio);
   const video = useRef<HTMLVideoElement>(null);
   const lienzo = useRef<HTMLCanvasElement>(null);
   const foto = useRef<HTMLCanvasElement>(null);
   const orientacion = useRef(new Orientacion(3));
   const [error, setError] = useState<string | null>(null);
-  const [pose, setPose] = useState<{ pitch: number; roll: number } | null>(null);
+  const [revision, setRevision] = useState<Revision | null>(null);
+  const [sinSensor, setSinSensor] = useState(false);
   const [congelada, setCongelada] = useState<{ g: Vec3; vw: number; vh: number } | null>(null);
   const [esquinas, setEsquinas] = useState<Px[]>([]);
   const [anchoCm, setAnchoCm] = useState(100);
   const [largoCm, setLargoCm] = useState(200);
   const [calcularAltura, setCalcularAltura] = useState(false);
   const [resultado, setResultado] = useState<ReturnType<typeof calibrarConRectangulo>>(null);
-  // Con la imagen congelada se deja de pintar la cuadrícula en vivo (el lienzo es de las esquinas)
+  // Con la imagen congelada se deja de pintar en vivo (el lienzo es de las esquinas)
   const pausada = useRef(false);
   pausada.current = !!congelada;
+  // La altura y el modo cambian sin reiniciar la cámara
+  const params = useRef({ ajustes, modo });
+  params.current = { ajustes, modo };
+
+  /** "Abajo" en vivo (null si el sensor no ha dado lecturas en 2 s) */
+  const enVivo = () => (performance.now() / 1000 - orientacion.current.ultima < 2 ? orientacion.current.abajo() : null);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
     let vivo = true;
+    const desde = performance.now();
     const alOrientar = (e: DeviceOrientationEvent) => orientacion.current.lectura(e.beta, e.gamma, performance.now() / 1000);
     window.addEventListener("deviceorientation", alOrientar);
     abrirCamara()
@@ -249,22 +374,35 @@ function CalibrarCamara({ ajustes, onCerrar, onGuardar }: { ajustes: AjustesCama
         video.current!.play().catch(() => {});
       })
       .catch(() => setError("Sin permiso de cámara. Actívalo en los ajustes del navegador para este sitio."));
-    // Cuadrícula en vivo
     let cuadro = 0;
     const pintar = () => {
       if (!vivo) return;
       const v = video.current;
       const c = lienzo.current;
-      const g = orientacion.current.abajo() ?? ajustes.abajo;
-      if (v && c && v.videoWidth && g && !pausada.current) {
-        const ejes = ejesSuelo(g);
+      const { ajustes: a, modo: m } = params.current;
+      const vivoG = enVivo();
+      const g = vivoG ?? a.abajo;
+      if (v && c && v.videoWidth && !pausada.current) {
         const dpr = window.devicePixelRatio || 1;
         c.width = Math.round(c.clientWidth * dpr);
         c.height = Math.round(c.clientHeight * dpr);
         const ctx = c.getContext("2d")!;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        if (ejes) dibujarPiso(ctx, camaraDesdeFov(v.videoWidth, v.videoHeight, ajustes.fov), ejes, ajustes.alturaCm / 100, c.clientWidth / v.videoWidth);
-        if (cuadro++ % 15 === 0) setPose(inclinacion(g));
+        const ejes = g ? ejesSuelo(g) : null;
+        if (ejes) {
+          dibujarPiso(
+            ctx,
+            camaraDesdeFov(v.videoWidth, v.videoHeight, a.fov),
+            ejes,
+            a.alturaCm / 100,
+            c.clientWidth / v.videoWidth,
+            m === "revisar" ? { distancias: [10], etiqueta: "Aquí mide" } : { distancias: [5, 10, 15, 20] },
+          );
+        }
+        if (cuadro++ % 10 === 0) {
+          setRevision(vivoG ? revisarPose(vivoG, v.videoWidth, v.videoHeight, a.fov, a.alturaCm / 100) : null);
+          setSinSensor(!vivoG && performance.now() - desde > 2500);
+        }
       }
       requestAnimationFrame(pintar);
     };
@@ -274,14 +412,15 @@ function CalibrarCamara({ ajustes, onCerrar, onGuardar }: { ajustes: AjustesCama
       window.removeEventListener("deviceorientation", alOrientar);
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [ajustes.abajo, ajustes.fov, ajustes.alturaCm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function congelar() {
     const v = video.current;
-    const g = orientacion.current.abajo() ?? ajustes.abajo;
+    const g = enVivo() ?? ajustes.abajo;
     if (!v?.videoWidth) return;
     if (!g) {
-      setError("El celular no da su inclinación (sensor de orientación). Sin eso no se puede calibrar.");
+      setError("El celular no da su inclinación (sensor de orientación). Sin eso no se puede ajustar.");
       return;
     }
     const c = foto.current!;
@@ -341,57 +480,150 @@ function CalibrarCamara({ ajustes, onCerrar, onGuardar }: { ajustes: AjustesCama
     );
   }
 
+  const puntos = revision ? puntosRevision(revision) : [];
+  const bien = !!revision && puntos.every((p) => p.estado !== "mal");
+  const primerProblema = puntos.find((p) => p.estado === "mal");
+  const altura = (cm: number) => cambiar({ alturaCm: Math.max(40, Math.min(400, Math.round(cm))) });
+
   return (
-    <HojaInferior titulo="Probar y calibrar la cámara" onCerrar={onCerrar}>
+    <HojaInferior titulo={modo === "revisar" ? "Revisar la cámara" : "Ajuste fino de la cámara"} onCerrar={onCerrar}>
       <div className="space-y-3 pb-2">
         <div className="relative overflow-hidden rounded-2xl bg-black">
           <video ref={video} muted playsInline autoPlay className={`block w-full ${congelada ? "hidden" : ""}`} />
           <canvas ref={foto} className={`block w-full ${congelada ? "" : "hidden"}`} />
           <canvas ref={lienzo} onPointerDown={tocar} className={`absolute inset-0 h-full w-full ${congelada ? "cursor-crosshair" : "pointer-events-none"}`} />
-          {pose && !congelada && (
-            <div className="absolute right-2 top-2 rounded-full bg-black/55 px-2.5 py-1 font-mono text-[11px] text-white">
-              ↓{pose.pitch.toFixed(1)}° ↻{pose.roll.toFixed(1)}°
+          {modo === "revisar" && (
+            <div
+              className={`absolute left-1/2 top-2 flex max-w-[92%] -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] font-semibold text-white shadow-lg ${
+                bien ? "bg-[#248a3d]" : revision ? "bg-[#c93400]" : "bg-black/60"
+              }`}
+            >
+              {bien && <Palomita />}
+              <span className="truncate">
+                {bien ? "Bien colocado" : primerProblema ? primerProblema.texto : sinSensor ? "Sin sensor de inclinación" : "Revisando…"}
+              </span>
             </div>
           )}
         </div>
         {error && <p className="rounded-xl bg-ios-rojo/10 px-3 py-2 text-[14px] text-ios-rojo">{error}</p>}
-        {!congelada ? (
+
+        {modo === "revisar" && (
           <>
-            <p className="text-[14px] text-ios-secundario">
-              La franja verde es donde se mide el tamaño (de {3} a {14} m). Apunta el celular para que cubra tu carril y la línea amarilla quede sobre el
-              horizonte. Si las líneas no coinciden con la calle, calibra.
+            {sinSensor ? (
+              <p className="rounded-xl bg-ios-naranja/12 px-3 py-2 text-[14px] text-[#c93400]">
+                Tu celular no da su inclinación. Haz el ajuste fino con hojas (abajo) para poder medir el tamaño de los baches.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {(puntos.length ? puntos : [{ estado: "info", texto: "Leyendo los sensores…" } as Punto]).map((p) => (
+                  <li key={p.texto} className="flex items-center gap-2.5 text-[15px]">
+                    <span
+                      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-white ${
+                        p.estado === "bien" ? "bg-ios-verde" : p.estado === "mal" ? "bg-ios-naranja" : "bg-ios-terciario"
+                      }`}
+                    >
+                      {p.estado === "bien" ? <Palomita className="h-3.5 w-3.5" /> : <span className="text-[13px] font-bold">{p.estado === "mal" ? "!" : "i"}</span>}
+                    </span>
+                    {p.texto}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-ios-fondo px-4 py-3">
+              <span className="text-[16px] leading-tight">
+                Altura del celular
+                <span className="block text-[13px] text-ios-secundario">Del piso al celular, con cinta</span>
+              </span>
+              <span className="flex items-center gap-2">
+                <button
+                  onClick={() => altura(ajustes.alturaCm - 5)}
+                  aria-label="Bajar 5 cm"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-white text-[22px] font-medium leading-none text-ios-azul shadow-sm active:opacity-60"
+                >
+                  −
+                </button>
+                <label className="flex items-baseline gap-0.5 text-[17px] font-semibold tabular-nums">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={3}
+                    aria-label="Altura en centímetros"
+                    value={ajustes.alturaCm}
+                    onChange={(e) => altura(Number(e.target.value.replace(/\D/g, "")) || 0)}
+                    className="w-10 bg-transparent text-right outline-none"
+                  />
+                  <span className="text-[14px] font-normal text-ios-secundario">cm</span>
+                </label>
+                <button
+                  onClick={() => altura(ajustes.alturaCm + 5)}
+                  aria-label="Subir 5 cm"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-white text-[22px] font-medium leading-none text-ios-azul shadow-sm active:opacity-60"
+                >
+                  +
+                </button>
+              </span>
+            </div>
+            <p className="text-[14px] leading-snug text-ios-secundario">
+              La <strong className="font-semibold text-[#248a3d]">franja verde</strong> es donde se miden los baches: debe caer sobre la calle, delante del cofre. Algo que
+              esté a 10 m del celular debe quedar sobre la línea blanca.
             </p>
-            <p className="text-[14px] text-ios-secundario">
-              <strong className="text-ios-etiqueta">Para calibrar</strong>, con el vehículo estacionado en piso plano, pon delante (a unos 5–8 m) un rectángulo de
-              medida conocida: cuatro hojas carta, un tapete, cinta en el piso o las rayas de un cajón de estacionamiento. Luego toca Congelar.
-            </p>
-            <button onClick={congelar} className="boton boton-principal w-full">
-              Congelar imagen
+            <button
+              onClick={() => {
+                const g = enVivo();
+                cambiar({ revisada: hoy(), ...(g ? { abajo: g } : {}) });
+                onCerrar();
+              }}
+              className={`boton h-12 w-full ${bien ? "boton-exito" : "boton-gris"}`}
+            >
+              {bien ? "Listo" : "Guardar así"}
+            </button>
+            <button onClick={() => setModo("ajuste")} className="w-full py-1 text-center text-[15px] text-ios-azul">
+              ¿La franja no cae sobre la calle? Ajuste fino
             </button>
           </>
-        ) : (
+        )}
+
+        {modo === "ajuste" && !congelada && (
           <>
-            <p className="text-[14px] text-ios-secundario">
-              Toca las 4 esquinas en orden, dando la vuelta: <strong>1 → 2</strong> es el lado ancho (el más cercano), <strong>2 → 3</strong> el largo.
+            <p className="text-[15px] leading-snug text-ios-secundario">
+              Con el carro estacionado en piso plano, pon delante (a unos 5–8 m) algo de medida conocida: <strong className="text-ios-etiqueta">4 hojas carta</strong>, un tapete o
+              las rayas de un cajón de estacionamiento. Luego toma una foto.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => (inicio === "ajuste" ? onCerrar() : setModo("revisar"))} className="boton boton-gris text-[16px]">
+                Volver
+              </button>
+              <button onClick={congelar} className="boton boton-principal text-[16px]">
+                Tomar foto
+              </button>
+            </div>
+          </>
+        )}
+
+        {modo === "ajuste" && congelada && (
+          <>
+            <p className="text-[15px] leading-snug text-ios-secundario">
+              Toca las 4 esquinas dando la vuelta: <strong className="text-ios-etiqueta">1 → 2</strong> es el lado de enfrente (el más cercano) y{" "}
+              <strong className="text-ios-etiqueta">2 → 3</strong> el lado largo.
             </p>
             <div className="grid grid-cols-2 gap-2">
               <label className="campo flex items-center justify-between text-[15px]">
-                Ancho (1→2)
+                Enfrente
                 <span className="flex items-center gap-1">
-                  <input type="number" inputMode="numeric" value={anchoCm} onChange={(e) => setAnchoCm(Number(e.target.value) || 0)} className="w-14 bg-transparent text-right outline-none" />
+                  <input type="number" inputMode="numeric" aria-label="Ancho (1→2) en cm" value={anchoCm} onChange={(e) => setAnchoCm(Number(e.target.value) || 0)} className="w-14 bg-transparent text-right outline-none" />
                   cm
                 </span>
               </label>
               <label className="campo flex items-center justify-between text-[15px]">
-                Largo (2→3)
+                Largo
                 <span className="flex items-center gap-1">
-                  <input type="number" inputMode="numeric" value={largoCm} onChange={(e) => setLargoCm(Number(e.target.value) || 0)} className="w-14 bg-transparent text-right outline-none" />
+                  <input type="number" inputMode="numeric" aria-label="Largo (2→3) en cm" value={largoCm} onChange={(e) => setLargoCm(Number(e.target.value) || 0)} className="w-14 bg-transparent text-right outline-none" />
                   cm
                 </span>
               </label>
             </div>
-            <div className="flex items-center justify-between text-[15px]">
-              <span>
+            <div className="flex items-center justify-between gap-3 text-[15px]">
+              <span className="leading-tight">
                 Calcular también la altura
                 <span className="block text-[13px] text-ios-secundario">Apágalo si mediste la altura con cinta ({ajustes.alturaCm} cm)</span>
               </span>
@@ -399,19 +631,19 @@ function CalibrarCamara({ ajustes, onCerrar, onGuardar }: { ajustes: AjustesCama
             </div>
             {resultado && (
               <p className={`rounded-xl px-3 py-2 text-[15px] ${resultado.error < 0.05 ? "bg-ios-verde/12 text-[#248a3d]" : "bg-ios-naranja/12 text-[#c93400]"}`}>
-                Campo de visión <strong>{resultado.fovLargo.toFixed(1)}°</strong>
+                {resultado.error < 0.05 ? "✓ Quedó bien" : "Diferencia grande: revisa las medidas o toca las esquinas con más cuidado"} · campo de visión{" "}
+                <strong>{resultado.fovLargo.toFixed(1)}°</strong>
                 {calcularAltura && (
                   <>
                     {" "}
                     · altura <strong>{Math.round(resultado.alturaM * 100)} cm</strong>
                   </>
                 )}{" "}
-                · diferencia con el rectángulo {(resultado.error * 100).toFixed(1)}%
-                {resultado.error >= 0.05 && ". Es mucha: revisa las medidas o toca las esquinas con más cuidado."}
+                · diferencia {(resultado.error * 100).toFixed(1)}%
               </p>
             )}
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => (esquinas.length ? setEsquinas((q) => q.slice(0, -1)) : setCongelada(null))} className="boton boton-tenue px-2 text-[15px]">
+              <button onClick={() => (esquinas.length ? setEsquinas((q) => q.slice(0, -1)) : setCongelada(null))} className="boton boton-gris px-2 text-[15px]">
                 {esquinas.length ? "Deshacer" : "Volver"}
               </button>
               <button onClick={calcular} disabled={esquinas.length !== 4 || anchoCm <= 0 || largoCm <= 0} className="boton boton-principal px-2 text-[15px]">
@@ -419,15 +651,21 @@ function CalibrarCamara({ ajustes, onCerrar, onGuardar }: { ajustes: AjustesCama
               </button>
               <button
                 disabled={!resultado}
-                onClick={() =>
-                  resultado &&
-                  onGuardar({
+                onClick={() => {
+                  if (!resultado) return;
+                  cambiar({
                     fov: resultado.fovLargo,
                     calibrada: new Date().toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }),
                     abajo: congelada.g,
+                    revisada: hoy(),
                     ...(calcularAltura ? { alturaCm: Math.round(resultado.alturaM * 100) } : {}),
-                  })
-                }
+                  });
+                  // De regreso a la vista en vivo para ver la franja ya ajustada
+                  setCongelada(null);
+                  setEsquinas([]);
+                  setResultado(null);
+                  setModo("revisar");
+                }}
                 className="boton boton-exito px-2 text-[15px]"
               >
                 Guardar

@@ -10,6 +10,7 @@ const COLUMNAS = [
   "id",
   "fecha",
   "prueba",
+  "voluntario",
   "sesion",
   "pin_id",
   "lat",

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { COLOR_ESTADO, ESTADOS_AGUA, ETIQUETAS, INFO_PIN, type EstadoAgua, type TipoPin } from "@/lib/constantes";
 import { diasValidos, panelConfigurado, sesionPanelValida } from "@/lib/panel";
 import { supabaseServidor } from "@/lib/supabase/servidor";
+import { codigoVoluntarios, formatoCodigo } from "@/lib/voluntarios";
 import { Pagina } from "@/components/Pagina";
 import { Barras, Caja, Seccion, Tabla, Tarjeta, Vacio, num } from "@/components/graficas";
 import { BotonImprimir } from "./BotonImprimir";
@@ -125,6 +126,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
         <Link href="/" className="boton boton-principal min-h-9 rounded-full px-4 text-[15px]">Mapa del equipo</Link>
         <Link href="/estadisticas" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">Estadísticas</Link>
         <Link href="/medir" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">Medir recorrido</Link>
+        <Link href="#voluntarios" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">Voluntarios</Link>
         <a href={`/api/panel/csv?dias=${dias}`} className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">Descargar Excel</a>
         <BotonImprimir />
       </div>
@@ -215,10 +217,57 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
         </p>
       </Seccion>
 
+      <Voluntarios dias={dias} />
+
       <p className="mt-10 px-4 text-xs text-ios-secundario">
         Datos de percepción ciudadana reportados de forma anónima en Reporta Cajeme. No son cifras oficiales ni análisis de
         laboratorio. Proyecto ciudadano sin afiliación al gobierno.
       </p>
     </Pagina>
+  );
+}
+
+/** Código para que voluntarios de confianza midan baches con la cámara en /medir */
+async function Voluntarios({ dias }: { dias: number }) {
+  const codigo = await codigoVoluntarios().catch(() => null);
+  const desde = new Date(Date.now() - dias * 86_400_000).toISOString().slice(0, 10);
+  const { count } = await supabaseServidor()
+    .from("detecciones_bache")
+    .select("id", { count: "exact", head: true })
+    .eq("voluntario", true)
+    .gte("fecha", desde);
+  return (
+    <section id="voluntarios" className="mt-7 scroll-mt-16 print:hidden">
+      <h2 className="px-1 pb-2 text-[20px] font-bold tracking-tight">Voluntarios</h2>
+      <div className="space-y-3 rounded-2xl bg-white p-4">
+        <p className="text-[15px] text-ios-secundario">
+          Comparte este código con personas de confianza para que midan baches con la cámara (les explica todo la página{" "}
+          <strong className="font-semibold text-ios-etiqueta">reportacajeme.org/apoyar</strong>). Solo pueden medir: no ven este panel. Sus
+          baches se suben al mapa marcados como de voluntario.
+        </p>
+        {codigo ? (
+          <p className="select-all font-mono text-[32px] font-bold tracking-[0.15em]">{formatoCodigo(codigo)}</p>
+        ) : (
+          <p className="text-[15px] font-medium">Sin código: nadie puede entrar como voluntario.</p>
+        )}
+        <p className="text-[14px] text-ios-secundario">
+          {num(count ?? 0)} detecciones de voluntarios en los últimos {dias} días.
+        </p>
+        <form action="/api/panel/voluntarios" method="post" className="flex flex-wrap gap-2">
+          <Link href="/apoyar" className="boton boton-principal min-h-9 rounded-full px-4 text-[15px]">
+            Ver página de voluntarios
+          </Link>
+          <button name="accion" value="nuevo" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">
+            {codigo ? "Cambiar código" : "Crear código"}
+          </button>
+          {codigo && (
+            <button name="accion" value="quitar" className="boton boton-gris min-h-9 rounded-full px-4 text-[15px]">
+              Desactivar
+            </button>
+          )}
+        </form>
+        {codigo && <p className="text-[13px] text-ios-secundario">Si cambias o desactivas el código, los voluntarios que entraron con el anterior ya no pueden subir baches.</p>}
+      </div>
+    </section>
   );
 }

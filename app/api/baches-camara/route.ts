@@ -3,14 +3,16 @@ import { z } from "zod";
 import { dentroDeCajeme } from "@/lib/constantes";
 import { limpiarFoto } from "@/lib/fotos";
 import { sesionPanelValida } from "@/lib/panel";
+import { sesionVoluntarioValida } from "@/lib/voluntarios";
 import { error, ok } from "@/lib/respuestas";
 import { supabaseServidor } from "@/lib/supabase/servidor";
 
 export const runtime = "nodejs";
 
 // POST /api/baches-camara — baches que detectó la cámara del parabrisas en /medir.
-// Solo el equipo (sesión del panel): estos baches se publican en el mapa sin pasar por los
-// límites de los vecinos, así que no puede usarlo cualquiera.
+// Solo el equipo (sesión del panel) o voluntarios con el código vigente: estos baches se publican
+// en el mapa sin pasar por los límites de los vecinos, así que no puede usarlo cualquiera.
+// Los de voluntarios quedan marcados (detecciones_bache.voluntario) para revisarlos o quitarlos.
 // Llega como multipart: "datos" (JSON) y una foto por bache ("foto_0", "foto_1"…): un recorte
 // del bache, que el servidor vuelve a codificar (sin metadatos).
 
@@ -46,7 +48,9 @@ const Lote = z.object({
 });
 
 export async function POST(req: Request) {
-  if (!(await sesionPanelValida())) return error("Necesitas entrar con la contraseña del equipo.", 401);
+  const equipo = await sesionPanelValida();
+  const voluntario = !equipo && (await sesionVoluntarioValida());
+  if (!equipo && !voluntario) return error("Necesitas entrar con la contraseña del equipo o tu código de voluntario.", 401);
 
   let form: FormData;
   try {
@@ -66,7 +70,10 @@ export async function POST(req: Request) {
 
   const db = supabaseServidor();
   // Tope generoso por día (protege la base de datos si algo se cicla)
-  const { data: hayCupo, error: errCupo } = await db.rpc("consumir_cupo_ip", { p_ip_hash: "equipo:baches-camara", p_max: 20_000 });
+  const { data: hayCupo, error: errCupo } = await db.rpc("consumir_cupo_ip", {
+    p_ip_hash: voluntario ? "voluntarios:baches-camara" : "equipo:baches-camara",
+    p_max: voluntario ? 5_000 : 20_000,
+  });
   if (errCupo) return error("Error al guardar. Intenta más tarde.", 500);
   if (!hayCupo) return error("Se llegó al límite de baches de hoy.", 429);
 
@@ -115,6 +122,7 @@ export async function POST(req: Request) {
         fov: lote.fov,
         plataforma: lote.plataforma,
         prueba: lote.prueba || null,
+        voluntario,
       },
     });
     if (err) {

@@ -178,3 +178,9 @@ export const LIMITE_DIARIO_INTERACCIONES_IP = 250;
 export const HORAS_ENTRE_REPORTES_AGUA = 6;
 export const MAX_COMENTARIO = 280;
 export const MAX_FOTO_BYTES = 1024 * 1024;
+
+/**
+ * Botón "Apoya midiendo baches" en el mapa (lleva a /apoyar, para voluntarios con código).
+ * Apagado hasta que la prueba en calle confirme que la cámara detecta y mide bien.
+ */
+export const MOSTRAR_APOYAR = false;

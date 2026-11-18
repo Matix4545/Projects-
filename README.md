@@ -22,10 +22,12 @@ servicios públicos: **agua**, **baches** y **drenaje**. Es anónimo, está en e
 - Al tocar una colonia se ven los conteos de 24 h y 7 días, la hora del último reporte y los comentarios recientes.
 - La barra de abajo muestra "X reportes en las últimas 24 h · Y colonias afectadas".
 
-### 🕳️📷 Baches con la cámara (solo equipo)
+### 🕳️📷 Baches con la cámara (equipo y voluntarios)
 
-En `/medir`, quien entró con la contraseña del panel puede activar **"Detectar baches con la cámara"**. Con el
-celular en el parabrisas, mientras se maneja:
+En `/medir`, quien entró con la contraseña del panel **o con el código de voluntarios** puede activar
+**"Buscar baches con la cámara"**. La pantalla va en 3 pasos (coloca el celular, revisa la cámara, maneja); en
+**"Revisar la cámara"** el celular dice si está bien colocado o qué corregir (más abajo, más arriba, chueco, quitar
+el bloqueo de rotación). Con el celular en el parabrisas, mientras se maneja:
 
 1. Un modelo de **segmentación** (YOLO, exportado a ONNX) corre **en el celular** y dibuja el contorno de cada
    bache. El video nunca sale del teléfono.
@@ -53,6 +55,14 @@ celular en el parabrisas, mientras se maneja:
 
 Si el modelo tiene varias clases (p. ej. `pothole`, `manhole`, `grate`), solo se suben las que se llaman
 bache / pothole; las alcantarillas y rejillas se dibujan en azul, pero no cuentan.
+
+**Voluntarios.** En `/panel → Voluntarios` el equipo crea (o cambia) un **código de voluntario** de 6 letras y
+números y lo comparte con personas de confianza. En `/medir` lo escriben en "¿Eres voluntario o del equipo?" (el
+mismo campo que la contraseña del equipo) y quedan dentro solo para medir: no ven el panel ni los datos del equipo.
+Sus detecciones quedan marcadas (`detecciones_bache.voluntario`, columna `voluntario` del CSV). Si alguien abusa,
+**cambia o desactiva el código**: las sesiones con el código anterior dejan de subir baches. La página
+`/apoyar` explica a los voluntarios qué necesitan y cómo se hace; el botón **"Apoya midiendo baches"** del mapa
+se prende con `MOSTRAR_APOYAR` en `lib/constantes.ts` (apagado hasta terminar las pruebas en calle).
 
 ### Antispam y privacidad
 
