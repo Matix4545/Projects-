@@ -460,7 +460,8 @@ declare
   v_n int;
 begin
   if p_borrar_antes then
-    delete from calles;
+    -- Con "where": Supabase no permite borrar sin condición desde la API
+    delete from calles where id is not null;
   end if;
   insert into calles (osm_id, nombre, tipo, sentido_unico, ancho_m, geom)
   select c->>'osm_id', nullif(c->>'nombre', ''), c->>'tipo', coalesce((c->>'sentido_unico')::boolean, false),
