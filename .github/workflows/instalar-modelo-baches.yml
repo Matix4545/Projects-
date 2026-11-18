@@ -20,7 +20,7 @@ on:
         required: false
         default: ""
       nota:
-        description: "Opcional: de dónde salió (p. ej. Ultralytics Platform, 1,200 fotos de Cajeme)"
+        description: "Crédito del modelo y sus fotos; sale en Acerca de (p. ej. Entrenado en Ultralytics Platform con el dataset X de Y, CC BY 4.0)"
         required: false
         default: ""
       tamano:

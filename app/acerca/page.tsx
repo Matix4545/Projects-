@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Bloque, Pagina } from "@/components/Pagina";
@@ -10,7 +12,22 @@ export const metadata: Metadata = {
 
 const contacto = process.env.NEXT_PUBLIC_CONTACTO;
 
+/**
+ * Crédito del modelo de baches instalado (campo "datos" de public/modelos/baches.json, que llena el
+ * workflow "Instalar modelo de baches" con su "nota"). Las fotos de entrenamiento suelen tener
+ * licencia CC BY: hay que decir de dónde salieron.
+ */
+function creditoModelo(): string | null {
+  try {
+    const info = JSON.parse(readFileSync(join(process.cwd(), "public", "modelos", "baches.json"), "utf8")) as { datos?: unknown };
+    return typeof info.datos === "string" && info.datos.trim() ? info.datos.trim() : null;
+  } catch {
+    return null; // sin modelo instalado
+  }
+}
+
 export default function Acerca() {
+  const credito = creditoModelo();
   return (
     <Pagina titulo="Acerca de" subtitulo="Reporta Cajeme · Proyecto ciudadano">
       <Bloque>
@@ -144,6 +161,7 @@ export default function Acerca() {
         La medida es aproximada (supone la calle plana) y no mide la profundidad. Solo se guarda un recorte del bache,
         sin metadatos, y la ubicación del bache, no la del vehículo.
       </p>
+      {credito && <p className="text-[13px] text-ios-secundario">Modelo de detección: {credito}.</p>}
       </div>
       </Bloque>
 
