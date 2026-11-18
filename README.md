@@ -10,7 +10,7 @@ servicios públicos: **agua**, **baches** y **drenaje**. Es anónimo, está en e
 | Reporte | Cómo se reporta | Qué se ve en el mapa |
 |---|---|---|
 | 💧 **Agua** | Por colonia: sin agua · baja presión · agua sucia (mal olor, turbia, sedimentos, color extraño) · con agua | Cada colonia se pinta con el estado que más se reportó en 24 h: 🟥 sin agua · 🟧 baja presión · 🟪 sucia · 🟩 con agua · ⬜ sin reportes. En empate gana el más grave. |
-| 🕳️ **Bache** | Punto exacto (GPS o tocando el mapa) + tamaño, foto y comentario opcionales | Círculo por tamaño: 🟢 chico (menos de 45 cm) · 🟡 mediano (45–75 cm) · 🔴 grande (más de 75 cm); peligroso con borde rojo (como siempre) |
+| 🕳️ **Bache** | Punto exacto (GPS o tocando el mapa) + tamaño, foto y comentario opcionales | Círculo amarillo (más grande si es más grande; borde rojo si es peligroso) |
 | 🚧 **Drenaje** | Punto exacto + tipo (tapado, aguas negras, sin tapa, mal olor) | Círculo café |
 | 💡 **Alumbrado** | Punto exacto + tipo (apagada o fundida, parpadea, poste dañado, cables expuestos) | Círculo celeste |
 | 🚶 **Banqueta** | Punto exacto + tipo (quebrada, incompleta, obstruida) | Círculo rosa |
