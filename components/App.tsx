@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   INFO_PIN,
+  MOSTRAR_APOYAR,
   PERIODO_PREDETERMINADO,
   TIPOS_PIN,
   dentroDeCajeme,
@@ -446,7 +447,17 @@ export function App() {
             </button>
           ))}
         </div>
-        <div className="pointer-events-none mx-auto flex max-w-lg justify-end">
+        <div className="pointer-events-none mx-auto flex max-w-lg items-start justify-between gap-2">
+          {MOSTRAR_APOYAR && !equipo ? (
+            <Link
+              href="/apoyar"
+              className="material pointer-events-auto flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-semibold text-ios-azul"
+            >
+              <Coche /> Apoya midiendo baches
+            </Link>
+          ) : (
+            <span />
+          )}
           <div className="pointer-events-auto">
             <SelectorFondo fondo={fondo} onCambio={cambiarFondo} agrupar={agruparPuntos} onAgrupar={cambiarAgrupar} />
           </div>

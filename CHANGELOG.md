@@ -1,5 +1,28 @@
 # Historial de versiones · Reporta Cajeme
 
+## 1.4 — 18 de noviembre de 2026
+
+### Medir recorrido más fácil
+- `/medir` en **3 pasos**: coloca el celular (con dibujo), revisa la cámara y maneja. Lo técnico quedó en
+  "Detalles técnicos".
+- **"Revisar la cámara"** (antes "Probar y calibrar"): dice "Bien colocado" o qué corregir (apúntalo más
+  abajo/arriba, está chueco, quita el bloqueo de rotación), altura con botones − / +, franja verde "Aquí mide"
+  y una línea de 10 m. El ajuste fino con hojas sigue como opción.
+- Al manejar: estado "Buscando baches" / "Buscando GPS…", etiquetas sin porcentajes y botón "Detalles" con
+  las líneas de distancia, cuadros por segundo e inclinación.
+- Resumen con el número de baches, conteo por tamaño y el estado de cada uno en palabras.
+- Entrar sin salir de `/medir` (antes llevaba al panel); botón **"Medir"** en el mapa del equipo; mientras se
+  mide no aparece "‹ Mapa". La app instalada puede girar (para el celular acostado).
+
+### Voluntarios
+- **Código de voluntario** que el equipo crea y cambia en `/panel → Voluntarios` (guardado en la tabla privada
+  `ajustes_equipo`). Con él se puede medir baches con la cámara en `/medir`, sin acceso al panel. Sus
+  detecciones quedan marcadas (`voluntario`).
+- Página **`/apoyar`**: qué se necesita, cómo se hace, seguridad y privacidad. El botón del mapa
+  ("Apoya midiendo baches") está apagado (`MOSTRAR_APOYAR`) hasta terminar las pruebas en calle.
+- SQL: columna `detecciones_bache.voluntario`, tabla `ajustes_equipo` (RLS sin políticas) y
+  `registrar_bache_camara` / `exportar_detecciones_bache` actualizadas.
+
 ## 1.3 — 17 de noviembre de 2026
 
 ### Baches con la cámara (solo equipo)

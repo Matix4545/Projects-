@@ -160,7 +160,7 @@ function LineaDetector({ estado }: { estado: EstadoDetector }) {
   );
 }
 
-/** Paso "Revisa la cámara" de /medir (solo equipo): prender la cámara y revisar que vea la calle */
+/** Paso "Revisa la cámara" de /medir (equipo y voluntarios): prender la cámara y revisar que vea la calle */
 export function PasoCamara({ ajustes, cambiar, estado }: { ajustes: AjustesCamara; cambiar: (c: Partial<AjustesCamara>) => void; estado: EstadoDetector }) {
   const [revisando, setRevisando] = useState(false);
   const sinModelo = estado.info === null;

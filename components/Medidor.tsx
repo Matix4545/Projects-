@@ -7,6 +7,7 @@ import { COLOR_CLASE, MotorRugosidad, clasificar, resumir, type EstadoMedicion, 
 import { HerramientasEquipo, Palomita, PasoCamara, abrirCamara, pedirPermisoOrientacion, revisadaHoy, useAjustesCamara, useDetector } from "./AjustesCamara";
 import { CamaraBaches, type BacheSubido, type ControlCamara } from "./CamaraBaches";
 import { Interruptor } from "./Interruptor";
+import { DibujoParabrisas } from "./DibujoParabrisas";
 import { Bloque, Pagina } from "./Pagina";
 import { useTurnstile } from "./Turnstile";
 
@@ -74,8 +75,11 @@ export function Medidor() {
   const [errorEntrar, setErrorEntrar] = useState<string | null>(null);
   // Baches con la cámara: solo para el equipo (entró con la contraseña del panel)
   const [equipo, setEquipo] = useState(false);
+  // Voluntario: entró con el código de voluntarios; solo puede medir baches con la cámara
+  const [voluntario, setVoluntario] = useState(false);
+  const puedeCamara = equipo || voluntario;
   const [camara, cambiarCamara] = useAjustesCamara(vehiculo);
-  const detector = useDetector(equipo && camara.activa);
+  const detector = useDetector(puedeCamara && camara.activa);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [baches, setBaches] = useState<BacheSubido[]>([]);
   const control = useRef<ControlCamara>(null);
@@ -100,13 +104,16 @@ export function Medidor() {
     }
     fetch("/api/equipo/sesion")
       .then((r) => r.json())
-      .then((r: { equipo?: boolean }) => setEquipo(!!r.equipo))
+      .then((r: { equipo?: boolean; voluntario?: boolean }) => {
+        setEquipo(!!r.equipo);
+        setVoluntario(!!r.voluntario);
+      })
       .catch(() => {});
     return () => limpiar.current();
   }, []);
 
   // Con la cámara el celular va en el parabrisas (o el tablero): se ajusta solo
-  const camaraPrendida = equipo && camara.activa && detector.info !== null;
+  const camaraPrendida = puedeCamara && camara.activa && detector.info !== null;
   useEffect(() => {
     if (camaraPrendida && soporte !== "parabrisas" && soporte !== "tablero") setSoporte("parabrisas");
   }, [camaraPrendida, soporte]);
@@ -186,7 +193,7 @@ export function Medidor() {
 
     // Cámara para los baches (si está activa y el detector ya está listo)
     let video: MediaStream | null = null;
-    if (equipo && camara.activa && detector.detector) {
+    if (puedeCamara && camara.activa && detector.detector) {
       await pedirPermisoOrientacion();
       try {
         video = await abrirCamara();
@@ -285,7 +292,7 @@ export function Medidor() {
   const enElMapa = baches.filter((b) => b.enviado && b.publicado !== false).length;
   const kmMedidos = (estado?.distancia_m ?? 0) / 1000;
   // Con cámara: el equipo entró, la prendió y hay modelo
-  const conCamara = equipo && camara.activa && detector.info !== null;
+  const conCamara = puedeCamara && camara.activa && detector.info !== null;
   const preparando = conCamara && !detector.detector && !detector.error;
   const soportes = conCamara ? SOPORTES.filter(([k]) => k === "parabrisas" || k === "tablero") : SOPORTES;
 
@@ -303,7 +310,7 @@ export function Medidor() {
     >
       {fase === "inicio" && (
         <>
-          {!equipo && <EntrarEquipo error={errorEntrar} />}
+          {!puedeCamara && <EntrarEquipo error={errorEntrar} />}
           <Paso n={1} titulo="Coloca el celular">
             {conCamara && <DibujoParabrisas />}
             <p className="text-[15px] leading-snug text-ios-secundario">
@@ -325,13 +332,14 @@ export function Medidor() {
             </Pregunta>
           </Paso>
 
-          {equipo && (
+          {puedeCamara && (
             <Paso n={2} titulo="Revisa la cámara" listo={conCamara && revisadaHoy(camara)}>
+              {voluntario && <p className="text-[14px] text-ios-secundario">Entraste como voluntario. ¡Gracias por apoyar a Reporta Cajeme!</p>}
               <PasoCamara ajustes={camara} cambiar={cambiarCamara} estado={detector} />
             </Paso>
           )}
 
-          <Paso n={equipo ? 3 : 2} titulo="Maneja">
+          <Paso n={puedeCamara ? 3 : 2} titulo="Maneja">
             <p className="text-[15px] leading-snug text-ios-secundario">
               Toca <strong className="font-semibold text-ios-etiqueta">Empezar a medir</strong> y acepta los permisos. Maneja normal: no tienes que tocar nada. Ya estacionado, toca{" "}
               <strong className="font-semibold text-ios-etiqueta">Terminar</strong>.
@@ -506,7 +514,7 @@ export function Medidor() {
   );
 }
 
-/** Para el equipo: entrar con la contraseña sin salir de esta página (después regresa aquí) */
+/** Para voluntarios y equipo: entrar con el código o la contraseña sin salir de esta página (después regresa aquí) */
 function EntrarEquipo({ error }: { error: string | null }) {
   const [abrio, setAbierto] = useState(false);
   // Si regresó con error (contraseña incorrecta), el formulario queda abierto
@@ -521,8 +529,8 @@ function EntrarEquipo({ error }: { error: string | null }) {
           </svg>
         </span>
         <p className="min-w-0 flex-1 text-[15px] leading-snug">
-          <strong className="font-semibold">¿Eres del equipo?</strong>
-          <span className="block text-ios-secundario">Entra para buscar baches con la cámara.</span>
+          <strong className="font-semibold">¿Eres voluntario o del equipo?</strong>
+          <span className="block text-ios-secundario">Entra con tu código para buscar baches con la cámara.</span>
         </p>
         {!abierto && (
           <button onClick={() => setAbierto(true)} className="boton boton-tenue min-h-9 shrink-0 rounded-full px-4 text-[15px]">
@@ -534,7 +542,7 @@ function EntrarEquipo({ error }: { error: string | null }) {
         <form action="/api/panel/entrar" method="post" className="mt-3 space-y-2.5">
           <input type="hidden" name="volver" value="/medir" />
           <label className="sr-only" htmlFor="clave-equipo">
-            Contraseña del equipo
+            Código de voluntario o contraseña del equipo
           </label>
           <input
             id="clave-equipo"
@@ -543,13 +551,16 @@ function EntrarEquipo({ error }: { error: string | null }) {
             required
             autoFocus={!error}
             autoComplete="current-password"
-            placeholder="Contraseña del equipo"
+            placeholder="Código de voluntario o contraseña"
             className="campo"
           />
           {error && <p className="text-[14px] text-ios-rojo">{error}</p>}
           <button className="boton boton-principal h-12 w-full">Entrar</button>
         </form>
       )}
+      <Link href="/apoyar" className="mt-3 block text-[14px] text-ios-azul">
+        ¿No tienes código? Así puedes apoyar →
+      </Link>
     </section>
   );
 }
@@ -605,44 +616,6 @@ function Contadores({ baches }: { baches: BacheSubido[] }) {
         </div>
       ))}
     </div>
-  );
-}
-
-/** Cómo va el celular: acostado en el parabrisas, viendo la calle */
-function DibujoParabrisas() {
-  return (
-    <svg viewBox="0 0 320 132" role="img" aria-label="Celular acostado en el parabrisas, viendo la calle" className="block w-full">
-      <defs>
-        <clipPath id="parabrisas">
-          <rect width="320" height="132" rx="18" />
-        </clipPath>
-        <linearGradient id="cielo" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#cfe3fb" />
-          <stop offset="1" stopColor="#eef5fd" />
-        </linearGradient>
-      </defs>
-      <g clipPath="url(#parabrisas)">
-        <rect width="320" height="132" fill="url(#cielo)" />
-        <rect y="70" width="320" height="62" fill="#e4e1d9" />
-        <path d="M44 132 L150 70 L170 70 L276 132 Z" fill="#9a9aa0" />
-        <path d="M160 74 V132" stroke="#ffffff" strokeWidth="2.5" strokeDasharray="7 8" />
-        <ellipse cx="194" cy="96" rx="9" ry="3.2" fill="#48484a" />
-        <path d="M0 0 H320 V9 H0 Z" fill="#2c2c2e" />
-        <path d="M0 0 L30 0 L6 132 L0 132 Z" fill="#2c2c2e" />
-        <path d="M320 0 L290 0 L314 132 L320 132 Z" fill="#2c2c2e" />
-        <rect x="138" y="8" width="44" height="13" rx="5" fill="#3a3a3c" />
-        <path d="M0 132 V118 Q160 100 320 118 V132 Z" fill="#3a3a3c" />
-        <circle cx="160" cy="79" r="6" fill="#48484a" />
-        <rect x="156" y="79" width="8" height="10" fill="#48484a" />
-        <rect x="116" y="86" width="88" height="42" rx="8" fill="#1c1c1e" />
-        <rect x="121" y="90" width="78" height="34" rx="4" fill="#cfe3fb" />
-        <path d="M121 108 H199 V124 H121 Z" fill="#e4e1d9" />
-        <path d="M128 124 L157 108 L163 108 L192 124 Z" fill="#9a9aa0" />
-        <path d="M136 120 L155 110 L165 110 L184 120 Z" fill="#34c759" fillOpacity="0.55" />
-        <ellipse cx="166" cy="116" rx="5" ry="1.8" fill="#facc15" stroke="#1c1c1e" strokeWidth="0.6" />
-      </g>
-      <rect x="0.5" y="0.5" width="319" height="131" rx="17.5" fill="none" stroke="rgba(0,0,0,0.06)" />
-    </svg>
   );
 }
 

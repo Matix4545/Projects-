@@ -25,6 +25,7 @@ alter table public.tramos_rugosidad enable row level security;
 alter table public.detecciones_bache enable row level security;
 alter table public.calles enable row level security;
 alter table public.mediciones_referencia enable row level security;
+alter table public.ajustes_equipo enable row level security;
 
 -- 2) Quitar cualquier permiso directo sobre tablas al público.
 revoke all on all tables    in schema public from anon, authenticated;

@@ -153,7 +153,7 @@ export function CamaraBaches({
         lote.forEach((b, k) => b.foto && form.set(`foto_${k}`, b.foto, `bache-${k}.jpg`));
         const res = await fetch("/api/baches-camara", { method: "POST", body: form });
         if (res.status === 401) {
-          setAviso("Tu sesión del equipo se cerró: entra otra vez a /panel. Los baches siguen guardados en esta página.");
+          setAviso("Tu sesión se cerró (¿cambió el código?). Al terminar, vuelve a entrar en /medir. Los baches siguen guardados en esta página.");
           break;
         }
         if (!res.ok) throw new Error(String(res.status));

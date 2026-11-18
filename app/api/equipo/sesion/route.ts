@@ -1,6 +1,10 @@
 import { sesionPanelValida } from "@/lib/panel";
+import { sesionVoluntarioValida } from "@/lib/voluntarios";
 
-// El mapa pregunta aquí si quien lo ve es del equipo (entró con la contraseña del panel)
+// El mapa y /medir preguntan aquí quién es: equipo (contraseña del panel) o voluntario (código).
+// El voluntario solo puede medir baches con la cámara.
 export async function GET() {
-  return Response.json({ equipo: await sesionPanelValida() }, { headers: { "Cache-Control": "private, no-store" } });
+  const equipo = await sesionPanelValida();
+  const voluntario = !equipo && (await sesionVoluntarioValida());
+  return Response.json({ equipo, voluntario }, { headers: { "Cache-Control": "private, no-store" } });
 }

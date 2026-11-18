@@ -315,3 +315,14 @@ create table if not exists public.mediciones_referencia (
   creado_en    timestamptz not null default now()
 );
 create index if not exists mediciones_referencia_geom_idx on public.mediciones_referencia using gist (ubicacion);
+
+-- Voluntarios: personas de confianza que miden baches con la cámara usando un código que da el
+-- equipo (/panel → Voluntarios). Sus detecciones quedan marcadas para poder revisarlas o quitarlas.
+alter table public.detecciones_bache add column if not exists voluntario boolean not null default false;
+
+-- Ajustes privados del equipo (p. ej. el código de voluntarios). Solo los lee el servidor.
+create table if not exists public.ajustes_equipo (
+  clave       text primary key,
+  valor       text not null,
+  actualizado timestamptz not null default now()
+);
