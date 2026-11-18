@@ -56,15 +56,6 @@ export function nivelBache(area_m2: number | null | undefined): NivelBache | nul
   return NIVELES_BACHE.find((n) => d < n.hastaCm) ?? NIVELES_BACHE[2];
 }
 
-/**
- * Color de un bache en el mapa según su tamaño: verde, amarillo, rojo. "Peligroso" (lo eligen los
- * vecinos) se ve como ya se veía en Reporta Cajeme: el punto más grande y con borde rojo, aquí en rojo.
- */
-export function colorBache(subtipo: string) {
-  if (subtipo === "peligroso") return NIVELES_BACHE[2].color;
-  return NIVELES_BACHE.find((n) => n.clave === subtipo)?.color ?? NIVELES_BACHE[1].color;
-}
-
 /** Subtipos que se marcan con borde rojo en el mapa */
 export const SUBTIPOS_PELIGROSOS = new Set(["peligroso", "sin_tapa", "cables_expuestos", "quema"]);
 

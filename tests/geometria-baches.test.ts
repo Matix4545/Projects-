@@ -22,7 +22,7 @@ import {
   type Suelo,
   type Vec3,
 } from "../lib/baches/geometria.ts";
-import { colorBache, diametroEquivalenteCm, nivelBache } from "../lib/constantes.ts";
+import { NIVELES_BACHE, diametroEquivalenteCm, nivelBache } from "../lib/constantes.ts";
 
 const cerca = (a: number, b: number, tol: number, msg?: string) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ""} ${a} ≉ ${b} (±${tol})`);
 
@@ -148,10 +148,8 @@ test("niveles: chico < 45 cm ≤ mediano < 75 cm ≤ grande (diámetro equivalen
   assert.equal(nivelBache(4)?.clave, "grande");
   assert.equal(nivelBache(null), null);
   assert.ok(Math.abs(diametroEquivalenteCm(Math.PI * 0.25 ** 2) - 50) < 1e-9);
-  // Grande rojo, mediano amarillo, chico verde
-  assert.deepEqual(["chico", "mediano", "grande"].map(colorBache), ["#16a34a", "#facc15", "#dc2626"]);
-  // Peligroso: rojo como grande; se distingue por el borde rojo y el tamaño, como ya era en Reporta Cajeme
-  assert.equal(colorBache("peligroso"), colorBache("grande"));
+  // En la cámara: grande rojo, mediano amarillo, chico verde (el mapa sigue pintando los baches en amarillo)
+  assert.deepEqual(NIVELES_BACHE.map((n) => n.color), ["#16a34a", "#facc15", "#dc2626"]);
 });
 
 test("medida de referencia: una hoja carta en la foto basta para medir el bache", () => {

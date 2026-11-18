@@ -339,7 +339,6 @@ export function FlujoReporte({ ubicacion, origen, tramo, onModoLinea, pasoInicia
                     key={t}
                     texto={SUBTIPOS_PELIGROSOS.has(t) ? `⚠️ ${ETIQUETAS[t]}` : ETIQUETAS[t]}
                     color={SUBTIPOS_PELIGROSOS.has(t) ? "peligro" : null}
-                    punto={paso === "bache" ? NIVELES_BACHE.find((n) => n.clave === t)?.color : undefined}
                     disabled={bloqueado}
                     onClick={() => enviarReporte(t)}
                   />

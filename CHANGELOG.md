@@ -18,8 +18,9 @@
 - **Medida de referencia** con una hoja carta (homografía de 4 puntos) para comprobar la medida de la
   cámara contra la realidad.
 - **Niveles de bache** por diámetro equivalente (rangos de ASTM D6433): chico (menos de 45 cm),
-  mediano (45–75 cm) y grande (más de 75 cm), los mismos tamaños que ya usan los vecinos. En el mapa:
-  **chico verde, mediano amarillo, grande rojo** (peligroso en rojo con su borde rojo de siempre); el
+  mediano (45–75 cm) y grande (más de 75 cm), los mismos tamaños que ya usan los vecinos. En la cámara
+  (vista al manejar y resumen): **chico verde, mediano amarillo, grande rojo**. El mapa público se ve
+  como siempre (baches amarillos, más grandes si son más grandes, borde rojo si son peligrosos); el
   formulario explica los tamaños.
 - Un bache de la cámara se publica como un reporte normal ("Bache mediano"…). Si no se pudo medir no se
   publica; si cae sobre uno ya reportado, su tamaño pasa a ser el medido (salvo "peligroso").

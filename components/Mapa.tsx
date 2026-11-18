@@ -10,7 +10,6 @@ import {
   COLOR_ESTADO,
   INFO_PIN,
   SUBTIPOS_PELIGROSOS,
-  colorBache,
   esLinea,
   type EstadoAgua,
   type TipoPin,
@@ -382,7 +381,7 @@ export default function Mapa(props: Props) {
             pathOptions={{
               color: seleccionado ? "#007aff" : SUBTIPOS_PELIGROSOS.has(pin.subtipo) ? "#ff3b30" : "#ffffff",
               weight: seleccionado ? 4 : zoom <= 13 && !SUBTIPOS_PELIGROSOS.has(pin.subtipo) ? 1.5 : 2.5,
-              fillColor: arreglado ? COLOR_ARREGLADO : pin.tipo === "bache" ? colorBache(pin.subtipo) : (INFO_PIN[pin.tipo]?.color ?? "#6b7280"),
+              fillColor: arreglado ? COLOR_ARREGLADO : (INFO_PIN[pin.tipo]?.color ?? "#6b7280"),
               fillOpacity: arreglado ? 0.6 : 0.95,
             }}
             eventHandlers={{ click: alClickPin(pin) }}
