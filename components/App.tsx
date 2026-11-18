@@ -448,12 +448,19 @@ export function App() {
           ))}
         </div>
         <div className="pointer-events-none mx-auto flex max-w-lg items-start justify-between gap-2">
-          {MOSTRAR_APOYAR && !equipo ? (
+          {/* El equipo lo ve siempre; el público, cuando se prenda MOSTRAR_APOYAR (candado = aún no lo ve el público) */}
+          {MOSTRAR_APOYAR || equipo ? (
             <Link
               href="/apoyar"
               className="material pointer-events-auto flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-semibold text-ios-azul"
+              title={MOSTRAR_APOYAR ? undefined : "Solo lo ve el equipo por ahora"}
             >
               <Coche /> Apoya midiendo baches
+              {!MOSTRAR_APOYAR && (
+                <span className="text-ios-secundario" aria-label="(solo equipo)">
+                  <Candado />
+                </span>
+              )}
             </Link>
           ) : (
             <span />

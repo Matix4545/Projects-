@@ -126,6 +126,7 @@ export default async function Panel({ searchParams }: { searchParams: Promise<{ 
         <Link href="/" className="boton boton-principal min-h-9 rounded-full px-4 text-[15px]">Mapa del equipo</Link>
         <Link href="/estadisticas" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">Estadísticas</Link>
         <Link href="/medir" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">Medir recorrido</Link>
+        <Link href="#voluntarios" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">Voluntarios</Link>
         <a href={`/api/panel/csv?dias=${dias}`} className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">Descargar Excel</a>
         <BotonImprimir />
       </div>
@@ -240,11 +241,9 @@ async function Voluntarios({ dias }: { dias: number }) {
       <h2 className="px-1 pb-2 text-[20px] font-bold tracking-tight">Voluntarios</h2>
       <div className="space-y-3 rounded-2xl bg-white p-4">
         <p className="text-[15px] text-ios-secundario">
-          Comparte este código con personas de confianza para que midan baches con la cámara en{" "}
-          <Link href="/apoyar" className="text-ios-azul">
-            reportacajeme.org/apoyar
-          </Link>
-          . Solo pueden medir: no ven este panel. Sus baches se suben al mapa marcados como de voluntario.
+          Comparte este código con personas de confianza para que midan baches con la cámara (les explica todo la página{" "}
+          <strong className="font-semibold text-ios-etiqueta">reportacajeme.org/apoyar</strong>). Solo pueden medir: no ven este panel. Sus
+          baches se suben al mapa marcados como de voluntario.
         </p>
         {codigo ? (
           <p className="select-all font-mono text-[32px] font-bold tracking-[0.15em]">{formatoCodigo(codigo)}</p>
@@ -255,6 +254,9 @@ async function Voluntarios({ dias }: { dias: number }) {
           {num(count ?? 0)} detecciones de voluntarios en los últimos {dias} días.
         </p>
         <form action="/api/panel/voluntarios" method="post" className="flex flex-wrap gap-2">
+          <Link href="/apoyar" className="boton boton-principal min-h-9 rounded-full px-4 text-[15px]">
+            Ver página de voluntarios
+          </Link>
           <button name="accion" value="nuevo" className="boton boton-tenue min-h-9 rounded-full px-4 text-[15px]">
             {codigo ? "Cambiar código" : "Crear código"}
           </button>
