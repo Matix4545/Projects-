@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { NIVELES_BACHE, nivelBache } from "@/lib/constantes";
 import { COLOR_CLASE, MotorRugosidad, clasificar, resumir, type EstadoMedicion, type Tramo } from "@/lib/rugosidad";
-import { BloqueCamara, abrirCamara, pedirPermisoOrientacion, useAjustesCamara, useDetector } from "./AjustesCamara";
+import { HerramientasEquipo, Palomita, PasoCamara, abrirCamara, pedirPermisoOrientacion, revisadaHoy, useAjustesCamara, useDetector } from "./AjustesCamara";
 import { CamaraBaches, type BacheSubido, type ControlCamara } from "./CamaraBaches";
 import { Interruptor } from "./Interruptor";
 import { Bloque, Pagina } from "./Pagina";
@@ -91,6 +92,12 @@ export function Medidor() {
       .catch(() => {});
     return () => limpiar.current();
   }, []);
+
+  // Con la cámara el celular va en el parabrisas (o el tablero): se ajusta solo
+  const camaraPrendida = equipo && camara.activa && detector.info !== null;
+  useEffect(() => {
+    if (camaraPrendida && soporte !== "parabrisas" && soporte !== "tablero") setSoporte("parabrisas");
+  }, [camaraPrendida, soporte]);
 
   /** Manda lo que esté listo; si falla, se queda en la cola y se reintenta en el siguiente envío. */
   async function enviarCola() {
@@ -264,81 +271,95 @@ export function Medidor() {
   const resumen = resumir(tramos);
   const bachesEnviados = baches.filter((b) => b.enviado).length;
   const enElMapa = baches.filter((b) => b.enviado && b.publicado !== false).length;
-  const guardadosPrueba = baches.filter((b) => b.prueba).length;
-  const sinMedida = baches.filter((b) => b.area_m2 == null).length;
   const kmMedidos = (estado?.distancia_m ?? 0) / 1000;
+  // Con cámara: el equipo entró, la prendió y hay modelo
+  const conCamara = equipo && camara.activa && detector.info !== null;
+  const preparando = conCamara && !detector.detector && !detector.error;
+  const soportes = conCamara ? SOPORTES.filter(([k]) => k === "parabrisas" || k === "tablero") : SOPORTES;
 
   return (
     <Pagina
       titulo="Medir recorrido"
       ancho="max-w-md"
       accion={<span className="rounded-full bg-ios-naranja/15 px-2.5 py-1 text-xs font-semibold text-[#c93400]">En prueba</span>}
-      subtitulo="Tu celular mide qué tan maltratadas están las calles mientras manejas. Es anónimo: no guardamos dónde empieza ni dónde termina tu viaje, ni dónde te detienes."
+      subtitulo={
+        conCamara
+          ? "Maneja normal: tu celular encuentra los baches, los mide y los sube al mapa solo."
+          : "Tu celular mide qué tan maltratadas están las calles mientras manejas. Es anónimo: no guardamos dónde empieza ni dónde termina tu viaje."
+      }
     >
       {fase === "inicio" && (
         <>
-          <Bloque titulo="¿En qué vas a manejar?">
-            <Opciones opciones={VEHICULOS} valor={vehiculo} onCambio={setVehiculo} />
-          </Bloque>
-          <Bloque titulo="¿Dónde va el celular?">
-            <Opciones opciones={SOPORTES} valor={soporte} onCambio={setSoporte} />
-          </Bloque>
-          {equipo && <BloqueCamara ajustes={camara} cambiar={cambiarCamara} estado={detector} />}
-          <Bloque titulo="Antes de empezar" sinRelleno>
-            {[
-              <>Pon el celular en un <strong className="font-semibold">soporte firme</strong> (no en el asiento ni en la mano).</>,
-              <>Conéctalo al <strong className="font-semibold">cargador</strong>: medir con GPS gasta batería.</>,
-              <>Toca <strong className="font-semibold">Empezar a medir</strong> y acepta ubicación y movimiento.</>,
-              <>Maneja normal y <strong className="font-semibold">deja esta página abierta</strong>. Se envía sola cada 5 minutos.</>,
-              <>Al terminar tu día, ya estacionado, toca <strong className="font-semibold">Terminar</strong>.</>,
-            ].map((texto, n) => (
-              <div key={n} className="flex gap-3 px-4 py-3 text-[15px] leading-snug">
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ios-azul text-[13px] font-semibold text-white">{n + 1}</span>
-                <span>{texto}</span>
+          <Paso n={1} titulo="Coloca el celular">
+            {conCamara && <DibujoParabrisas />}
+            <p className="text-[15px] leading-snug text-ios-secundario">
+              {conCamara ? (
+                <>
+                  <strong className="font-semibold text-ios-etiqueta">Acostado</strong>, en un soporte del parabrisas, con la cámara viendo la calle. Conéctalo al cargador.
+                </>
+              ) : (
+                <>
+                  En un <strong className="font-semibold text-ios-etiqueta">soporte firme</strong> (no en el asiento ni en la mano). Conéctalo al cargador: el GPS gasta batería.
+                </>
+              )}
+            </p>
+            <Pregunta titulo="¿En qué vas?">
+              <Opciones opciones={VEHICULOS} valor={vehiculo} onCambio={setVehiculo} />
+            </Pregunta>
+            <Pregunta titulo="¿Dónde va el celular?">
+              <Opciones opciones={soportes} valor={soporte} onCambio={setSoporte} />
+            </Pregunta>
+          </Paso>
+
+          {equipo && (
+            <Paso n={2} titulo="Revisa la cámara" listo={conCamara && revisadaHoy(camara)}>
+              <PasoCamara ajustes={camara} cambiar={cambiarCamara} estado={detector} />
+            </Paso>
+          )}
+
+          <Paso n={equipo ? 3 : 2} titulo="Maneja">
+            <p className="text-[15px] leading-snug text-ios-secundario">
+              Toca <strong className="font-semibold text-ios-etiqueta">Empezar a medir</strong> y acepta los permisos. Maneja normal: no tienes que tocar nada. Ya estacionado, toca{" "}
+              <strong className="font-semibold text-ios-etiqueta">Terminar</strong>.
+            </p>
+            <div className="rounded-2xl bg-ios-fondo">
+              <div className="flex items-center justify-between gap-3 px-4 py-3">
+                <span className="text-[16px] font-medium leading-tight">
+                  Solo es prueba
+                  <span className="block text-[13px] font-normal text-ios-secundario">
+                    {conCamara ? "Los baches se guardan para revisarlos y no se publican" : "Para calibrar: misma calle, mismo carril, velocidad constante"}
+                  </span>
+                </span>
+                <Interruptor etiqueta="Recorrido de prueba" activo={esPrueba} onCambio={setEsPrueba} />
               </div>
-            ))}
-          </Bloque>
-          <Bloque
-            sinRelleno
-            nota={
-              esPrueba
-                ? "Para calibrar: misma calle, mismo carril, velocidad constante. No pongas datos personales. Los baches de la cámara se guardan con esta nota pero NO se publican en el mapa."
-                : undefined
-            }
-          >
-            <div className="flex items-center justify-between px-4 py-2.5 text-[16px]">
-              Recorrido de prueba
-              <Interruptor etiqueta="Recorrido de prueba" activo={esPrueba} onCambio={setEsPrueba} />
+              {esPrueba && (
+                <div className="border-t border-ios-separador px-4 py-3">
+                  <input
+                    value={nota}
+                    onChange={(e) => setNota(e.target.value)}
+                    maxLength={60}
+                    placeholder="Nota (opcional): Calle 300, carril derecho"
+                    aria-label="Nota del recorrido de prueba"
+                    className="w-full bg-transparent text-[16px] outline-none placeholder:text-ios-terciario"
+                  />
+                </div>
+              )}
             </div>
-            {esPrueba && (
-              <div className="px-4 py-2.5">
-                <input
-                  value={nota}
-                  onChange={(e) => setNota(e.target.value)}
-                  maxLength={60}
-                  placeholder="Ej. Calle 300 a 40 km/h, carril derecho"
-                  className="w-full bg-transparent text-[16px] outline-none placeholder:text-ios-terciario"
-                />
-              </div>
-            )}
-          </Bloque>
+          </Paso>
+
           <div className="space-y-3">
-            <button
-              onClick={empezar}
-              disabled={equipo && camara.activa && detector.info !== null && !detector.detector && !detector.error}
-              className="boton boton-principal h-14 w-full text-[18px]"
-            >
-              {equipo && camara.activa && detector.info !== null && !detector.detector && !detector.error ? "Preparando el detector…" : "Empezar a medir"}
+            <button onClick={empezar} disabled={preparando} className="boton boton-principal h-14 w-full text-[18px] shadow-[0_8px_20px_rgba(0,122,255,0.25)]">
+              {preparando ? "Preparando el detector…" : "Empezar a medir"}
             </button>
             {historico > 0 && (
               <p className="text-center text-[15px] text-ios-secundario">
                 Con este teléfono llevas <strong className="font-semibold text-ios-etiqueta">{historico.toFixed(1)} km</strong> medidos. ¡Gracias!
               </p>
             )}
-            <p className="px-4 text-center text-[13px] text-ios-secundario">
-              Si cambias a otra app (WhatsApp, Uber, Maps) o se apaga la pantalla, la medición se pausa y sigue al volver.
-            </p>
+            <p className="px-4 text-center text-[13px] text-ios-secundario">Deja esta página abierta. Si cambias de app o se apaga la pantalla, se pausa y sigue al volver.</p>
           </div>
+
+          {equipo && <HerramientasEquipo ajustes={camara} cambiar={cambiarCamara} estado={detector} />}
         </>
       )}
 
@@ -358,44 +379,55 @@ export function Medidor() {
                 prueba={esPrueba ? nota.trim() || "Recorrido de prueba" : null}
                 onBaches={setBaches}
               />
-              <div className="grid grid-cols-3 gap-2.5">
-                {NIVELES_BACHE.map((n) => (
-                  <Dato key={n.clave} titulo={`${n.nombre}s`} valor={String(baches.filter((b) => nivelBache(b.area_m2)?.clave === n.clave).length)} color={n.color} />
-                ))}
-              </div>
-              <p className="px-1 text-[14px] text-ios-secundario">
-                {baches.length} {baches.length === 1 ? "bache detectado" : "baches detectados"}
-                {sinMedida > 0 && ` (${sinMedida} sin medir: solo se suman a un bache que ya esté en el mapa)`} ·{" "}
-                {esPrueba ? `${guardadosPrueba} guardados (prueba: no se publican)` : `${enElMapa} en el mapa`}
+              <Contadores baches={baches} />
+              <p className="px-1 text-center text-[14px] text-ios-secundario">
+                {baches.length === 0
+                  ? "Los baches que encuentre aparecen aquí."
+                  : `${baches.length} ${baches.length === 1 ? "bache" : "baches"} · ${
+                      esPrueba ? "se guardan para revisar (prueba)" : enElMapa > 0 ? `${enElMapa} ya en el mapa` : "se suben solos"
+                    }`}
               </p>
             </>
           )}
-          <div className="rounded-3xl bg-white px-5 py-6 text-center">
-            <p className="flex items-center justify-center gap-2 text-[15px] font-medium text-ios-verde">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ios-verde opacity-60 motion-reduce:hidden" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-ios-verde" />
+          {stream ? (
+            <div className="flex items-center justify-between gap-2 rounded-2xl bg-white px-4 py-3 text-[15px]">
+              <span className="flex items-center gap-2 font-medium text-ios-verde">
+                <Pulso />
+                Midiendo
               </span>
-              Midiendo
-            </p>
-            <p className="mt-1 text-[64px] font-bold leading-none tracking-tight tabular-nums">
-              {kmMedidos.toFixed(1)}
-              <span className="ml-1 text-[28px] font-semibold text-ios-secundario">km</span>
-            </p>
-            <p className="mt-2 text-[15px] text-ios-secundario">Puedes seguir manejando. No necesitas tocar nada.</p>
-          </div>
-          <div className="grid grid-cols-3 gap-2.5">
-            <Dato titulo="Velocidad" valor={estado?.vel_kmh != null ? `${estado.vel_kmh} km/h` : "—"} />
-            <Dato titulo="Enviado" valor={`${kmEnviados.toFixed(1)} km`} />
-            <Dato titulo="GPS" valor={estado?.gps_ok ? "Bien" : "Buscando…"} color={estado?.gps_ok ? "#34c759" : "#ff9500"} />
-          </div>
+              <span className="font-semibold tabular-nums">{kmMedidos.toFixed(1)} km</span>
+              <span className="tabular-nums text-ios-secundario">{estado?.vel_kmh != null ? `${estado.vel_kmh} km/h` : "— km/h"}</span>
+              <span className={estado?.gps_ok ? "text-ios-verde" : "text-[#c93400]"}>{estado?.gps_ok ? "GPS bien" : "GPS…"}</span>
+            </div>
+          ) : (
+            <>
+              <div className="rounded-3xl bg-white px-5 py-6 text-center">
+                <p className="flex items-center justify-center gap-2 text-[15px] font-medium text-ios-verde">
+                  <Pulso />
+                  Midiendo
+                </p>
+                <p className="mt-1 text-[64px] font-bold leading-none tracking-tight tabular-nums">
+                  {kmMedidos.toFixed(1)}
+                  <span className="ml-1 text-[28px] font-semibold text-ios-secundario">km</span>
+                </p>
+                <p className="mt-2 text-[15px] text-ios-secundario">Puedes seguir manejando. No necesitas tocar nada.</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2.5">
+                <Dato titulo="Velocidad" valor={estado?.vel_kmh != null ? `${estado.vel_kmh} km/h` : "—"} />
+                <Dato titulo="Enviado" valor={`${kmEnviados.toFixed(1)} km`} />
+                <Dato titulo="GPS" valor={estado?.gps_ok ? "Bien" : "Buscando…"} color={estado?.gps_ok ? "#34c759" : "#ff9500"} />
+              </div>
+            </>
+          )}
           {estado && estado.hz > 0 && estado.hz < 30 && (
             <Aviso>Tu celular lee pocos datos por segundo ({estado.hz}); los resultados serán menos precisos.</Aviso>
           )}
           {pausa && <Aviso>{pausa}</Aviso>}
-          <Bloque sinRelleno nota="Los tramos aparecen unos minutos después: por privacidad se esperan unos 250 m antes de guardarlos.">
-            <MiniMapa tramos={tramos} />
-          </Bloque>
+          {!stream && (
+            <Bloque sinRelleno nota="Los tramos aparecen unos minutos después: por privacidad se esperan unos 250 m antes de guardarlos.">
+              <MiniMapa tramos={tramos} />
+            </Bloque>
+          )}
           <button onClick={terminar} className="boton boton-peligro h-14 w-full text-[18px]">
             Terminar (ya estacionado)
           </button>
@@ -404,13 +436,17 @@ export function Medidor() {
 
       {fase === "terminado" && (
         <>
-          <div className="rounded-3xl bg-white px-5 py-6 text-center">
-            <p className="text-[15px] font-medium text-ios-verde">¡Gracias!</p>
-            <p className="mt-1 text-[22px] font-bold leading-tight">Mediste {resumen.km.toFixed(1)} km de calles de Cajeme</p>
-          </div>
+          {stream ? (
+            <ResumenBaches baches={baches} km={estado ? estado.distancia_m / 1000 : resumen.km} prueba={esPrueba} />
+          ) : (
+            <div className="rounded-3xl bg-white px-5 py-6 text-center">
+              <p className="text-[15px] font-medium text-ios-verde">¡Gracias!</p>
+              <p className="mt-1 text-[22px] font-bold leading-tight">Mediste {resumen.km.toFixed(1)} km de calles de Cajeme</p>
+            </div>
+          )}
           {tramos.length > 0 ? (
             <>
-              <Bloque sinRelleno>
+              <Bloque titulo={stream ? "Estado de las calles" : undefined} sinRelleno>
                 <MiniMapa tramos={tramos} />
               </Bloque>
               <div className="grid grid-cols-3 gap-2.5">
@@ -422,22 +458,28 @@ export function Medidor() {
               {estado && <NoMedido estado={estado} medidoKm={resumen.km} />}
             </>
           ) : (
-            <>
-              <p className="px-4 text-[15px] text-ios-secundario">
-                No quedaron tramos para guardar. Pasa con recorridos de más de 1 km, a más de 15 km/h y sin muchas paradas.
-              </p>
-              {estado && <NoMedido estado={estado} medidoKm={0} />}
-            </>
+            !stream && (
+              <>
+                <p className="px-4 text-[15px] text-ios-secundario">
+                  No quedaron tramos para guardar. Pasa con recorridos de más de 1 km, a más de 15 km/h y sin muchas paradas.
+                </p>
+                {estado && <NoMedido estado={estado} medidoKm={0} />}
+              </>
+            )
           )}
-          {stream && <ResumenBaches baches={baches} />}
-          <p className="px-4 text-[15px] text-ios-secundario">
+          <p className="px-4 text-center text-[15px] text-ios-secundario">
             {pendientesEnvio > 0 || baches.length > bachesEnviados
               ? `Enviando ${[pendientesEnvio > 0 && `${pendientesEnvio} tramos`, baches.length > bachesEnviados && `${baches.length - bachesEnviados} baches`].filter(Boolean).join(" y ")}… deja la página abierta un momento.`
               : "✓ Todo enviado."}
           </p>
-          <button onClick={() => setFase("inicio")} className="boton boton-tenue w-full">
-            Medir otro recorrido
-          </button>
+          <div className="grid grid-cols-2 gap-2.5">
+            <Link href="/" className="boton boton-tenue">
+              Ver el mapa
+            </Link>
+            <button onClick={() => setFase("inicio")} className="boton boton-gris">
+              Medir otro
+            </button>
+          </div>
         </>
       )}
 
@@ -450,53 +492,164 @@ export function Medidor() {
   );
 }
 
-/** Baches que detectó la cámara en el recorrido, de los más grandes a los más chicos */
-function ResumenBaches({ baches }: { baches: BacheSubido[] }) {
+/** Tarjeta de un paso numerado; se marca con palomita cuando ya está listo */
+function Paso({ n, titulo, listo = false, children }: { n: number; titulo: string; listo?: boolean; children: React.ReactNode }) {
+  return (
+    <section className="rounded-3xl bg-white p-4" aria-label={`Paso ${n}: ${titulo}`}>
+      <div className="flex items-center gap-3">
+        <span
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-[15px] font-bold text-white ${listo ? "bg-ios-verde" : "bg-ios-azul"}`}
+          aria-hidden
+        >
+          {listo ? <Palomita /> : n}
+        </span>
+        <h2 className="text-[20px] font-semibold tracking-tight">{titulo}</h2>
+        {listo && <span className="sr-only">(listo)</span>}
+      </div>
+      <div className="mt-3 space-y-3">{children}</div>
+    </section>
+  );
+}
+
+function Pregunta({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-2 text-[13px] font-medium uppercase tracking-wide text-ios-secundario">{titulo}</p>
+      {children}
+    </div>
+  );
+}
+
+function Pulso() {
+  return (
+    <span className="relative flex h-2.5 w-2.5">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ios-verde opacity-60 motion-reduce:hidden" />
+      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-ios-verde" />
+    </span>
+  );
+}
+
+/** Cuántos baches de cada tamaño: chico (verde), mediano (amarillo), grande (rojo) */
+function Contadores({ baches }: { baches: BacheSubido[] }) {
+  return (
+    <div className="grid grid-cols-3 gap-2.5">
+      {NIVELES_BACHE.map((n) => (
+        <div key={n.clave} className="rounded-2xl bg-white px-2 py-3 text-center">
+          <div className="text-[30px] font-bold leading-none tabular-nums">{baches.filter((b) => nivelBache(b.area_m2)?.clave === n.clave).length}</div>
+          <div className="mt-1.5 flex items-center justify-center gap-1.5 text-[13px] font-medium text-ios-secundario">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: n.color }} />
+            {n.nombre}s
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Cómo va el celular: acostado en el parabrisas, viendo la calle */
+function DibujoParabrisas() {
+  return (
+    <svg viewBox="0 0 320 132" role="img" aria-label="Celular acostado en el parabrisas, viendo la calle" className="block w-full">
+      <defs>
+        <clipPath id="parabrisas">
+          <rect width="320" height="132" rx="18" />
+        </clipPath>
+        <linearGradient id="cielo" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="#cfe3fb" />
+          <stop offset="1" stopColor="#eef5fd" />
+        </linearGradient>
+      </defs>
+      <g clipPath="url(#parabrisas)">
+        <rect width="320" height="132" fill="url(#cielo)" />
+        <rect y="70" width="320" height="62" fill="#e4e1d9" />
+        <path d="M44 132 L150 70 L170 70 L276 132 Z" fill="#9a9aa0" />
+        <path d="M160 74 V132" stroke="#ffffff" strokeWidth="2.5" strokeDasharray="7 8" />
+        <ellipse cx="194" cy="96" rx="9" ry="3.2" fill="#48484a" />
+        <path d="M0 0 H320 V9 H0 Z" fill="#2c2c2e" />
+        <path d="M0 0 L30 0 L6 132 L0 132 Z" fill="#2c2c2e" />
+        <path d="M320 0 L290 0 L314 132 L320 132 Z" fill="#2c2c2e" />
+        <rect x="138" y="8" width="44" height="13" rx="5" fill="#3a3a3c" />
+        <path d="M0 132 V118 Q160 100 320 118 V132 Z" fill="#3a3a3c" />
+        <circle cx="160" cy="79" r="6" fill="#48484a" />
+        <rect x="156" y="79" width="8" height="10" fill="#48484a" />
+        <rect x="116" y="86" width="88" height="42" rx="8" fill="#1c1c1e" />
+        <rect x="121" y="90" width="78" height="34" rx="4" fill="#cfe3fb" />
+        <path d="M121 108 H199 V124 H121 Z" fill="#e4e1d9" />
+        <path d="M128 124 L157 108 L163 108 L192 124 Z" fill="#9a9aa0" />
+        <path d="M136 120 L155 110 L165 110 L184 120 Z" fill="#34c759" fillOpacity="0.55" />
+        <ellipse cx="166" cy="116" rx="5" ry="1.8" fill="#facc15" stroke="#1c1c1e" strokeWidth="0.6" />
+      </g>
+      <rect x="0.5" y="0.5" width="319" height="131" rx="17.5" fill="none" stroke="rgba(0,0,0,0.06)" />
+    </svg>
+  );
+}
+
+/** Lo que encontró la cámara en el recorrido, de los más grandes a los más chicos */
+function ResumenBaches({ baches, km, prueba }: { baches: BacheSubido[]; km: number; prueba: boolean }) {
   const nuevos = baches.filter((b) => b.nuevo).length;
-  const medidos = baches.filter((b) => b.area_m2 != null);
-  const total = medidos.reduce((s, b) => s + b.area_m2!, 0);
+  const yaEstaban = baches.filter((b) => b.enviado && !b.nuevo && !b.prueba && b.publicado !== false).length;
+  const noSubidos = baches.filter((b) => b.publicado === false).length;
   const ordenados = [...baches].sort((a, b) => (b.area_m2 ?? -1) - (a.area_m2 ?? -1));
+  const resumen = prueba
+    ? "Recorrido de prueba: se guardaron para revisarlos y no se publicaron en el mapa."
+    : [nuevos > 0 && `${nuevos} nuevos en el mapa`, yaEstaban > 0 && `${yaEstaban} ya estaban reportados (se sumó tu pasada)`, noSubidos > 0 && `${noSubidos} no se pudieron medir`]
+        .filter(Boolean)
+        .join(" · ");
   return (
     <>
-      <div className="grid grid-cols-3 gap-2.5">
-        {NIVELES_BACHE.map((n) => (
-          <Dato key={n.clave} titulo={`${n.nombre}s`} valor={String(medidos.filter((b) => nivelBache(b.area_m2)?.clave === n.clave).length)} color={n.color} />
-        ))}
+      <div className="rounded-3xl bg-white px-5 py-6 text-center">
+        <p className="text-[15px] font-medium text-ios-verde">¡Listo!</p>
+        <p className="mt-1 text-[56px] font-bold leading-none tracking-tight tabular-nums">{baches.length}</p>
+        <p className="mt-1 text-[19px] font-semibold">{baches.length === 1 ? "bache encontrado" : "baches encontrados"}</p>
+        <p className="mt-1 text-[15px] text-ios-secundario">
+          en {km.toFixed(1)} km{prueba ? " · recorrido de prueba" : ""}
+        </p>
       </div>
-      <Bloque
-        titulo={`Baches con la cámara · ${baches.length}`}
-        sinRelleno
-        nota={
-          baches.length
-            ? `${nuevos} nuevos en el mapa; ${baches.filter((b) => b.enviado && !b.nuevo && b.publicado !== false).length} ya estaban reportados y se les sumó la detección.${baches.some((b) => b.publicado === false) ? ` ${baches.filter((b) => b.publicado === false).length} no se subieron: no se pudieron medir y no había un bache reportado ahí.` : ""}${medidos.length ? ` Área total medida: ${total.toFixed(2)} m².` : ""} Chico: ${NIVELES_BACHE[0].rango}; mediano: ${NIVELES_BACHE[1].rango}; grande: ${NIVELES_BACHE[2].rango} (diámetro equivalente).`
-            : "No se detectaron baches en este recorrido."
-        }
-      >
-        {ordenados.slice(0, 40).map((b, i) => {
-          const n = nivelBache(b.area_m2);
-          return (
-            <div key={i} className="flex items-center justify-between gap-2 border-b border-ios-separador px-4 py-2.5 text-[15px] last:border-0">
+      <Contadores baches={baches} />
+      {baches.length > 0 && (
+        <Bloque
+          titulo="Lo que encontró la cámara"
+          sinRelleno
+          nota={
+            <>
+              {resumen && <span className="block">{resumen}</span>}
+              Chico: {NIVELES_BACHE[0].rango} · Mediano: {NIVELES_BACHE[1].rango} · Grande: {NIVELES_BACHE[2].rango}.
+            </>
+          }
+        >
+          {ordenados.slice(0, 40).map((b, i) => {
+            const n = nivelBache(b.area_m2);
+            const [texto, clase] = !b.enviado
+              ? ["Enviando…", "bg-ios-relleno text-ios-secundario"]
+              : b.prueba
+                ? ["Prueba", "bg-ios-naranja/15 text-[#c93400]"]
+                : b.publicado === false
+                  ? ["No se subió", "bg-ios-relleno text-ios-secundario"]
+                  : b.nuevo
+                    ? ["Nuevo", "bg-ios-verde/15 text-[#248a3d]"]
+                    : ["Ya estaba", "bg-ios-azul/12 text-ios-azul"];
+            return (
               <a
+                key={i}
                 href={`https://www.google.com/maps?q=${b.lat.toFixed(6)},${b.lng.toFixed(6)}`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2 text-ios-azul"
+                className="flex items-center gap-3 border-b border-ios-separador px-4 py-3 last:border-0"
               >
-                <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: n?.color ?? "#d1d1d6" }} />
-                <span>
-                  <span className="font-medium text-ios-etiqueta">{n ? n.nombre : "Sin medir"}</span>{" "}
-                  {b.area_m2 != null && `${b.area_m2.toFixed(2)} m²${b.area_sd != null ? ` ± ${b.area_sd.toFixed(2)}` : ""}`}
-                  {b.calle && <span className="block text-[13px] text-ios-secundario">{b.calle}</span>}
+                <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ background: n?.color ?? "#d1d1d6" }} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[16px] font-medium">
+                    {n ? `Bache ${n.nombre.toLowerCase()}` : "Bache sin medir"}
+                    {b.area_m2 != null && <span className="font-normal text-ios-secundario"> · {b.area_m2.toFixed(2)} m²</span>}
+                  </span>
+                  {b.calle && <span className="block truncate text-[13px] text-ios-secundario">{b.calle}</span>}
                 </span>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold ${clase}`}>{texto}</span>
               </a>
-              <span className="shrink-0 text-[13px] text-ios-secundario">
-                {Math.round(b.confianza * 100)}% ·{" "}
-                {!b.enviado ? "pendiente" : b.prueba ? "guardado (prueba)" : b.publicado === false ? "no se subió" : b.nuevo ? "nuevo" : "ya estaba"}
-              </span>
-            </div>
-          );
-        })}
-      </Bloque>
+            );
+          })}
+        </Bloque>
+      )}
     </>
   );
 }

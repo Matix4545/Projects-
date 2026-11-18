@@ -93,6 +93,9 @@ export function CamaraBaches({
   const [gps, setGps] = useState<number | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [descartados, setDescartados] = useState(0);
+  const [detalles, setDetalles] = useState(false);
+  const verDetalles = useRef(false);
+  verDetalles.current = detalles;
 
   const seguimiento = useRef(new Seguimiento<HTMLCanvasElement>(detector.info.confirmar ? { minConfianza: detector.info.confirmar } : {}));
   const orientacion = useRef(new Orientacion());
@@ -212,15 +215,18 @@ export function CamaraBaches({
     const alOrientar = (e: DeviceOrientationEvent) => orientacion.current.lectura(e.beta, e.gamma, performance.now() / 1000);
     window.addEventListener("deviceorientation", alOrientar);
 
+    let ultimaLectura = 0;
     const vigia = navigator.geolocation.watchPosition(
       (p) => {
         const { latitude: lat, longitude: lng, speed, heading, accuracy } = p.coords;
+        ultimaLectura = Date.now();
         setGps(Math.round(accuracy));
         if (accuracy > PRECISION_MAX_M) return;
         // La hora en que se tomó la lectura, para interpolar la posición de cada cuadro
         movimiento.current.lectura(lat, lng, horaDeLectura(p.timestamp), speed, heading, accuracy);
       },
-      () => setGps(null),
+      // Un error suelto no cambia el estado si hubo lectura hace poco
+      () => Date.now() - ultimaLectura > 10_000 && setGps(null),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
     );
 
@@ -320,7 +326,7 @@ export function CamaraBaches({
         }
         if (items.length) pendientes.current.push({ t, items });
         procesar.current();
-        dibujar(lienzo.current, cuadro, vw, vh, cam, ejes, h, res, medidas, (b) => (esBache(b) ? null : (detector.info.clases?.[b.clase] ?? `clase ${b.clase}`)));
+        dibujar(lienzo.current, cuadro, vw, vh, cam, ejes, h, res, medidas, (b) => (esBache(b) ? null : (detector.info.clases?.[b.clase] ?? `clase ${b.clase}`)), verDetalles.current);
 
         cuadros++;
         const ms = performance.now();
@@ -357,12 +363,35 @@ export function CamaraBaches({
       <div className="relative overflow-hidden rounded-3xl bg-black">
         <video ref={video} muted playsInline autoPlay onClick={() => video.current?.play()} className="block w-full" />
         <canvas ref={lienzo} className="pointer-events-none absolute inset-0 h-full w-full" />
-        <div className="absolute left-2 top-2 rounded-full bg-black/55 px-2.5 py-1 font-mono text-[11px] text-white">
-          {fps.toFixed(1)} cps · {detector.proveedor === "webgpu" ? "WebGPU" : "CPU"}
+        <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1.5 text-[13px] font-medium text-white backdrop-blur-sm">
+          <span className="relative flex h-2 w-2">
+            {gps != null && gps <= PRECISION_MAX_M && (
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ios-verde opacity-70 motion-reduce:hidden" />
+            )}
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${gps != null && gps <= PRECISION_MAX_M ? "bg-ios-verde" : "bg-ios-naranja"}`} />
+          </span>
+          {gps == null ? "Buscando GPS…" : gps > PRECISION_MAX_M ? "GPS débil" : "Buscando baches"}
         </div>
-        <div className="absolute right-2 top-2 rounded-full bg-black/55 px-2.5 py-1 font-mono text-[11px] text-white">
-          {pose ? `↓${pose.pitch.toFixed(1)}° ↻${pose.roll.toFixed(1)}°` : "sin inclinación"} · {gps == null ? "sin GPS" : `GPS ±${gps} m`}
-        </div>
+        <button
+          onClick={() => setDetalles((d) => !d)}
+          aria-pressed={detalles}
+          className="absolute right-2 top-2 rounded-full bg-black/55 px-3 py-1.5 text-[13px] font-medium text-white backdrop-blur-sm"
+        >
+          {detalles ? "Ocultar detalles" : "Detalles"}
+        </button>
+        {detalles && (
+          <div className="absolute bottom-2 left-2 rounded-xl bg-black/60 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-white">
+            {fps.toFixed(1)} cuadros/s · {detector.proveedor === "webgpu" ? "WebGPU" : "CPU"}
+            <br />
+            {pose ? `inclinación ↓${pose.pitch.toFixed(1)}° ↻${pose.roll.toFixed(1)}°` : "sin inclinación"} · {gps == null ? "sin GPS" : `GPS ±${gps} m`}
+            {descartados > 0 && (
+              <>
+                <br />
+                {descartados} detecciones sueltas descartadas
+              </>
+            )}
+          </div>
+        )}
       </div>
       {fps > 0 && fps < 2.5 && (
         <p className="rounded-2xl bg-ios-naranja/12 px-4 py-2.5 text-[14px] text-[#c93400]">
@@ -375,7 +404,6 @@ export function CamaraBaches({
         </p>
       )}
       {aviso && <p className="rounded-2xl bg-ios-naranja/12 px-4 py-2.5 text-[14px] text-[#c93400]">{aviso}</p>}
-      {descartados > 0 && <p className="px-1 text-[13px] text-ios-secundario">{descartados} detecciones sueltas descartadas (vistas en un solo cuadro o con poca confianza).</p>}
     </div>
   );
 }
@@ -394,6 +422,8 @@ function dibujar(
   medidas: (Medida | null)[],
   /** Nombre de la clase si NO es bache (alcantarilla, rejilla…): se dibuja aparte y no se sube */
   otraClase: (b: Bache) => string | null,
+  /** Modo detalles: líneas de distancia, horizonte y confianza de cada detección */
+  detalles: boolean,
 ) {
   if (!c) return;
   const dpr = window.devicePixelRatio || 1;
@@ -409,7 +439,8 @@ function dibujar(
   const k = w / vw;
   const px = ([x, y]: [number, number]) => [x * k, y * k] as const;
 
-  if (ejes) dibujarPiso(ctx, cam, ejes, h, k);
+  if (ejes) dibujarPiso(ctx, cam, ejes, h, k, detalles ? { distancias: [5, 10, 15, 20], horizonte: true } : {});
+  const pct = (b: Bache) => (detalles ? ` · ${Math.round(b.confianza * 100)}%` : "");
 
   res.forEach((b, i) => {
     const m = medidas[i];
@@ -422,12 +453,7 @@ function dibujar(
       ctx.strokeStyle = "#5ac8fa";
       ctx.stroke();
       const [x, y] = px([b.caja[0], b.caja[1]]);
-      const texto = `${otra.toUpperCase()} ${Math.round(b.confianza * 100)}%`;
-      ctx.font = "600 11px ui-monospace, monospace";
-      ctx.fillStyle = "rgba(0,0,0,0.65)";
-      ctx.fillRect(x, Math.max(0, y - 18), ctx.measureText(texto).width + 10, 16);
-      ctx.fillStyle = "#5ac8fa";
-      ctx.fillText(texto, x + 5, Math.max(0, y - 18) + 12);
+      pastilla(ctx, `${otra[0].toUpperCase()}${otra.slice(1)} · no es bache${pct(b)}`, x, Math.max(0, y - 22), "rgba(0,0,0,0.6)", "#5ac8fa");
       return;
     }
     // Medido: color de su nivel (chico, mediano, grande). Sin medir todavía: blanco punteado
@@ -444,24 +470,39 @@ function dibujar(
     ctx.stroke();
     ctx.setLineDash([]);
     const etiqueta = nivel
-      ? `${nivel.nombre.toUpperCase()} · ${m!.area_m2.toFixed(2)} m² · ${Math.round(b.confianza * 100)}%`
-      : `BACHE ${Math.round(b.confianza * 100)}% · ${
-          !m ? "sin medida" : { lejos: "midiendo…", cerca: "muy cerca", rasante: "midiendo…", borde: "cortado", chico: "muy lejos" }[m.motivo!]
-        }`;
+      ? `${nivel.nombre} · ${m!.area_m2.toFixed(2)} m²${pct(b)}`
+      : `Bache · ${!m ? "sin medida" : { lejos: "midiendo…", cerca: "muy cerca", rasante: "midiendo…", borde: "cortado", chico: "muy lejos" }[m.motivo!]}${pct(b)}`;
     const [x, y] = px([b.caja[0], b.caja[1]]);
-    ctx.font = "600 11px ui-monospace, monospace";
-    const ancho = ctx.measureText(etiqueta).width + 10;
-    const ty = Math.max(0, y - 18);
     // Pastilla del color del nivel (texto oscuro en chico y mediano, blanco en grande) para leerse sobre el video
-    ctx.fillStyle = nivel ? nivel.color : "rgba(0,0,0,0.65)";
-    ctx.fillRect(x, ty, ancho, 16);
-    ctx.fillStyle = !nivel ? color : nivel.clave === "grande" ? "#ffffff" : "#1c1c1e";
-    ctx.fillText(etiqueta, x + 5, ty + 12);
+    pastilla(ctx, etiqueta, x, Math.max(0, y - 22), nivel ? nivel.color : "rgba(0,0,0,0.6)", !nivel ? color : nivel.clave === "grande" ? "#ffffff" : "#1c1c1e");
   });
 }
 
-/** Horizonte, líneas cada 5 m y la franja donde se mide el tamaño (zona dulce) */
-export function dibujarPiso(ctx: CanvasRenderingContext2D, cam: Camara, ejes: Ejes, h: number, k: number) {
+/** Qué se dibuja sobre el piso: la franja donde se mide siempre; líneas y horizonte, opcionales */
+export type OpcionesPiso = {
+  /** Líneas de distancia (m) con su etiqueta */
+  distancias?: number[];
+  horizonte?: boolean;
+  /** Texto dentro de la franja (p. ej. "Aquí mide") */
+  etiqueta?: string;
+};
+
+/** Pastilla de texto legible sobre el video */
+export function pastilla(ctx: CanvasRenderingContext2D, texto: string, x: number, y: number, fondo: string, color: string, centrada = false) {
+  ctx.font = "600 12px system-ui, -apple-system, sans-serif";
+  const w = ctx.measureText(texto).width + 14;
+  const x0 = centrada ? x - w / 2 : x;
+  ctx.fillStyle = fondo;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x0, y, w, 20, 10);
+  else ctx.rect(x0, y, w, 20);
+  ctx.fill();
+  ctx.fillStyle = color;
+  ctx.fillText(texto, x0 + 7, y + 14);
+}
+
+/** Franja verde donde se mide el tamaño (zona dulce) y, si se piden, líneas de distancia y horizonte */
+export function dibujarPiso(ctx: CanvasRenderingContext2D, cam: Camara, ejes: Ejes, h: number, k: number, op: OpcionesPiso = {}) {
   const linea = (y: number) => {
     const a = sueloAPixel([-8, y], cam, ejes, h);
     const b = sueloAPixel([8, y], cam, ejes, h);
@@ -476,35 +517,54 @@ export function dibujarPiso(ctx: CanvasRenderingContext2D, cam: Camara, ejes: Ej
     ctx.lineTo(lejos[2], lejos[3]);
     ctx.lineTo(lejos[0], lejos[1]);
     ctx.closePath();
-    ctx.fillStyle = "rgba(52,199,89,0.12)";
+    ctx.fillStyle = "rgba(52,199,89,0.16)";
     ctx.fill();
+    ctx.strokeStyle = "rgba(52,199,89,0.9)";
+    ctx.lineWidth = 1.5;
+    for (const l of [cerca, lejos]) {
+      ctx.beginPath();
+      ctx.moveTo(l[0], l[1]);
+      ctx.lineTo(l[2], l[3]);
+      ctx.stroke();
+    }
   }
-  ctx.font = "600 10px ui-monospace, monospace";
-  for (const d of [5, 10, 15, 20]) {
+  let ultimaY = Infinity;
+  for (const d of op.distancias ?? []) {
     const l = linea(d);
     if (!l) continue;
     ctx.beginPath();
     ctx.moveTo(l[0], l[1]);
     ctx.lineTo(l[2], l[3]);
-    ctx.strokeStyle = "rgba(52,199,89,0.55)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    const centro = sueloAPixel([0, d], cam, ejes, h);
-    if (centro) {
-      ctx.fillStyle = "rgba(52,199,89,0.95)";
-      ctx.fillText(`${d} m`, centro[0] * k + 4, centro[1] * k - 3);
-    }
-  }
-  // Horizonte: dos puntos muy lejanos, uno a cada lado
-  const hi = sueloAPixel([-1e5, 1e5], cam, ejes, h);
-  const hd = sueloAPixel([1e5, 1e5], cam, ejes, h);
-  if (hi && hd) {
-    ctx.beginPath();
-    ctx.moveTo(hi[0] * k, hi[1] * k);
-    ctx.lineTo(hd[0] * k, hd[1] * k);
-    ctx.setLineDash([6, 6]);
-    ctx.strokeStyle = "rgba(255,204,0,0.8)";
+    ctx.setLineDash([6, 5]);
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.setLineDash([]);
+    const centro = sueloAPixel([0, d], cam, ejes, h);
+    // A lo lejos las líneas se juntan: no se encima una etiqueta sobre otra
+    if (centro && ultimaY - centro[1] * k > 22) {
+      pastilla(ctx, `${d} m`, centro[0] * k + 6, centro[1] * k - 22, "rgba(0,0,0,0.55)", "#ffffff");
+      ultimaY = centro[1] * k;
+    }
+  }
+  if (op.etiqueta) {
+    // En la parte cercana de la franja, para no taparse con la línea de 10 m
+    const centro = sueloAPixel([0, ZONA_DULCE.minM + 2.5], cam, ejes, h);
+    if (centro) pastilla(ctx, op.etiqueta, centro[0] * k, centro[1] * k - 10, "rgba(36,138,61,0.92)", "#ffffff", true);
+  }
+  if (op.horizonte) {
+    // Horizonte: dos puntos muy lejanos, uno a cada lado
+    const hi = sueloAPixel([-1e5, 1e5], cam, ejes, h);
+    const hd = sueloAPixel([1e5, 1e5], cam, ejes, h);
+    if (hi && hd) {
+      ctx.beginPath();
+      ctx.moveTo(hi[0] * k, hi[1] * k);
+      ctx.lineTo(hd[0] * k, hd[1] * k);
+      ctx.setLineDash([6, 6]);
+      ctx.strokeStyle = "rgba(255,204,0,0.8)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
   }
 }
