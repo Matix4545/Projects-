@@ -270,7 +270,8 @@ La app no trae modelo: hay que entrenarlo con fotos de calles (de preferencia de
 1. En GitHub abre `data/` → **Add file → Upload files**, crea la carpeta `modelos` y sube el archivo
    (p. ej. `data/modelos/best.onnx`). Si pesa más de 25 MB, en lugar de subirlo usa un enlace directo de descarga.
 2. Ve a **Actions → Instalar modelo de baches → Run workflow**. En **archivo** pon la ruta (o el enlace). En
-   **precisión** puedes poner el *mAP50* de máscaras que te muestra Ultralytics.
+   **precisión** puedes poner el *mAP50* de máscaras que te muestra Ultralytics. En **nota** pon el crédito de las
+   fotos (nombre del dataset, autor y licencia, p. ej. CC BY 4.0): aparece en "Acerca de".
 3. El workflow lee las clases y el tamaño del propio archivo, lo deja en `public/modelos/` y hace commit. Vercel lo
    publica solo; los celulares lo descargan una vez y lo guardan.
 4. En `public/modelos/baches.json` quedan los umbrales: `umbral` (0.15) para ser candidato, `umbrales` por clase para
