@@ -1,0 +1,157 @@
+-- =====================================================================
+-- ChambaRadar · Zonas locales (Cd. Obregón / Cajeme y Sonora)
+-- Correr DESPUÉS de 03_relacionadas.sql. Se puede correr más de una vez.
+-- =====================================================================
+
+alter table public.vacantes add column if not exists zonas text[] not null default '{}';
+create index if not exists vacantes_zonas on public.vacantes using gin (zonas);
+
+-- Búsqueda nueva con zona y orden por cercanía. Se llama distinto que
+-- buscar_vacantes() para no romper el sitio publicado mientras se actualiza
+-- (con el mismo nombre, Postgres no sabría cuál usar).
+create or replace function public.buscar_empleos(
+  p_q text default '', p_categoria text default '', p_pais text default '', p_modalidad text default '',
+  p_nivel text default '', p_tipo text default '', p_con_sueldo boolean default false, p_dias int default 0,
+  p_pagina int default 1, p_por_pagina int default 20, p_zona text default ''
+) returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare
+  acceso boolean := tiene_acceso();
+  q text := nullif(trim(coalesce(p_q, '')), '');
+  por_pagina int := least(greatest(coalesce(p_por_pagina, 20), 1), 50);
+  desde int := (least(greatest(coalesce(p_pagina, 1), 1), 500) - 1) * por_pagina;
+  sal text := (select valor from config_privada where nombre = 'clave_app');
+  total int;
+  filas jsonb;
+begin
+  -- "fila" es la vacante completa (tipo vacantes), para pasarla a vacante_json()
+  with f as (
+    select v as fila, v.zonas, v.publicada, v.id from vacantes v
+     where v.activa and v.acepta_latam
+       and (q is null or v.titulo ilike '%' || q || '%' or (acceso and v.empresa_nombre ilike '%' || q || '%'))
+       and (coalesce(p_categoria, '') = '' or v.categoria = p_categoria)
+       and (coalesce(p_pais, '') = '' or p_pais = any(v.paises))
+       and (coalesce(p_modalidad, '') = '' or v.modalidad = p_modalidad)
+       and (coalesce(p_nivel, '') = '' or v.nivel = p_nivel)
+       and (coalesce(p_tipo, '') = '' or v.empresa_tipo = p_tipo)
+       and (not coalesce(p_con_sueldo, false) or v.sueldo_max is not null)
+       and (coalesce(p_dias, 0) = 0 or v.publicada >= now() - make_interval(days => p_dias))
+       and (coalesce(p_zona, '') = '' or p_zona = any(v.zonas))
+  ),
+  -- Primero lo de Cd. Obregón, luego el resto de Sonora, luego lo demás (remoto); dentro, lo más nuevo
+  pagina as (
+    select * from f
+     order by ('cajeme' = any(zonas)) desc, ('sonora' = any(zonas)) desc, publicada desc, id
+     offset desde limit por_pagina
+  )
+  select (select count(*) from f),
+         coalesce(jsonb_agg(vacante_json(r.fila, acceso, sal)
+           order by ('cajeme' = any(r.zonas)) desc, ('sonora' = any(r.zonas)) desc, r.publicada desc, r.id), '[]'::jsonb)
+    into total, filas
+    from pagina r;
+
+  return jsonb_build_object('total', total, 'acceso', acceso, 'vacantes', filas);
+end $$;
+grant execute on function public.buscar_empleos(text, text, text, text, text, text, boolean, int, int, int, text) to anon, authenticated;
+
+-- La versión bloqueada también lleva las zonas
+create or replace function public.vacante_json(r public.vacantes, acceso boolean, sal text)
+returns jsonb language sql stable set search_path = public as $$
+  select case when acceso then to_jsonb(r) - 'creada' || jsonb_build_object('bloqueada', false)
+  else jsonb_build_object(
+    'id', 'v' || left(md5(r.id || sal), 16),
+    'empresa_slug', null, 'empresa_nombre', null, 'empresa_tipo', r.empresa_tipo,
+    'titulo', tapar_empresa(r.titulo, r.empresa_nombre, r.empresa_slug),
+    'url', null,
+    'ubicacion', tapar_empresa(r.ubicacion, r.empresa_nombre, r.empresa_slug),
+    'paises', r.paises, 'zonas', r.zonas, 'modalidad', r.modalidad, 'acepta_latam', r.acepta_latam,
+    'categoria', r.categoria, 'nivel', r.nivel, 'idioma', r.idioma,
+    'sueldo_min', r.sueldo_min, 'sueldo_max', r.sueldo_max, 'moneda', r.moneda, 'periodo', r.periodo,
+    'descripcion', null, 'largo_descripcion', length(r.descripcion),
+    'publicada', r.publicada, 'vista', r.vista, 'bloqueada', true)
+  end;
+$$;
+revoke all on function public.vacante_json(public.vacantes, boolean, text) from public, anon, authenticated;
+
+-- Las alertas también pueden ser por zona
+create or replace function public.cumple_filtros(v public.vacantes, f jsonb, acceso boolean)
+returns boolean language sql stable set search_path = public as $$
+  select v.activa and v.acepta_latam
+     and (coalesce(f->>'q', '') = ''
+          or v.titulo ilike '%' || (f->>'q') || '%'
+          or (acceso and v.empresa_nombre ilike '%' || (f->>'q') || '%'))
+     and (coalesce(f->>'categoria', '') = '' or v.categoria = f->>'categoria')
+     and (coalesce(f->>'pais', '') = '' or (f->>'pais') = any(v.paises))
+     and (coalesce(f->>'modalidad', '') = '' or v.modalidad = f->>'modalidad')
+     and (coalesce(f->>'nivel', '') = '' or v.nivel = f->>'nivel')
+     and (coalesce(f->>'tipo', '') = '' or v.empresa_tipo = f->>'tipo')
+     and (coalesce(f->>'zona', '') = '' or (f->>'zona') = any(v.zonas))
+     and (coalesce((f->>'conSueldo')::boolean, false) = false or v.sueldo_max is not null);
+$$;
+revoke all on function public.cumple_filtros(public.vacantes, jsonb, boolean) from public, anon, authenticated;
+
+create or replace function public.limpiar_filtros(f jsonb)
+returns jsonb language sql immutable set search_path = public as $$
+  select jsonb_strip_nulls(jsonb_build_object(
+    'q', nullif(left(trim(coalesce(f->>'q', '')), 80), ''),
+    'categoria', nullif(f->>'categoria', ''),
+    'pais', nullif(upper(coalesce(f->>'pais', '')), ''),
+    'modalidad', case when f->>'modalidad' in ('remoto', 'hibrido', 'presencial') then f->>'modalidad' end,
+    'nivel', nullif(f->>'nivel', ''),
+    'tipo', case when f->>'tipo' in ('local', 'remoto') then f->>'tipo' end,
+    'zona', case when f->>'zona' in ('cajeme', 'sonora') then f->>'zona' end,
+    'conSueldo', case when (f->>'conSueldo') = 'true' then true end));
+$$;
+
+-- guardar_vacantes() también actualiza las zonas de las que ya existían
+create or replace function public.guardar_vacantes(p_clave text, p_filas jsonb)
+returns int language plpgsql security definer set search_path = public as $$
+declare
+  n int;
+begin
+  if not clave_valida(p_clave) then raise exception 'clave inválida'; end if;
+  insert into vacantes
+  select (r).* from (
+    select jsonb_populate_record(null::vacantes, f || jsonb_build_object('creada', now())) as r
+      from jsonb_array_elements(p_filas) f
+  ) x
+  on conflict (id) do update set
+    empresa_nombre = excluded.empresa_nombre, empresa_tipo = excluded.empresa_tipo, titulo = excluded.titulo,
+    url = excluded.url, ubicacion = excluded.ubicacion, paises = excluded.paises, zonas = excluded.zonas,
+    modalidad = excluded.modalidad, acepta_latam = excluded.acepta_latam, categoria = excluded.categoria,
+    nivel = excluded.nivel, idioma = excluded.idioma, sueldo_min = excluded.sueldo_min, sueldo_max = excluded.sueldo_max,
+    moneda = excluded.moneda, periodo = excluded.periodo, descripcion = excluded.descripcion,
+    publicada = excluded.publicada, vista = excluded.vista, activa = true;
+    -- "creada" no se toca: así sabemos cuáles son nuevas de verdad
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Resumen con los números de Obregón y Sonora
+-- ---------------------------------------------------------------------
+create or replace function public.resumen_vacantes()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'total', count(*),
+    'empresas', count(distinct empresa_slug),
+    'remotas', count(*) filter (where modalidad = 'remoto'),
+    'enMexico', count(*) filter (where 'MX' = any(paises)),
+    'enCajeme', count(*) filter (where 'cajeme' = any(zonas)),
+    'enSonora', count(*) filter (where 'sonora' = any(zonas)))
+  from vacantes where activa and acepta_latam;
+$$;
+grant execute on function public.resumen_vacantes() to anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- Interruptor del muro de pago. Mientras no haya pagos, se puede dejar todo
+-- visible para todos:   update config_privada set valor = 'no' where nombre = 'muro_activo';
+-- Para volver a cobrar:  update config_privada set valor = 'si' where nombre = 'muro_activo';
+-- ---------------------------------------------------------------------
+insert into public.config_privada (nombre, valor) values ('muro_activo', 'si') on conflict (nombre) do nothing;
+
+create or replace function public.tiene_acceso()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce((select valor from config_privada where nombre = 'muro_activo'), 'si') = 'no'
+      or exists (select 1 from perfiles where id = auth.uid() and acceso_hasta > now());
+$$;
+grant execute on function public.tiene_acceso() to anon, authenticated;

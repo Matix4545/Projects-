@@ -1,0 +1,59 @@
+// Planes de acceso. Son pagos únicos (no suscripción) para poder aceptar
+// OXXO además de tarjeta: mucha gente en México no tiene tarjeta de crédito.
+
+export interface Plan {
+  id: "semana" | "mes" | "anio";
+  nombre: string;
+  /** Precio en pesos mexicanos */
+  precio: number;
+  dias: number;
+  nota: string;
+  destacado?: boolean;
+}
+
+export const PLANES: Plan[] = [
+  { id: "semana", nombre: "1 semana", precio: 49, dias: 7, nota: "Para probar" },
+  { id: "mes", nombre: "1 mes", precio: 129, dias: 30, nota: "El más elegido", destacado: true },
+  { id: "anio", nombre: "1 año", precio: 699, dias: 365, nota: "Ahorras 55 %" },
+];
+
+/** Lo que te ahorras con el plan de 1 mes frente a pagar 4 semanas sueltas: en pesos y en porcentaje. */
+export function ahorroMes(): { pesos: number; porcentaje: number } {
+  const semana = PLANES.find((p) => p.id === "semana")!.precio;
+  const mes = PLANES.find((p) => p.id === "mes")!.precio;
+  const cuatro = semana * 4;
+  return { pesos: cuatro - mes, porcentaje: Math.round((1 - mes / cuatro) * 100) };
+}
+
+/**
+ * Garantía "si en N días no te sirve, te devolvemos tu dinero". Apagada hasta
+ * que se decida activarla: NEXT_PUBLIC_GARANTIA_DIAS=7 en Netlify la prende.
+ * El reembolso se hace a mano en Stripe (Pagos → el pago → Reembolsar).
+ */
+export function garantiaDias(): number {
+  const n = Number(process.env.NEXT_PUBLIC_GARANTIA_DIAS ?? 0);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+export function buscarPlan(id: string | null | undefined): Plan | undefined {
+  return PLANES.find((p) => p.id === id);
+}
+
+/**
+ * Enlace de pago de Stripe (Payment Link) de cada plan. Se configuran en las
+ * variables STRIPE_ENLACE_SEMANA, STRIPE_ENLACE_MES y STRIPE_ENLACE_ANIO.
+ * Mientras no existan, los pagos aparecen como "próximamente".
+ */
+export function enlaceDePago(plan: Plan): string | null {
+  const v = process.env[`STRIPE_ENLACE_${plan.id.toUpperCase()}`];
+  return v && v.startsWith("https://") ? v : null;
+}
+
+export function pagosActivos(): boolean {
+  return PLANES.some((p) => enlaceDePago(p) !== null);
+}
+
+/** El webhook reconoce el plan por el monto cobrado (en centavos de MXN). */
+export function planPorMonto(centavos: number | null | undefined): Plan | undefined {
+  return PLANES.find((p) => p.precio * 100 === centavos);
+}

@@ -1,0 +1,549 @@
+# Empresas candidatas para "npm run descubrir".
+# Formato:  Nombre | tipo | slug1, slug2, …
+# tipo:
+#   local  = empresa de México o LATAM
+#   remoto = empresa extranjera que contrata en LATAM (oficina o remoto para la región)
+#   global = empresa 100 % remota que contrata en cualquier país ("Remote" a secas cuenta)
+# Los slugs son intentos del nombre del tablero en cada sistema; se prueban todos.
+
+# --- México ---------------------------------------------------------------
+Bitso | local | bitso, bitsoinc, bitsocareers
+Konfío | local | konfio, konfiomx
+Stori | local | stori, storicard, storimx
+Clip | local | clip, payclip, clipmx
+Jüsto | local | justo, justomx, jusbr
+Fondeadora | local | fondeadora
+Klar | local | klar, klarmx
+Plata | local | plata, platacard, plata-card
+Cuenca | local | cuenca, cuencamx
+albo | local | albo, albomx
+Flink | local | flink, flinkapp
+GBM | local | gbm, gbmmx
+Covalto | local | covalto
+Baubap | local | baubap
+Minu | local | minu
+Worky | local | worky
+Runa | local | runa, runahr
+Kapital | local | kapital, kapitalbank
+Mendel | local | mendel
+Higo | local | higo
+Conekta | local | conekta
+Kiwi | local | kiwi, kiwibop
+Spin by OXXO | local | spin, spinbyoxxo
+Zubale | local | zubale
+Skydropx | local | skydropx
+99minutos | local | 99minutos
+Nuvocargo | local | nuvocargo
+Heru | local | heru
+Yalo | local | yalo, yalochat
+Jelou | local | jelou
+Merama | local | merama
+Nowports | local | nowports
+Truehome | local | truehome
+Homie | local | homie, homiemx
+Kueski Pay | local | kueskipay
+Credijusto | local | credijusto
+Tala | remoto | tala
+Rappi | local | rappi, rappiinc
+DiDi | remoto | didi, didiglobal
+Uber | remoto | uber
+Totalplay | local | totalplay
+Softtek | local | softtek
+Wizeline | local | wizeline
+Unosquare | local | unosquare
+MagmaLabs | local | magmalabs
+Ksquare | local | ksquare, ksquaregroup
+Michelada | local | michelada
+Tiempo Development | local | tiempo, tiempodev
+Encora | local | encora, encorainc
+iTexico | local | itexico
+Bairesdev | local | bairesdev
+Arkus | local | arkus, arkusnexus
+Inflection Point | local | inflectionpoint
+Hackmetrix | local | hackmetrix
+Osmo | local | osmo
+Kavak | local | kavak
+Jokr | local | jokr
+Ualá | local | uala, ualabis
+Cabify | local | cabify
+
+# --- Resto de LATAM -------------------------------------------------------
+Mercado Libre | local | mercadolibre, meli
+Globant | local | globant
+dLocal | local | dlocal
+EBANX | local | ebanx
+Pomelo | local | pomelo, pomelofintech
+Kushki | local | kushki
+Truora | local | truora
+Belvo | local | belvo
+Prometeo | local | prometeo, prometeoapi
+Pismo | local | pismo
+Dock | local | dock, dockbr
+Creditas | local | creditas
+Loft | local | loft, loftbr
+iFood | local | ifood
+Loggi | local | loggi
+Olist | local | olist
+Gupy | local | gupy
+Pipefy | local | pipefy
+RD Station | local | rdstation, resultadosdigitais
+Zenvia | local | zenvia
+PicPay | local | picpay
+Stone | local | stone, stonepagamentos
+CloudWalk | local | cloudwalk
+Wildlife Studios | local | wildlife, wildlifestudios
+Hotmart | local | hotmart
+Nuvemshop | local | nuvemshop, tiendanube
+VTEX | local | vtex
+Asaas | local | asaas
+Cora | local | cora, corabank
+Contabilizei | local | contabilizei
+Sami | local | sami, samisaude
+Alice | local | alice, alicesaude
+Lemon Cash | local | lemon, lemoncash
+Belo | local | belo, belo-app
+Ripio | local | ripio
+Buenbit | local | buenbit
+Brubank | local | brubank
+Naranja X | local | naranjax
+Ualá Argentina | local | uala-ar
+Satoshi Tango | local | satoshitango
+Despegar | local | despegar
+Auth0 Argentina | remoto | auth0
+Platzi | local | platzi
+Addi | local | addi
+Habi | local | habi, tuhabi
+La Haus | local | lahaus
+Tul | local | tul
+Chiper | local | chiper
+Bold | local | bold, boldco
+Frubana | local | frubana
+Siigo | local | siigo
+Treinta | local | treinta
+Fintual | local | fintual
+Xepelin | local | xepelin
+Buk | local | buk
+Betterfly | local | betterfly
+NotCo | local | notco
+Cornershop | local | cornershop
+Kame | local | kame
+Bci | local | bci
+Yuno | local | yuno
+Tributi | local | tributi
+Kiwibot | local | kiwibot
+Rocket.chat | global | rocketchat
+Vincle | local | vincle
+Fracttal | local | fracttal
+
+# --- Nearshore y talento remoto para LATAM --------------------------------
+Toptal | global | toptal
+Turing | remoto | turing
+Andela | global | andela
+X-Team | global | xteam, x-team
+Crossover | global | crossover
+Arc | global | arc, arcdev
+Revelo | remoto | revelo
+Howdy | remoto | howdy, howdycom
+Terminal | remoto | terminal, terminalio
+Nearsure | remoto | nearsure
+Scalable Path | global | scalablepath
+Distillery | remoto | distillery
+Bluecoding | remoto | bluecoding, blue-coding
+ioet | remoto | ioet
+Gorilla Logic | remoto | gorillalogic, gorilla-logic
+Avantica | remoto | avantica
+Svitla | global | svitla, svitlasystems
+Sophilabs | remoto | sophilabs
+Moove It | remoto | moove-it, mooveit
+Rootstrap | remoto | rootstrap
+Wolox | remoto | wolox
+Avenue Code | remoto | avenuecode
+Thoughtworks | remoto | thoughtworks
+Nagarro | remoto | nagarro
+Endava | remoto | endava
+EPAM | remoto | epam, epamsystems
+Jobsity | remoto | jobsity
+Truelogic | remoto | truelogic, truelogicsoftware
+Applaudo | remoto | applaudo, applaudostudios
+Patagonian | remoto | patagonian
+Making Sense | remoto | makingsense
+Hexacta | remoto | hexacta
+Bairesdev | remoto | bairesdevllc
+Scopic | global | scopic, scopicsoftware
+Proxify | global | proxify
+Lemon.io | global | lemonio, lemon-io
+Deel | global | deel, letsdeel
+Remote | global | remote, remotecom, remote-com
+Oyster | global | oyster, oysterhr
+Multiplier | global | multiplier, multiplierhq
+Ontop | remoto | ontop, getontop
+Velocity Global | remoto | velocityglobal
+Pavago | global | pavago
+Hire Quotient | global | hirequotient
+Invisible Technologies | global | invisible, invisibletech
+Outlier | global | outlier, outlierai
+Mercor | global | mercor
+micro1 | global | micro1
+Prolific | global | prolific
+DataAnnotation | global | dataannotation
+Welocalize | global | welocalize
+TransPerfect | remoto | transperfect
+Appen | global | appen
+TELUS Digital | remoto | telusdigital, telusinternational
+Teleperformance | remoto | teleperformance
+Concentrix | remoto | concentrix
+TaskUs | remoto | taskus
+Sutherland | remoto | sutherland
+SupportYourApp | global | supportyourapp
+Hugo | remoto | hugo, hugoinc
+
+# --- Empresas 100 % remotas que contratan en cualquier país ----------------
+GitLab | global | gitlab
+Automattic | global | automatticcareers, automattic
+Canonical | global | canonical
+Doist | global | doist
+Buffer | global | buffer
+Toggl | global | toggl
+Hotjar | global | hotjar
+Zapier | remoto | zapier
+Wikimedia Foundation | global | wikimedia
+DuckDuckGo | global | duckduckgo
+Sourcegraph | global | sourcegraph, sourcegraph91
+Mattermost | global | mattermost
+Discourse | global | discourse
+Ghost | global | ghost
+Kinsta | global | kinsta
+10up | global | 10up
+Human Made | global | humanmade
+rtCamp | global | rtcamp
+XWP | global | xwp
+WP Engine | remoto | wpengine
+PostHog | global | posthog
+Supabase | global | supabase
+Hugging Face | global | huggingface
+Consensys | global | consensys
+Chainlink Labs | global | chainlinklabs, chainlink
+Nethermind | global | nethermind
+Parity | global | parity, paritytech
+Protocol Labs | global | protocollabs
+Gnosis | global | gnosis
+Safe | global | safe, safeglobal
+Status | global | status, statusim
+Ethereum Foundation | global | ethereumfoundation
+Polygon | global | polygon, polygontechnology, polygonlabs
+Aave | global | aave, avara
+Uniswap Labs | remoto | uniswaplabs, uniswap
+Offchain Labs | global | offchainlabs
+Optimism | global | optimism, oplabs
+NEAR | global | near, nearfoundation
+Solana Foundation | global | solanafoundation, solana
+Mysten Labs | remoto | mystenlabs
+Aptos | remoto | aptos, aptoslabs
+Ava Labs | remoto | avalabs
+Ripple | remoto | ripple
+Stellar | global | stellar, stellardevelopmentfoundation
+Chainalysis | remoto | chainalysis
+Fireblocks | remoto | fireblocks
+BitGo | remoto | bitgo
+Anchorage Digital | remoto | anchorage, anchoragedigital
+Paxos | remoto | paxos
+Gemini | remoto | gemini
+Blockchain.com | remoto | blockchain
+MoonPay | remoto | moonpay
+BitPay | remoto | bitpay
+Ramp Network | global | rampnetwork
+Ledn | remoto | ledn
+Nexo | remoto | nexo
+Bitfinex | global | bitfinex, ifinex
+Binance | global | binance
+Bybit | global | bybit
+Crypto.com | remoto | cryptocom, crypto
+KuCoin | global | kucoin
+Gate | global | gate, gateio
+Wintermute | remoto | wintermute
+Tools for Humanity | remoto | toolsforhumanity, worldcoin
+Kraken | remoto | kraken.com
+Circle | remoto | circle
+OKX | remoto | okx
+Coinbase | remoto | coinbase
+Alchemy | remoto | alchemy
+Ledger | remoto | ledger
+
+# --- Tecnológicas con oficinas o puestos remotos en LATAM -----------------
+Stripe | remoto | stripe
+Airbnb | remoto | airbnb
+MongoDB | remoto | mongodb
+Twilio | remoto | twilio
+Datadog | remoto | datadog
+Brex | remoto | brex
+Elastic | global | elastic
+Figma | remoto | figma
+Okta | remoto | okta
+Samsara | remoto | samsara
+Lyft | remoto | lyft
+Scale AI | remoto | scaleai
+Pinterest | remoto | pinterest
+Dropbox | remoto | dropbox
+Spotify | remoto | spotify
+Sentry | remoto | sentry
+Mozilla | remoto | mozilla
+HashiCorp | remoto | hashicorp
+New Relic | remoto | newrelic
+Grafana Labs | global | grafanalabs
+Cloudflare | remoto | cloudflare
+Fastly | remoto | fastly
+DigitalOcean | remoto | digitalocean98, digitalocean
+Vercel | remoto | vercel
+Netlify | remoto | netlify
+Render | remoto | render
+Fly.io | global | flyio, fly
+Railway | global | railway
+PlanetScale | remoto | planetscale
+Neon | global | neon, neondatabase
+Cockroach Labs | remoto | cockroachlabs
+Timescale | global | timescale, tigerdata
+ClickHouse | remoto | clickhouse
+Confluent | remoto | confluent
+Databricks | remoto | databricks
+dbt Labs | remoto | dbtlabsinc, dbtlabs
+Fivetran | remoto | fivetran
+Airbyte | remoto | airbyte
+Astronomer | remoto | astronomer
+Dagster Labs | remoto | dagsterlabs, elementl
+Prefect | remoto | prefect
+Mixpanel | remoto | mixpanel
+Amplitude | remoto | amplitude
+LaunchDarkly | remoto | launchdarkly
+Honeycomb | remoto | honeycomb, honeycombio
+Chainguard | remoto | chainguard
+Snyk | remoto | snyk
+SonarSource | remoto | sonarsource
+JFrog | remoto | jfrog
+Docker | remoto | docker
+Postman | remoto | postman
+Kong | remoto | kong, konghq
+Tyk | global | tyk, tyktechnologies
+Apollo GraphQL | remoto | apollographql, apollo
+Hasura | remoto | hasura
+Prisma | remoto | prisma
+Sanity | remoto | sanity, sanityio
+Contentful | remoto | contentful
+Strapi | remoto | strapi
+Webflow | remoto | webflow
+Framer | remoto | framer
+Canva | remoto | canva
+Miro | remoto | miro
+Notion | remoto | notion
+Asana | remoto | asana
+Atlassian | remoto | atlassian
+Intercom | remoto | intercom
+Zendesk | remoto | zendesk
+Freshworks | remoto | freshworks
+HubSpot | remoto | hubspot
+Toast | remoto | toast
+Block | remoto | block, squareup
+Affirm | remoto | affirm
+Chime | remoto | chime
+SoFi | remoto | sofi
+Ramp | remoto | ramp
+Plaid | remoto | plaid
+Marqeta | remoto | marqeta
+Adyen | remoto | adyen
+Wise | remoto | wise, transferwise
+Checkout.com | remoto | checkoutcom, checkout
+Rapyd | remoto | rapyd
+Airwallex | remoto | airwallex
+Payoneer | remoto | payoneer
+Remitly | remoto | remitly
+Nubank | local | nubank
+Clara | local | clara
+Kueski | local | kueski
+DoorDash | remoto | doordash, doordashusa
+Instacart | remoto | instacart
+Robinhood | remoto | robinhood
+Reddit | remoto | reddit
+Discord | remoto | discord
+Duolingo | remoto | duolingo
+Grammarly | remoto | grammarly
+Coursera | remoto | coursera
+Udemy | remoto | udemy
+GitHub | remoto | github
+Shopify | remoto | shopify
+Rippling | remoto | rippling
+Gusto | remoto | gusto
+Lattice | remoto | lattice
+Deel Engineering | global | deelhq
+Wellhub (Gympass) | local | gympass
+QuintoAndar | local | quintoandar
+Jusbrasil | local | jusbrasil
+Jobandtalent | local | jobandtalent
+Anthropic | remoto | anthropic
+OpenAI | remoto | openai
+Cohere | remoto | cohere
+Mistral AI | remoto | mistral
+Perplexity | remoto | perplexity, perplexityai
+Replit | remoto | replit
+Cursor | remoto | cursor, anysphere
+ElevenLabs | global | elevenlabs
+Synthesia | remoto | synthesia
+Runway | remoto | runway, runwayml
+Midjourney | remoto | midjourney
+Character.AI | remoto | characterai
+Weights & Biases | remoto | wandb, weightsandbiases
+Labelbox | remoto | labelbox
+Snorkel AI | remoto | snorkelai
+Hebbia | remoto | hebbia
+Glean | remoto | gleanwork, glean
+Harvey | remoto | harvey
+Bitwarden | remoto | bitwarden
+1Password | remoto | 1password
+Tailscale | remoto | tailscale
+Proton | global | proton, protonag
+NordSec | remoto | nordsec
+Kaspersky | remoto | kaspersky
+CrowdStrike | remoto | crowdstrike
+SentinelOne | remoto | sentinelone
+Wiz | remoto | wiz, wizinc
+Rapid7 | remoto | rapid7
+Tenable | remoto | tenable
+Bugcrowd | global | bugcrowd
+HackerOne | global | hackerone
+Bosch | remoto | BoschGroup
+Visa | remoto | Visa
+ServiceNow | remoto | ServiceNow
+Equifax | remoto | Equifax
+Experian | remoto | Experian
+Sanofi | remoto | Sanofi
+Ubisoft | remoto | Ubisoft2
+Wix | remoto | Wix
+Western Digital | remoto | WesternDigital
+Accor | remoto | AccorHotel
+IKEA | remoto | IKEA
+Continental | remoto | Continental
+Nestlé | remoto | Nestle
+Abbott | remoto | Abbott
+Square Enix | remoto | SquareEnix
+Electronic Arts | remoto | ElectronicArts
+Riot Games | remoto | riotgames
+Epic Games | remoto | epicgames
+Unity | remoto | unity, unity3d
+Roblox | remoto | roblox
+
+# --- Agricultura y agroindustria (Valle del Yaqui, Sonora, México) ---
+Nutrien | global | nutrien, nutrienag
+Mosaic | global | mosaic, mosaicco
+Yara | global | yara, yarainternational
+UPL | global | upl, uplltd, upl-corp
+Nufarm | global | nufarm
+FMC | global | fmccorp, fmccorporation  # "fmc" en Teamtailor es otra empresa (peritos marinos)
+Koppert | global | koppert
+Biobest | global | biobest, biobestgroup
+Driscoll's | global | driscolls, driscollsinc
+NatureSweet | local | naturesweet
+Mission Produce | global | missionproduce
+Calavo Growers | global | calavo, calavogrowers
+Fresh Del Monte | global | freshdelmonte, delmonte
+Dole | global | dole, dolefood
+Netafim | global | netafim
+Rivulis | global | rivulis
+Lindsay | global | lindsay, lindsaycorp
+Valmont | global | valmont
+AGCO | global | agco, agcocorp
+CNH Industrial | global | cnh, cnhindustrial
+Kubota | global | kubota
+Indigo Ag | global | indigoag  # "indigo" en Greenhouse es una aseguradora
+Pivot Bio | global | pivotbio
+Farmers Business Network | global | fbn, farmersbusinessnetwork
+Bioceres | global | bioceres
+Plenty | global | plenty
+Gowan | global | gowan, gowancompany
+Rijk Zwaan | global | rijkzwaan
+Enza Zaden | global | enzazaden
+Sakata | global | sakata, sakataseed
+HM.CLAUSE | global | hmclause
+Limagrain | global | limagrain, vilmorin
+Elanco | global | elanco
+Zoetis | global | zoetis
+Pilgrim's | global | pilgrims, pilgrimspride
+Smithfield | global | smithfield, smithfieldfoods
+Tyson Foods | global | tyson, tysonfoods
+Grupo Bimbo | local | grupobimbo, bimbo
+Bachoco | local | bachoco, industriasbachoco
+SuKarne | local | sukarne
+Grupo Lala | local | grupolala, lala
+Sigma Alimentos | local | sigma, sigmaalimentos
+Grupo Herdez | local | herdez, grupoherdez
+Granjas Kowi | local | kowi
+Agroindustrias Unidas de México | local | amsa, agroindustriasunidas
+# --- LATAM de habla hispana (Colombia, Argentina, Chile, Perú, Uruguay, Centroamérica, Venezuela) ---
+Rappi | local | rappi, rappiinc
+dLocal | local | dlocal
+Ualá | local | uala, ualabis
+Addi | local | addi, addicolombia
+Habi | local | habi, tuhabi
+Truora | local | truora
+Bold | local | bold, boldco
+Treinta | local | treinta
+Frubana | local | frubana
+Merqueo | local | merqueo
+Chiper | local | chiper
+Tpaga | local | tpaga
+Siigo | local | siigo
+Platzi | local | platzi, platziteam
+Lemon Cash | local | lemon, lemoncash
+Pomelo | local | pomelo, pomelofintech
+Belo | local | belo, belo-app
+Naranja X | local | naranjax
+Mercado Libre | local | mercadolibre, meli
+Despegar | local | despegar
+Satellogic | global | satellogic
+Buk | local | buk, buk-hr
+NotCo | local | notco, thenotcompany
+Betterfly | local | betterfly
+Xepelin | local | xepelin
+Cornershop | local | cornershop
+Crehana | local | crehana
+Culqi | local | culqi
+Kambista | local | kambista
+Yape | local | yape
+Fracttal | local | fracttal
+Simetrik | local | simetrik
+Kushki | local | kushki
+PedidosYa | local | pedidosya
+Globant | global | globant
+Endava | global | endava, Endava
+Wizeline | global | wizeline
+Encora | global | encora, encorainc
+Gorilla Logic | global | gorillalogic, gorilla-logic
+Nearsure | global | nearsure
+Applaudo | global | applaudo, applaudostudios
+Arkus Nexus | global | arkusnexus
+TaskUs | global | taskus
+Sutherland | global | sutherland, sutherlandglobal
+Telus International | global | telusinternational, telusdigital
+Teleperformance | global | teleperformance
+Konecta | global | konecta, konectagroup
+Atento | global | atento
+Foundever | global | foundever
+Startek | global | startek
+Ibex | global | ibex, ibexglobal
+Hapi | local | hapi, hapiapp
+Ripio | local | ripio
+Buenbit | local | buenbit
+Prometeo | local | prometeo
+Unnax | global | unnax
+Mono | local | mono, monocolombia
+Nequi | local | nequi
+Tul | local | tul
+Muni | local | muni
+Fintoc | local | fintoc
+Toku | local | toku
+Houm | local | houm
+Lapieza | local | lapieza
+Nowports | local | nowports
+Kovi | local | kovi
+Jüsto | local | justo, jüsto
+Kueski | local | kueski
+Stori | local | stori, storicard
+Clip | local | clip, payclip
+Belvo | local | belvo
