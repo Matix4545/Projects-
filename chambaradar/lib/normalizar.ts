@@ -163,8 +163,10 @@ const CIUDADES_ESTADO: [Estado, RegExp][] = [
 export function detectarZonas(texto: string, enMexico = true): Zona[] {
   const t = plano(texto).replace(/alvaro obregon/g, " ");
   const enCdmx = /cdmx|ciudad de mexico|mexico city|distrito federal/.test(t);
+  // Otro país en el texto: el código postal 850xx también existe fuera de México (Trinidad, Uruguay)
+  const otroPais = /\b(uruguay|argentina|colombia|chile|peru|brasil|brazil|espana|spain|united states|usa)\b/.test(t);
   const cajeme =
-    /\bcajeme\b|(ciudad|cd\.?) ?obregon|obregon[ ,-]+(son\b|sonora)|\b850\d\d\b/.test(t) || (/\bobregon\b/.test(t) && !enCdmx);
+    /\bcajeme\b|(ciudad|cd\.?) ?obregon|obregon[ ,-]+(son\b|sonora)/.test(t) || (/\b850\d\d\b/.test(t) && !otroPais) || (/\bobregon\b/.test(t) && !enCdmx);
   const zonas: Zona[] = [];
   if (cajeme) zonas.push("cajeme");
   if (cajeme || CIUDADES_SONORA.test(t)) zonas.push("sonora");

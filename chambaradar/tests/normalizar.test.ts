@@ -160,6 +160,8 @@ test("zonas: Cd. Obregón (Cajeme) y Sonora, sin confundir con Álvaro Obregón"
   const { detectarZonas } = await import("../lib/normalizar.ts");
   assert.deepEqual(detectarZonas("Obregon, Sonora, Mexico"), ["cajeme", "sonora"]);
   assert.deepEqual(detectarZonas("Cd. Obregón, Son."), ["cajeme", "sonora"]);
+  assert.deepEqual(detectarZonas("Sonora, Cajeme, 85000"), ["cajeme", "sonora"]);
+  assert.deepEqual(detectarZonas("85000, Trinidad, Flores, Uruguay"), []);
   assert.deepEqual(detectarZonas("Ciudad Obregon"), ["cajeme", "sonora"]);
   assert.deepEqual(detectarZonas("85065 OBREGON"), ["cajeme", "sonora"]);
   assert.deepEqual(detectarZonas("Cajeme, México"), ["cajeme", "sonora"]);
