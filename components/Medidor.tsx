@@ -191,6 +191,16 @@ export function Medidor() {
       return;
     }
 
+    // Se pidió la cámara pero el detector no está listo: avisar en vez de medir sin cámara sin decir nada
+    if (puedeCamara && camara.activa && detector.info !== null && !detector.detector) {
+      setError(
+        detector.error
+          ? `No se pudo preparar el detector de baches (${detector.error}). Recarga la página. Si sigue igual, apaga “Buscar baches con la cámara” para medir solo las calles.`
+          : "El detector de baches todavía se está preparando. Espera unos segundos e intenta de nuevo.",
+      );
+      return;
+    }
+
     // Cámara para los baches (si está activa y el detector ya está listo)
     let video: MediaStream | null = null;
     if (puedeCamara && camara.activa && detector.detector) {
@@ -198,7 +208,7 @@ export function Medidor() {
       try {
         video = await abrirCamara();
       } catch {
-        setError("Sin permiso de cámara no se pueden detectar baches. Actívalo en los ajustes del navegador o apaga “Detectar baches”.");
+        setError("Sin permiso de cámara no se pueden detectar baches. Actívalo en los ajustes del navegador o apaga “Buscar baches con la cámara”.");
         return;
       }
     }
@@ -373,6 +383,20 @@ export function Medidor() {
             <button onClick={empezar} disabled={preparando} className="boton boton-principal h-14 w-full text-[18px] shadow-[0_8px_20px_rgba(0,122,255,0.25)]">
               {preparando ? "Preparando el detector…" : "Empezar a medir"}
             </button>
+            {/* Que quede claro si se va a abrir la cámara o solo se medirán las calles */}
+            <p
+              className={`flex items-center justify-center gap-1.5 px-4 text-center text-[14px] font-medium ${
+                conCamara && !detector.error ? "text-[#248a3d]" : "text-[#c93400]"
+              }`}
+            >
+              {!puedeCamara
+                ? "Sin entrar con tu código solo se mide el estado de las calles (sin cámara)."
+                : !camara.activa
+                  ? "La cámara está apagada: solo se medirá el estado de las calles. Préndela en el paso 2."
+                  : detector.error
+                    ? "El detector de baches no cargó. Recarga la página."
+                    : "📷 Se abrirá la cámara para buscar baches."}
+            </p>
             {historico > 0 && (
               <p className="text-center text-[15px] text-ios-secundario">
                 Con este teléfono llevas <strong className="font-semibold text-ios-etiqueta">{historico.toFixed(1)} km</strong> medidos. ¡Gracias!
