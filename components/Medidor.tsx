@@ -553,8 +553,8 @@ function EntrarEquipo({ error }: { error: string | null }) {
           </svg>
         </span>
         <p className="min-w-0 flex-1 text-[15px] leading-snug">
-          <strong className="font-semibold">¿Eres voluntario o del equipo?</strong>
-          <span className="block text-ios-secundario">Entra con tu código para buscar baches con la cámara.</span>
+          <strong className="font-semibold">¿Eres del equipo o voluntario?</strong>
+          <span className="block text-ios-secundario">Entra para buscar baches con la cámara.</span>
         </p>
         {!abierto && (
           <button onClick={() => setAbierto(true)} className="boton boton-tenue min-h-9 shrink-0 rounded-full px-4 text-[15px]">
@@ -575,9 +575,12 @@ function EntrarEquipo({ error }: { error: string | null }) {
             required
             autoFocus={!error}
             autoComplete="current-password"
-            placeholder="Código de voluntario o contraseña"
+            placeholder="Contraseña del panel o código de voluntario"
             className="campo"
           />
+          <p className="text-[13px] leading-snug text-ios-secundario">
+            Equipo: la misma contraseña con la que entras al panel. Voluntarios: el código que te dio el equipo.
+          </p>
           {error && <p className="text-[14px] text-ios-rojo">{error}</p>}
           <button className="boton boton-principal h-12 w-full">Entrar</button>
         </form>
