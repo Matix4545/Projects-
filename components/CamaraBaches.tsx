@@ -18,6 +18,7 @@ import {
 } from "@/lib/baches/geometria";
 import type { Detector } from "@/lib/baches/modelo";
 import { nivelBache } from "@/lib/constantes";
+import { agregar as agregarAlBuzon, enviarYa, type DatosBache, type MetaRecorrido } from "@/lib/baches/buzon";
 import { Movimiento, ahora, horaDeLectura } from "@/lib/baches/movimiento";
 import { Orientacion } from "@/lib/baches/sensores";
 import { Seguimiento, type BacheConfirmado, type Observacion } from "@/lib/baches/seguimiento";
@@ -25,12 +26,14 @@ import { clasesDeBache, type Bache } from "@/lib/baches/yolo";
 
 /** Lo que se ve y se sube de cada bache confirmado */
 export type BacheSubido = {
+  /** Identifica al bache en el buzón de envío ("sesión:número") */
+  clave: string;
   lat: number;
   lng: number;
   area_m2: number | null;
   area_sd: number | null;
   confianza: number;
-  enviado: boolean;
+  enviado?: boolean;
   nuevo?: boolean;
   /** false: no se subió al mapa porque no se pudo medir y no había un bache ahí */
   publicado?: boolean;
@@ -45,9 +48,7 @@ export type ControlCamara = {
   terminar: () => Promise<void>;
 };
 
-type Pendiente = Omit<BacheConfirmado<HTMLCanvasElement>, "pos" | "foto"> & { lat: number; lng: number; foto: Blob | null; i: number };
 
-const ENVIO_CADA_MS = 20_000;
 /** Precisión mínima del GPS para ubicar baches (m) */
 const PRECISION_MAX_M = 20;
 /** Un cuadro espera a la siguiente lectura del GPS para interpolar su posición, hasta este tiempo (s) */
@@ -102,6 +103,8 @@ export function CamaraBaches({
   const [detalles, setDetalles] = useState(false);
   /** Ancho / alto del video (cambia si se gira el celular) */
   const [aspecto, setAspecto] = useState(16 / 9);
+  const [sinGps, setSinGps] = useState(false);
+  const [sinInclinacion, setSinInclinacion] = useState(false);
   const verDetalles = useRef(false);
   verDetalles.current = detalles;
 
@@ -112,10 +115,12 @@ export function CamaraBaches({
   const pendientes = useRef<{ t: number; items: Medicion[] }[]>([]);
   const procesar = useRef<(final?: boolean) => void>(() => {});
   const origen = useRef<[number, number] | null>(null);
-  const cola = useRef<Pendiente[]>([]);
   const subidos = useRef<BacheSubido[]>([]);
-  const enviando = useRef(false);
+  /** Baches que se están guardando en el buzón (Terminar espera a que acaben) */
+  const guardando = useRef(new Set<Promise<void>>());
   const vivo = useRef(true);
+  /** Hora (ms) de la última lectura del GPS; 0 = ninguna todavía */
+  const ultimaGps = useRef(0);
 
   // Valores que cambian sin reiniciar la cámara
   const params = useRef({ alturaM, fovLargo, abajoRespaldo, sesion, plataforma, prueba, onBaches });
@@ -123,92 +128,50 @@ export function CamaraBaches({
 
   const publicar = () => params.current.onBaches([...subidos.current]);
 
-  async function enviarCola(final = false) {
-    if (enviando.current || cola.current.length === 0) return;
-    enviando.current = true;
-    try {
-      while (cola.current.length) {
-        const lote = cola.current.slice(0, 10);
-        const form = new FormData();
-        form.set(
-          "datos",
-          JSON.stringify({
-            sesion: params.current.sesion,
-            fecha: new Date().toLocaleDateString("en-CA", { timeZone: "America/Hermosillo" }),
-            modelo: detector.info.archivo,
-            plataforma: params.current.plataforma,
-            altura_m: params.current.alturaM,
-            fov: params.current.fovLargo,
-            prueba: params.current.prueba,
-            baches: lote.map((b, k) => ({
-              lat: b.lat,
-              lng: b.lng,
-              area_m2: b.area_m2,
-              area_sd: b.area_sd,
-              largo_m: b.largo_m,
-              ancho_m: b.ancho_m,
-              confianza: b.confianza,
-              confianza_max: b.confianza_max,
-              cuadros: b.cuadros,
-              medidas: b.medidas,
-              distancia_m: b.distancia_m,
-              rumbo: b.rumbo,
-              precision_m: b.precision_m,
-              foto: b.foto ? `foto_${k}` : null,
-            })),
-          }),
-        );
-        lote.forEach((b, k) => b.foto && form.set(`foto_${k}`, b.foto, `bache-${k}.jpg`));
-        const res = await fetch("/api/baches-camara", { method: "POST", body: form });
-        if (res.status === 401) {
-          setAviso("Tu sesión se cerró (¿cambió el código?). Al terminar, vuelve a entrar en /medir. Los baches siguen guardados en esta página.");
-          break;
+  /** Guarda en el buzón los baches confirmados (con su foto). El buzón los envía y reintenta solo. */
+  function encolar(lista: BacheConfirmado<HTMLCanvasElement>[]) {
+    if (!lista.length || !origen.current) return Promise.resolve();
+    const o = origen.current;
+    const { sesion, plataforma, alturaM, fovLargo, prueba } = params.current;
+    const meta: MetaRecorrido = {
+      sesion,
+      fecha: new Date().toLocaleDateString("en-CA", { timeZone: "America/Hermosillo" }),
+      modelo: detector.info.archivo,
+      plataforma,
+      altura_m: acotar(alturaM, 0.3, 5),
+      fov: acotar(fovLargo, 20, 140),
+      prueba,
+    };
+    const p = (async () => {
+      const items: { clave: string; bache: DatosBache; foto: Blob | null }[] = [];
+      for (const b of lista) {
+        const [lat, lng] = deLocal(b.pos, o);
+        let foto: Blob | null = null;
+        try {
+          foto = b.foto ? await new Promise<Blob | null>((ok) => b.foto!.toBlob(ok, "image/jpeg", 0.78)) : null;
+        } catch {
+          foto = null; // sin foto, pero el bache sí se manda
         }
-        if (!res.ok) throw new Error(String(res.status));
-        const r = (await res.json()) as { resultados?: { pin_id: number | null; nuevo: boolean; calle?: string | null; prueba?: boolean }[] };
-        lote.forEach((b, k) => {
-          const s = subidos.current[b.i];
-          const x = r.resultados?.[k];
-          if (s) {
-            s.enviado = true;
-            s.nuevo = x?.nuevo;
-            s.publicado = x ? x.pin_id != null : undefined;
-            s.calle = x?.calle ?? null;
-            s.prueba = !!x?.prueba;
-          }
-        });
-        cola.current = cola.current.slice(lote.length);
-        publicar();
+        const clave = `${sesion}:${subidos.current.length}`;
+        subidos.current.push({ clave, lat, lng, area_m2: b.area_m2, area_sd: b.area_sd, confianza: b.confianza });
+        items.push({ clave, bache: datosValidos(b, lat, lng), foto });
       }
-    } catch {
-      if (final) setAviso("Sin conexión: quedan baches por enviar. Deja la página abierta y se reintenta.");
-    } finally {
-      enviando.current = false;
-    }
-  }
-
-  async function encolar(lista: BacheConfirmado<HTMLCanvasElement>[]) {
-    if (!lista.length || !origen.current) return;
-    for (const b of lista) {
-      const [lat, lng] = deLocal(b.pos, origen.current);
-      const foto = b.foto ? await new Promise<Blob | null>((ok) => b.foto!.toBlob(ok, "image/jpeg", 0.78)) : null;
-      const i = subidos.current.length;
-      subidos.current.push({ lat, lng, area_m2: b.area_m2, area_sd: b.area_sd, confianza: b.confianza, enviado: false });
-      cola.current.push({ ...b, lat, lng, foto, i });
-    }
-    publicar();
-    if (cola.current.length >= 5) enviarCola();
+      publicar();
+      await agregarAlBuzon(meta, items);
+    })();
+    guardando.current.add(p);
+    p.catch(() => {}).finally(() => guardando.current.delete(p));
+    return p;
   }
 
   useImperativeHandle(ref, () => ({
     async terminar() {
       vivo.current = false;
       procesar.current(true);
-      await encolar(seguimiento.current.terminar());
-      for (let intento = 0; intento < 3 && cola.current.length; intento++) {
-        await enviarCola(intento === 2);
-        if (cola.current.length) await esperar(3000);
-      }
+      encolar(seguimiento.current.terminar());
+      // Que todo quede guardado en el buzón (sigue enviando aunque esta vista se cierre)
+      await Promise.allSettled([...guardando.current]);
+      enviarYa();
     },
   }));
 
@@ -222,26 +185,31 @@ export function CamaraBaches({
     const medirAspecto = () => v.videoWidth && v.videoHeight && setAspecto(v.videoWidth / v.videoHeight);
     v.onloadedmetadata = medirAspecto;
     v.onresize = medirAspecto;
+    const pista = stream.getVideoTracks()[0];
+    const reanudar = () => {
+      if (!document.hidden && v.paused) v.play().catch(() => {});
+    };
+    const alCerrarCamara = () => setAviso("La cámara se cerró. Toca Terminar y vuelve a empezar.");
+    document.addEventListener("visibilitychange", reanudar);
+    pista?.addEventListener("unmute", reanudar);
+    pista?.addEventListener("ended", alCerrarCamara);
 
     const alOrientar = (e: DeviceOrientationEvent) => orientacion.current.lectura(e.beta, e.gamma, performance.now() / 1000);
     window.addEventListener("deviceorientation", alOrientar);
 
-    let ultimaLectura = 0;
     const vigia = navigator.geolocation.watchPosition(
       (p) => {
         const { latitude: lat, longitude: lng, speed, heading, accuracy } = p.coords;
-        ultimaLectura = Date.now();
+        ultimaGps.current = Date.now();
         setGps(Math.round(accuracy));
         if (accuracy > PRECISION_MAX_M) return;
         // La hora en que se tomó la lectura, para interpolar la posición de cada cuadro
         movimiento.current.lectura(lat, lng, horaDeLectura(p.timestamp), speed, heading, accuracy);
       },
       // Un error suelto no cambia el estado si hubo lectura hace poco
-      () => Date.now() - ultimaLectura > 10_000 && setGps(null),
+      () => Date.now() - ultimaGps.current > 10_000 && setGps(null),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
     );
-
-    const intervalo = setInterval(() => enviarCola(), ENVIO_CADA_MS);
 
     /**
      * Ubica en el mapa los cuadros que ya tienen la lectura del GPS siguiente (posición interpolada)
@@ -293,11 +261,37 @@ export function CamaraBaches({
     const deBache = clasesDeBache(detector.info.clases);
     const esBache = (b: Bache) => !deBache || deBache.includes(b.clase);
 
+    const desde = Date.now();
+    let pausadoDesde = 0;
     async function ciclo() {
       while (vivo.current) {
+        try {
+          await paso();
+        } catch (e) {
+          // Nada detiene la búsqueda: se avisa y se sigue con el siguiente cuadro
+          console.error(e);
+          setAviso("Hubo un error al analizar un cuadro; sigue buscando…");
+          await esperar(1000);
+        }
+      }
+    }
+    async function paso() {
+      {
         if (document.hidden || v.readyState < 2 || !v.videoWidth) {
           await esperar(250);
-          continue;
+          return;
+        }
+        // Video detenido (bloqueo, llamada…): se intenta reanudar; si no, se pide un toque
+        if (v.paused || pista?.readyState === "ended") {
+          pausadoDesde ||= Date.now();
+          v.play().catch(() => {});
+          if (Date.now() - pausadoDesde > 2000 && pista?.readyState !== "ended") setAviso("Toca la pantalla para reanudar la cámara.");
+          await esperar(500);
+          return;
+        }
+        if (pausadoDesde) {
+          pausadoDesde = 0;
+          setAviso((a) => (a?.startsWith("Toca la pantalla") ? null : a));
         }
         const t = ahora(); // misma escala que las lecturas del GPS
         const tSensor = performance.now() / 1000;
@@ -312,8 +306,9 @@ export function CamaraBaches({
           console.error(e);
           setAviso("El detector falló en este cuadro; reintentando…");
           await esperar(1000);
-          continue;
+          return;
         }
+        setAviso((a) => (a?.startsWith("El detector falló") || a?.startsWith("Hubo un error") ? null : a));
         const { alturaM: h, fovLargo: fov, abajoRespaldo: respaldo } = params.current;
         const enVivo = tSensor - orientacion.current.ultima < 2 ? orientacion.current.abajo() : null;
         const g = enVivo ?? respaldo;
@@ -347,23 +342,28 @@ export function CamaraBaches({
           ultimoFps = ms;
           setPose(g ? inclinacion(g) : null);
           setDescartados(seguimiento.current.descartados);
-          if (!enVivo && !respaldo) setAviso("El celular no da su inclinación: no se puede medir el tamaño. Calibra la cámara antes de salir.");
-          // Modelo rectangular horizontal con el celular vertical: casi toda la entrada sería relleno
-          const [ah, aw] = detector.info.imgsz;
-          if (aw > ah * 1.2 && vh > vw) setAviso("Pon el celular acostado (horizontal): este modelo espera video horizontal y así ve mejor la calle.");
+          // Avisos que se calculan cada segundo (se quitan solos cuando se arregla)
+          setSinInclinacion(!enVivo && !respaldo);
+          const ultima = ultimaGps.current;
+          setSinGps(ultima ? Date.now() - ultima > 15_000 : Date.now() - desde > 15_000);
         }
         // Deja respirar a la página entre cuadro y cuadro
         await new Promise((r) => requestAnimationFrame(() => r(null)));
       }
     }
-    ciclo();
+    ciclo().catch((e) => {
+      console.error(e);
+      setAviso("La búsqueda de baches se detuvo. Toca Terminar y vuelve a empezar.");
+    });
 
     return () => {
       vivo.current = false;
       window.removeEventListener("deviceorientation", alOrientar);
       navigator.geolocation.clearWatch(vigia);
-      clearInterval(intervalo);
       clearTimeout(revisarVideo);
+      document.removeEventListener("visibilitychange", reanudar);
+      pista?.removeEventListener("unmute", reanudar);
+      pista?.removeEventListener("ended", alCerrarCamara);
     };
     // La cámara y el detector se crean una vez por recorrido
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -409,7 +409,11 @@ export function CamaraBaches({
     </div>
   );
   const avisos = [
-    aspecto < 1 && "Gira el celular a horizontal (acostado): así ve más calle.",
+    sinGps && "Sin señal de GPS: los baches no se guardan hasta que vuelva. Revisa que la ubicación esté permitida.",
+    sinInclinacion && "El celular no da su inclinación: no se puede medir el tamaño. Haz el ajuste fino de la cámara antes de salir.",
+    pose && Math.abs(pose.roll) > 45
+      ? "La pantalla no giró: quita el bloqueo de rotación del celular."
+      : aspecto < 1 && "Gira el celular a horizontal (acostado): así ve más calle.",
     fps > 0 && fps < 2.5 && "Este celular analiza pocos cuadros por segundo: maneja a 30 km/h o menos para no perder baches.",
     gps != null && gps > PRECISION_MAX_M && `GPS impreciso (±${gps} m): los baches no se ubican hasta que mejore. Sal de entre edificios altos o espera un momento.`,
     aviso,
@@ -423,7 +427,7 @@ export function CamaraBaches({
             {pantalla}
           </div>
         </div>
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="space-y-2">
             {estado}
             {panelDetalles}
@@ -620,4 +624,26 @@ export function dibujarPiso(ctx: CanvasRenderingContext2D, cam: Camara, ejes: Ej
       ctx.setLineDash([]);
     }
   }
+}
+
+const acotar = (x: number, a: number, b: number) => Math.min(b, Math.max(a, Number.isFinite(x) ? x : a));
+const enRango = (x: number | null | undefined, max: number) => (x != null && Number.isFinite(x) && x >= 0 && x <= max ? x : null);
+
+/** Valores dentro de lo que acepta el servidor (uno fuera de rango haría que rechazara el bache) */
+function datosValidos(b: BacheConfirmado<unknown>, lat: number, lng: number): DatosBache {
+  return {
+    lat,
+    lng,
+    area_m2: enRango(b.area_m2, 100),
+    area_sd: enRango(b.area_sd, 100),
+    largo_m: enRango(b.largo_m, 30),
+    ancho_m: enRango(b.ancho_m, 30),
+    confianza: acotar(b.confianza, 0, 1),
+    confianza_max: acotar(b.confianza_max ?? b.confianza, 0, 1),
+    cuadros: Math.round(acotar(b.cuadros, 1, 10_000)),
+    medidas: Math.round(acotar(b.medidas, 0, 10_000)),
+    distancia_m: acotar(b.distancia_m, 0, 200),
+    rumbo: b.rumbo != null && Number.isFinite(b.rumbo) ? ((b.rumbo % 360) + 360) % 360 : null,
+    precision_m: enRango(b.precision_m, 200),
+  };
 }

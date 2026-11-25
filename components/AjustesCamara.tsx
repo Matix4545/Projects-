@@ -64,7 +64,7 @@ export function useAjustesCamara(vehiculo: string) {
     setA({
       // Prendida salvo que la hayan apagado en este celular (solo cuenta si entró el equipo o un voluntario)
       activa: leer("rc_cam_activa") !== "0",
-      alturaCm: Number(leer(`rc_cam_altura_${vehiculo}`)) || ALTURA_POR_VEHICULO[vehiculo] || 130,
+      alturaCm: Math.max(40, Math.min(400, Number(leer(`rc_cam_altura_${vehiculo}`)) || ALTURA_POR_VEHICULO[vehiculo] || 130)),
       fov: cal?.fov ?? FOV_TIPICO,
       calibrada: cal?.fecha ?? null,
       abajo: cal?.abajo ?? null,
@@ -93,22 +93,43 @@ export function useDetector(activa: boolean): EstadoDetector {
   const [detector, setDetector] = useState<Detector | null>(null);
   const [progreso, setProgreso] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [intento, setIntento] = useState(0);
   useEffect(() => {
-    leerInfoModelo().then(setInfo);
+    // Sin conexión no es lo mismo que "no hay modelo": se reintenta hasta saberlo
+    let vigente = true;
+    let reloj: ReturnType<typeof setTimeout> | undefined;
+    const intentar = () =>
+      leerInfoModelo()
+        .then((i) => vigente && setInfo(i))
+        .catch(() => {
+          if (vigente) reloj = setTimeout(intentar, 4000);
+        });
+    intentar();
+    return () => {
+      vigente = false;
+      clearTimeout(reloj);
+    };
   }, []);
   useEffect(() => {
     if (!activa || !info || detector) return;
     let vigente = true;
     setError(null);
     setProgreso(0);
+    let reloj: ReturnType<typeof setTimeout> | undefined;
     Detector.crear(info, (f) => vigente && setProgreso(f))
       .then((d) => vigente && setDetector(d))
-      .catch((e) => vigente && setError(e instanceof Error ? e.message : "No se pudo preparar el detector."))
+      .catch((e) => {
+        if (!vigente) return;
+        // Un corte de señal al bajar el modelo: se reintenta solo (3 veces) antes de mostrar el error
+        if (intento < 3) reloj = setTimeout(() => vigente && setIntento((n) => n + 1), 4000);
+        else setError(e instanceof Error ? e.message : "No se pudo preparar el detector.");
+      })
       .finally(() => vigente && setProgreso(null));
     return () => {
       vigente = false;
+      clearTimeout(reloj);
     };
-  }, [activa, info, detector]);
+  }, [activa, info, detector, intento]);
   return { info, detector, progreso, error };
 }
 
@@ -659,7 +680,7 @@ export function RevisarCamara({
                     calibrada: new Date().toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }),
                     abajo: congelada.g,
                     revisada: hoy(),
-                    ...(calcularAltura ? { alturaCm: Math.round(resultado.alturaM * 100) } : {}),
+                    ...(calcularAltura ? { alturaCm: Math.max(40, Math.min(400, Math.round(resultado.alturaM * 100))) } : {}),
                   });
                   // De regreso a la vista en vivo para ver la franja ya ajustada
                   setCongelada(null);

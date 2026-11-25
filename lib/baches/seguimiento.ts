@@ -56,7 +56,24 @@ export const OPCIONES_SEGUIMIENTO = {
   minConfianza: 0.5,
 };
 
-type Pista<F> = { obs: Observacion<F>[]; pos: [number, number]; ultimo: number };
+/**
+ * Solo se guarda UNA foto por bache (la mejor hasta ahora): si se guardara la de cada cuadro, parado en un
+ * semáforo con un bache enfrente la memoria crecería sin parar (cientos de MB en un iPhone).
+ */
+type Pista<F> = { obs: Observacion<F>[]; pos: [number, number]; ultimo: number; foto?: F; puntajeFoto: number };
+
+/** Mejor foto: primero las medidas dentro de la zona dulce, luego la más segura */
+const puntaje = (o: Observacion<unknown>) => (o.area_m2 != null ? 1 : 0) + o.confianza;
+
+function guardarFoto<F>(p: Pista<F>, o: Observacion<F>) {
+  if (o.foto === undefined) return;
+  const x = puntaje(o);
+  if (x > p.puntajeFoto) {
+    p.foto = o.foto;
+    p.puntajeFoto = x;
+  }
+  o.foto = undefined;
+}
 
 export const mediana = (xs: number[]) => {
   if (!xs.length) return NaN;
@@ -99,12 +116,16 @@ export class Seguimiento<F = unknown> {
       obsUsada.add(i);
       pistaUsada.add(j);
       const p = this.pistas[j];
+      guardarFoto(p, obs[i]);
       p.obs.push(obs[i]);
       p.ultimo = t;
       p.pos = posicion(p.obs);
     }
     obs.forEach((o, i) => {
-      if (!obsUsada.has(i)) this.pistas.push({ obs: [o], pos: o.pos, ultimo: t });
+      if (obsUsada.has(i)) return;
+      const p: Pista<F> = { obs: [o], pos: o.pos, ultimo: t, puntajeFoto: -Infinity };
+      guardarFoto(p, o);
+      this.pistas.push(p);
     });
   }
 
@@ -129,7 +150,7 @@ export class Seguimiento<F = unknown> {
     const areas = buenas.map((o) => o.area_m2!);
     const a = areas.length ? mediana(areas) : null;
     const sd = areas.length >= 2 ? Math.sqrt(areas.reduce((s, x) => s + (x - areas.reduce((u, v) => u + v, 0) / areas.length) ** 2, 0) / (areas.length - 1)) : null;
-    // Foto del mejor cuadro: el más seguro dentro de la zona dulce (o el más seguro de todos)
+    // Rumbo del mejor cuadro: el más seguro dentro de la zona dulce (o el más seguro de todos)
     const mejor = [...(buenas.length ? buenas : p.obs)].sort((x, y) => y.confianza - x.confianza)[0];
     const r2 = (x: number) => Math.round(x * 100) / 100;
     const r4 = (x: number) => Math.round(x * 10_000) / 10_000;
@@ -144,7 +165,7 @@ export class Seguimiento<F = unknown> {
       cuadros: n,
       medidas: buenas.length,
       distancia_m: r2(mediana((buenas.length ? buenas : p.obs).map((o) => o.distancia))),
-      foto: mejor.foto,
+      foto: p.foto,
       rumbo: mejor.rumbo ?? null,
       precision_m: p.obs.some((o) => o.precision != null) ? r2(mediana(p.obs.flatMap((o) => (o.precision != null ? [o.precision] : [])))) : null,
     });

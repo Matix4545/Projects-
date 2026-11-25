@@ -19,8 +19,10 @@ export const normalizarCodigo = (c: string) => c.toUpperCase().replace(/[^A-Z0-9
 /** Código para mostrar: "K7Q-29M" */
 export const formatoCodigo = (c: string) => (c.length === 6 ? `${c.slice(0, 3)}-${c.slice(3)}` : c);
 
+/** Código vigente; null si no hay. Lanza si la base no contestó (para no confundirlo con "sin código"). */
 export async function codigoVoluntarios(): Promise<string | null> {
-  const { data } = await supabaseServidor().from("ajustes_equipo").select("valor").eq("clave", CLAVE).maybeSingle();
+  const { data, error } = await supabaseServidor().from("ajustes_equipo").select("valor").eq("clave", CLAVE).maybeSingle();
+  if (error) throw new Error(error.message);
   return data?.valor ? normalizarCodigo(data.valor) : null;
 }
 

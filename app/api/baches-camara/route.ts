@@ -40,11 +40,12 @@ const Lote = z.object({
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   modelo: z.string().max(80),
   plataforma: z.enum(["android", "ios", "otro"]),
-  altura_m: Num(0.3, 5),
-  fov: Num(20, 140),
+  altura_m: z.number().finite().transform((x) => Math.min(5, Math.max(0.3, x))),
+  fov: z.number().finite().transform((x) => Math.min(140, Math.max(20, x))),
   /** Recorrido de prueba: la nota; los baches se guardan pero no se publican en el mapa */
   prueba: z.string().trim().max(60).nullable().optional(),
-  baches: z.array(Bache).min(1).max(MAX_POR_LOTE),
+  // Cada bache se revisa aparte: uno con datos raros se rechaza solo, sin tumbar a los demás del lote
+  baches: z.array(z.unknown()).min(1).max(MAX_POR_LOTE),
 });
 
 export async function POST(req: Request) {
@@ -78,7 +79,13 @@ export async function POST(req: Request) {
   if (!hayCupo) return error("Se llegó al límite de baches de hoy.", 429);
 
   const resultados: { pin_id: number | null; nuevo: boolean; calle?: string | null; prueba?: boolean; error?: string }[] = [];
-  for (const b of lote.baches) {
+  for (const crudo of lote.baches) {
+    const pb = Bache.safeParse(crudo);
+    if (!pb.success) {
+      resultados.push({ pin_id: null, nuevo: false, error: "datos inválidos" });
+      continue;
+    }
+    const b = pb.data;
     if (!dentroDeCajeme(b.lat, b.lng)) {
       resultados.push({ pin_id: null, nuevo: false, error: "fuera de Cajeme" });
       continue;

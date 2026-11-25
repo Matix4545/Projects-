@@ -92,8 +92,12 @@ export class Movimiento {
   }
 }
 
-/** Hora actual en segundos, en la misma escala que las lecturas del GPS (milisegundos desde 1970) */
-export const ahora = () => (performance.timeOrigin + performance.now()) / 1000;
+/**
+ * Hora actual en segundos, en la misma escala que las lecturas del GPS (milisegundos desde 1970).
+ * Con Date.now() y no con performance.now(): este último se detiene mientras el celular duerme y,
+ * al despertar, los cuadros quedarían atrasados respecto al GPS (el bache se ubicaría mal).
+ */
+export const ahora = () => Date.now() / 1000;
 
 /** Hora en que se tomó una lectura del GPS; si el celular da una hora rara, la de llegada */
 export function horaDeLectura(timestampMs: number) {
