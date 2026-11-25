@@ -28,6 +28,16 @@ export const revisadaHoy = (a: AjustesCamara) => a.revisada === hoy();
 
 const ALTURA_POR_VEHICULO: Record<string, number> = { auto: 125, camioneta: 145, pickup: 160, moto: 110, otro: 130 };
 
+/**
+ * Campo de visión creíble para la cámara trasera de un celular (lado largo). Normal ≈ 60–80°, gran
+ * angular ≈ 100–120°. Fuera de esto el ajuste fino salió mal (esquinas en otro orden, medidas
+ * equivocadas) y mediría todo mal: no se guarda, y uno guardado así se ignora.
+ */
+export const FOV_CREIBLE = { min: 45, max: 120 };
+const fovCreible = (f: unknown): f is number => typeof f === "number" && Number.isFinite(f) && f >= FOV_CREIBLE.min && f <= FOV_CREIBLE.max;
+/** Altura creíble del celular sobre el piso al calcularla con el ajuste fino (cm) */
+const ALTURA_CREIBLE = { min: 60, max: 300 };
+
 const leer = (k: string) => {
   try {
     return localStorage.getItem(k);
@@ -61,13 +71,15 @@ export function useAjustesCamara(vehiculo: string) {
         return null;
       }
     })();
+    // Un ajuste fino con un campo de visión imposible (p. ej. 139°) se descarta: se usa el típico
+    const calOk = cal && fovCreible(cal.fov) ? cal : null;
     setA({
       // Prendida salvo que la hayan apagado en este celular (solo cuenta si entró el equipo o un voluntario)
       activa: leer("rc_cam_activa") !== "0",
       alturaCm: Math.max(40, Math.min(400, Number(leer(`rc_cam_altura_${vehiculo}`)) || ALTURA_POR_VEHICULO[vehiculo] || 130)),
-      fov: cal?.fov ?? FOV_TIPICO,
-      calibrada: cal?.fecha ?? null,
-      abajo: cal?.abajo ?? null,
+      fov: calOk?.fov ?? FOV_TIPICO,
+      calibrada: calOk?.fecha ?? null,
+      abajo: calOk?.abajo ?? cal?.abajo ?? null,
       revisada: leer("rc_cam_revisada"),
     });
   }, [vehiculo]);
@@ -503,6 +515,11 @@ export function RevisarCamara({
   }
 
   const puntos = revision ? puntosRevision(revision) : [];
+  // El ajuste fino solo se puede guardar si el resultado es físicamente posible
+  const creible =
+    !!resultado &&
+    fovCreible(resultado.fovLargo) &&
+    (!calcularAltura || (resultado.alturaM * 100 >= ALTURA_CREIBLE.min && resultado.alturaM * 100 <= ALTURA_CREIBLE.max));
   const bien = !!revision && puntos.every((p) => p.estado !== "mal");
   const primerProblema = puntos.find((p) => p.estado === "mal");
   const altura = (cm: number) => cambiar({ alturaCm: Math.max(40, Math.min(400, Math.round(cm))) });
@@ -651,7 +668,15 @@ export function RevisarCamara({
               </span>
               <Interruptor etiqueta="Calcular también la altura" activo={calcularAltura} onCambio={setCalcularAltura} />
             </div>
-            {resultado && (
+            {resultado && !creible && (
+              <p className="rounded-xl bg-ios-rojo/10 px-3 py-2 text-[15px] text-ios-rojo">
+                Este resultado no es posible (campo de visión {resultado.fovLargo.toFixed(0)}°
+                {calcularAltura ? `, altura ${Math.round(resultado.alturaM * 100)} cm` : ""}) y mediría todo mal, así que no se puede guardar. Revisa que tocaste
+                las 4 esquinas en orden dando la vuelta (1 → 2 el lado de enfrente), que el ancho y el largo están bien escritos y que el rectángulo está en
+                el piso, completo en la foto.
+              </p>
+            )}
+            {resultado && creible && (
               <p className={`rounded-xl px-3 py-2 text-[15px] ${resultado.error < 0.05 ? "bg-ios-verde/12 text-[#248a3d]" : "bg-ios-naranja/12 text-[#c93400]"}`}>
                 {resultado.error < 0.05 ? "✓ Quedó bien" : "Diferencia grande: revisa las medidas o toca las esquinas con más cuidado"} · campo de visión{" "}
                 <strong>{resultado.fovLargo.toFixed(1)}°</strong>
@@ -672,9 +697,9 @@ export function RevisarCamara({
                 Calcular
               </button>
               <button
-                disabled={!resultado}
+                disabled={!resultado || !creible}
                 onClick={() => {
-                  if (!resultado) return;
+                  if (!resultado || !creible) return;
                   cambiar({
                     fov: resultado.fovLargo,
                     calibrada: new Date().toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }),
