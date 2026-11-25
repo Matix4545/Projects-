@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from "react";
 import {
   aLocal,
   camaraDesdeFov,
@@ -71,6 +71,8 @@ export function CamaraBaches({
   plataforma,
   prueba,
   onBaches,
+  completa = false,
+  children,
   ref,
 }: {
   stream: MediaStream;
@@ -84,6 +86,10 @@ export function CamaraBaches({
   /** Nota del recorrido de prueba: los baches se guardan pero no se publican; null = recorrido normal */
   prueba: string | null;
   onBaches: (b: BacheSubido[]) => void;
+  /** Pantalla completa (modo app): el video llena la pantalla y lo demás va encima */
+  completa?: boolean;
+  /** Lo que va encima del video en pantalla completa (contadores, Terminar) */
+  children?: ReactNode;
   ref?: Ref<ControlCamara>;
 }) {
   const video = useRef<HTMLVideoElement>(null);
@@ -94,6 +100,8 @@ export function CamaraBaches({
   const [aviso, setAviso] = useState<string | null>(null);
   const [descartados, setDescartados] = useState(0);
   const [detalles, setDetalles] = useState(false);
+  /** Ancho / alto del video (cambia si se gira el celular) */
+  const [aspecto, setAspecto] = useState(16 / 9);
   const verDetalles = useRef(false);
   verDetalles.current = detalles;
 
@@ -211,6 +219,9 @@ export function CamaraBaches({
     v.play().catch(() => {});
     const revisarVideo = setTimeout(() => v.paused && setAviso("Toca el video para iniciar la cámara."), 2000);
     v.onplaying = () => setAviso((a) => (a?.startsWith("Toca el video") ? null : a));
+    const medirAspecto = () => v.videoWidth && v.videoHeight && setAspecto(v.videoWidth / v.videoHeight);
+    v.onloadedmetadata = medirAspecto;
+    v.onresize = medirAspecto;
 
     const alOrientar = (e: DeviceOrientationEvent) => orientacion.current.lectura(e.beta, e.gamma, performance.now() / 1000);
     window.addEventListener("deviceorientation", alOrientar);
@@ -358,52 +369,94 @@ export function CamaraBaches({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream, detector]);
 
+  const pantalla = (
+    <>
+      <video ref={video} muted playsInline autoPlay onClick={() => video.current?.play()} className={`block w-full ${completa ? "h-full" : ""}`} />
+      <canvas ref={lienzo} className="pointer-events-none absolute inset-0 h-full w-full" />
+    </>
+  );
+  const estado = (
+    <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1.5 text-[13px] font-medium text-white backdrop-blur-sm">
+      <span className="relative flex h-2 w-2">
+        {gps != null && gps <= PRECISION_MAX_M && (
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ios-verde opacity-70 motion-reduce:hidden" />
+        )}
+        <span className={`relative inline-flex h-2 w-2 rounded-full ${gps != null && gps <= PRECISION_MAX_M ? "bg-ios-verde" : "bg-ios-naranja"}`} />
+      </span>
+      {gps == null ? "Buscando GPS…" : gps > PRECISION_MAX_M ? "GPS débil" : "Buscando baches"}
+    </div>
+  );
+  const botonDetalles = (
+    <button
+      onClick={() => setDetalles((d) => !d)}
+      aria-pressed={detalles}
+      className="rounded-full bg-black/55 px-3 py-1.5 text-[13px] font-medium text-white backdrop-blur-sm"
+    >
+      {detalles ? "Ocultar detalles" : "Detalles"}
+    </button>
+  );
+  const panelDetalles = detalles && (
+    <div className="rounded-xl bg-black/60 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-white">
+      {fps.toFixed(1)} cuadros/s · {detector.proveedor === "webgpu" ? "WebGPU" : "CPU"}
+      <br />
+      {pose ? `inclinación ↓${pose.pitch.toFixed(1)}° ↻${pose.roll.toFixed(1)}°` : "sin inclinación"} · {gps == null ? "sin GPS" : `GPS ±${gps} m`}
+      {descartados > 0 && (
+        <>
+          <br />
+          {descartados} detecciones sueltas descartadas
+        </>
+      )}
+    </div>
+  );
+  const avisos = [
+    aspecto < 1 && "Gira el celular a horizontal (acostado): así ve más calle.",
+    fps > 0 && fps < 2.5 && "Este celular analiza pocos cuadros por segundo: maneja a 30 km/h o menos para no perder baches.",
+    gps != null && gps > PRECISION_MAX_M && `GPS impreciso (±${gps} m): los baches no se ubican hasta que mejore. Sal de entre edificios altos o espera un momento.`,
+    aviso,
+  ].filter((t): t is string => !!t);
+
+  if (completa) {
+    return (
+      <div className="fixed inset-0 z-[1200] bg-black" role="region" aria-label="Cámara buscando baches">
+        <div className="absolute inset-0 grid place-items-center">
+          <div className="relative" style={{ aspectRatio: aspecto, width: `min(100vw, calc(100dvh * ${aspecto}))` }}>
+            {pantalla}
+          </div>
+        </div>
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <div className="space-y-2">
+            {estado}
+            {panelDetalles}
+          </div>
+          {botonDetalles}
+        </div>
+        {avisos.length > 0 && (
+          <div className="absolute inset-x-0 top-[calc(3.5rem+env(safe-area-inset-top))] mx-auto max-w-md space-y-1.5 px-3">
+            {avisos.map((t) => (
+              <p key={t} className="rounded-2xl bg-[#c93400]/90 px-3 py-2 text-center text-[13px] font-medium text-white">
+                {t}
+              </p>
+            ))}
+          </div>
+        )}
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <div className="relative overflow-hidden rounded-3xl bg-black">
-        <video ref={video} muted playsInline autoPlay onClick={() => video.current?.play()} className="block w-full" />
-        <canvas ref={lienzo} className="pointer-events-none absolute inset-0 h-full w-full" />
-        <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1.5 text-[13px] font-medium text-white backdrop-blur-sm">
-          <span className="relative flex h-2 w-2">
-            {gps != null && gps <= PRECISION_MAX_M && (
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ios-verde opacity-70 motion-reduce:hidden" />
-            )}
-            <span className={`relative inline-flex h-2 w-2 rounded-full ${gps != null && gps <= PRECISION_MAX_M ? "bg-ios-verde" : "bg-ios-naranja"}`} />
-          </span>
-          {gps == null ? "Buscando GPS…" : gps > PRECISION_MAX_M ? "GPS débil" : "Buscando baches"}
-        </div>
-        <button
-          onClick={() => setDetalles((d) => !d)}
-          aria-pressed={detalles}
-          className="absolute right-2 top-2 rounded-full bg-black/55 px-3 py-1.5 text-[13px] font-medium text-white backdrop-blur-sm"
-        >
-          {detalles ? "Ocultar detalles" : "Detalles"}
-        </button>
-        {detalles && (
-          <div className="absolute bottom-2 left-2 rounded-xl bg-black/60 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-white">
-            {fps.toFixed(1)} cuadros/s · {detector.proveedor === "webgpu" ? "WebGPU" : "CPU"}
-            <br />
-            {pose ? `inclinación ↓${pose.pitch.toFixed(1)}° ↻${pose.roll.toFixed(1)}°` : "sin inclinación"} · {gps == null ? "sin GPS" : `GPS ±${gps} m`}
-            {descartados > 0 && (
-              <>
-                <br />
-                {descartados} detecciones sueltas descartadas
-              </>
-            )}
-          </div>
-        )}
+        {pantalla}
+        <div className="absolute left-2 top-2">{estado}</div>
+        <div className="absolute right-2 top-2">{botonDetalles}</div>
+        {panelDetalles && <div className="absolute bottom-2 left-2">{panelDetalles}</div>}
       </div>
-      {fps > 0 && fps < 2.5 && (
-        <p className="rounded-2xl bg-ios-naranja/12 px-4 py-2.5 text-[14px] text-[#c93400]">
-          Este celular analiza pocos cuadros por segundo: maneja a 30 km/h o menos para no perder baches.
+      {avisos.map((t) => (
+        <p key={t} className="rounded-2xl bg-ios-naranja/12 px-4 py-2.5 text-[14px] text-[#c93400]">
+          {t}
         </p>
-      )}
-      {gps != null && gps > PRECISION_MAX_M && (
-        <p className="rounded-2xl bg-ios-naranja/12 px-4 py-2.5 text-[14px] text-[#c93400]">
-          GPS impreciso (±{gps} m): los baches no se ubican hasta que mejore. Sal de entre edificios altos o espera un momento.
-        </p>
-      )}
-      {aviso && <p className="rounded-2xl bg-ios-naranja/12 px-4 py-2.5 text-[14px] text-[#c93400]">{aviso}</p>}
+      ))}
     </div>
   );
 }

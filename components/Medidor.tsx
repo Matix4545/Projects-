@@ -4,7 +4,17 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { NIVELES_BACHE, nivelBache } from "@/lib/constantes";
 import { COLOR_CLASE, MotorRugosidad, clasificar, resumir, type EstadoMedicion, type Tramo } from "@/lib/rugosidad";
-import { HerramientasEquipo, Palomita, PasoCamara, abrirCamara, pedirPermisoOrientacion, revisadaHoy, useAjustesCamara, useDetector } from "./AjustesCamara";
+import {
+  HerramientasEquipo,
+  Palomita,
+  PasoCamara,
+  RevisarCamara,
+  abrirCamara,
+  pedirPermisoOrientacion,
+  revisadaHoy,
+  useAjustesCamara,
+  useDetector,
+} from "./AjustesCamara";
 import { CamaraBaches, type BacheSubido, type ControlCamara } from "./CamaraBaches";
 import { Interruptor } from "./Interruptor";
 import { DibujoParabrisas } from "./DibujoParabrisas";
@@ -35,6 +45,37 @@ const plataforma = () => {
   return /android/i.test(ua) ? "android" : /iphone|ipad|ipod/i.test(ua) ? "ios" : "otro";
 };
 const ENVIO_CADA_MS = 5 * 60_000;
+/** "🚗 Auto" → "Auto" */
+const sinEmoji = (t: string) => t.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, "");
+/**
+ * Horizontal y pantalla completa mientras se mide con la cámara. En Android (navegador o app instalada)
+ * se fija la orientación; en iPhone no se puede: se gira a mano (sin bloqueo de rotación).
+ */
+async function ponerHorizontal() {
+  try {
+    const instalada = window.matchMedia("(display-mode: standalone)").matches;
+    if (!instalada && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+    }
+  } catch {
+    /* sin pantalla completa (iPhone) */
+  }
+  try {
+    await (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.("landscape");
+  } catch {
+    /* no se pudo fijar: se gira a mano */
+  }
+}
+
+function quitarHorizontal() {
+  try {
+    (screen.orientation as unknown as { unlock?: () => void }).unlock?.();
+  } catch {
+    /* nada que soltar */
+  }
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+}
+
 const ERRORES_ENTRAR: Record<string, string> = {
   clave: "Contraseña incorrecta.",
   "demasiados-intentos": "Demasiados intentos. Vuelve a intentarlo mañana.",
@@ -78,6 +119,11 @@ export function Medidor() {
   // Voluntario: entró con el código de voluntarios; solo puede medir baches con la cámara
   const [voluntario, setVoluntario] = useState(false);
   const puedeCamara = equipo || voluntario;
+  /** Ya midió con la cámara en este celular: abre directo en "Listo para medir" */
+  const [listo, setListo] = useState(false);
+  /** En "Listo para medir" tocó "Cambiar ajustes": se muestran los 3 pasos */
+  const [verPasos, setVerPasos] = useState(false);
+  const [revisando, setRevisando] = useState(false);
   const [camara, cambiarCamara] = useAjustesCamara(vehiculo);
   const detector = useDetector(puedeCamara && camara.activa);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -97,6 +143,7 @@ export function Medidor() {
     const s = leer("rc_soporte") as Soporte | null;
     if (s && SOPORTES.some(([k]) => k === s)) setSoporte(s);
     setHistorico(Number(leer("rc_km_medidos")) || 0);
+    setListo(leer("rc_medir_listo") === "1");
     const e = new URLSearchParams(window.location.search).get("error");
     if (e) {
       setErrorEntrar(ERRORES_ENTRAR[e] ?? "No se pudo entrar.");
@@ -204,16 +251,25 @@ export function Medidor() {
     // Cámara para los baches (si está activa y el detector ya está listo)
     let video: MediaStream | null = null;
     if (puedeCamara && camara.activa && detector.detector) {
+      // El celular va acostado: en Android se pone en horizontal y a pantalla completa (dentro del toque)
+      await ponerHorizontal();
       await pedirPermisoOrientacion();
       try {
         video = await abrirCamara();
       } catch {
+        quitarHorizontal();
         setError("Sin permiso de cámara no se pueden detectar baches. Actívalo en los ajustes del navegador o apaga “Buscar baches con la cámara”.");
         return;
       }
     }
     setStream(video);
     setBaches([]);
+    if (video) {
+      // La próxima vez abre directo en "Listo para medir"
+      guardar("rc_medir_listo", "1");
+      setListo(true);
+      setVerPasos(false);
+    }
 
     guardar("rc_vehiculo", vehiculo);
     guardar("rc_soporte", soporte);
@@ -280,6 +336,7 @@ export function Medidor() {
       clearInterval(intervalo);
       candado?.release().catch(() => {});
       video?.getTracks().forEach((t) => t.stop());
+      if (video) quitarHorizontal();
     };
     setEstado(motor.current.estado());
     setFase("midiendo");
@@ -306,145 +363,212 @@ export function Medidor() {
   const preparando = conCamara && !detector.detector && !detector.error;
   const soportes = conCamara ? SOPORTES.filter(([k]) => k === "parabrisas" || k === "tablero") : SOPORTES;
 
+  const revisada = revisadaHoy(camara);
+  // Después de la primera vez con la cámara, la página abre directo en "Listo para medir"
+  const modoRapido = puedeCamara && listo && !verPasos;
+
+  const interruptorPrueba = (
+    <div className={modoRapido ? "rounded-2xl bg-white" : "rounded-2xl bg-ios-fondo"}>
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <span className="text-[16px] font-medium leading-tight">
+          Solo es prueba
+          <span className="block text-[13px] font-normal text-ios-secundario">
+            {conCamara ? "Los baches se guardan para revisarlos y no se publican" : "Para calibrar: misma calle, mismo carril, velocidad constante"}
+          </span>
+        </span>
+        <Interruptor etiqueta="Recorrido de prueba" activo={esPrueba} onCambio={setEsPrueba} />
+      </div>
+      {esPrueba && (
+        <div className="border-t border-ios-separador px-4 py-3">
+          <input
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            maxLength={60}
+            placeholder="Nota (opcional): Calle 300, carril derecho"
+            aria-label="Nota del recorrido de prueba"
+            className="w-full bg-transparent text-[16px] outline-none placeholder:text-ios-terciario"
+          />
+        </div>
+      )}
+    </div>
+  );
+
+  const botonEmpezar = (
+    <div className="space-y-3">
+      <button onClick={empezar} disabled={preparando} className="boton boton-principal h-14 w-full text-[18px] shadow-[0_8px_20px_rgba(0,122,255,0.25)]">
+        {preparando ? "Preparando el detector…" : "Empezar a medir"}
+      </button>
+      {/* Que quede claro si se va a abrir la cámara o solo se medirán las calles */}
+      <p
+        className={`flex items-center justify-center gap-1.5 px-4 text-center text-[14px] font-medium ${
+          conCamara && !detector.error ? "text-[#248a3d]" : "text-[#c93400]"
+        }`}
+      >
+        {conCamara && !detector.error && (
+          <svg width="18" height="16" viewBox="0 0 20 18" aria-hidden>
+            <path d="M2 5.5h3.5L7.5 3h5l2 2.5H18v10H2z" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinejoin="round" />
+            <circle cx="10" cy="10.2" r="3" stroke="currentColor" strokeWidth="1.8" fill="none" />
+          </svg>
+        )}
+        {!puedeCamara
+          ? "Sin entrar con tu código solo se mide el estado de las calles (sin cámara)."
+          : !camara.activa
+            ? `La cámara está apagada: solo se medirá el estado de las calles. Préndela en ${modoRapido ? "“Cambiar ajustes”" : "el paso 2"}.`
+            : detector.error
+              ? "El detector de baches no cargó. Recarga la página."
+              : "Se abrirá la cámara para buscar baches."}
+      </p>
+      {historico > 0 && (
+        <p className="text-center text-[15px] text-ios-secundario">
+          Con este teléfono llevas <strong className="font-semibold text-ios-etiqueta">{historico.toFixed(1)} km</strong> medidos. ¡Gracias!
+        </p>
+      )}
+      <p className="px-4 text-center text-[13px] text-ios-secundario">Deja esta página abierta. Si cambias de app o se apaga la pantalla, se pausa y sigue al volver.</p>
+    </div>
+  );
+
   return (
     <Pagina
-      titulo="Medir recorrido"
+      titulo={puedeCamara ? "Medir baches" : "Medir recorrido"}
       ancho="max-w-md"
       volver={fase === "midiendo" ? null : undefined}
-      accion={<span className="rounded-full bg-ios-naranja/15 px-2.5 py-1 text-xs font-semibold text-[#c93400]">En prueba</span>}
       subtitulo={
-        conCamara
-          ? "Maneja normal: tu celular encuentra los baches, los mide y los sube al mapa solo."
-          : "Tu celular mide qué tan maltratadas están las calles mientras manejas. Es anónimo: no guardamos dónde empieza ni dónde termina tu viaje."
+        modoRapido
+          ? undefined
+          : conCamara
+            ? "Maneja normal: tu celular encuentra los baches, los mide y los sube al mapa solo."
+            : "Tu celular mide qué tan maltratadas están las calles mientras manejas. Es anónimo: no guardamos dónde empieza ni dónde termina tu viaje."
       }
     >
       {fase === "inicio" && (
         <>
           {!puedeCamara && <EntrarEquipo error={errorEntrar} />}
-          <Paso n={1} titulo="Coloca el celular">
-            {conCamara && <DibujoParabrisas />}
-            <p className="text-[15px] leading-snug text-ios-secundario">
-              {conCamara ? (
-                <>
-                  <strong className="font-semibold text-ios-etiqueta">Acostado</strong>, en un soporte del parabrisas, con la cámara viendo la calle. Conéctalo al cargador.
-                </>
-              ) : (
-                <>
-                  En un <strong className="font-semibold text-ios-etiqueta">soporte firme</strong> (no en el asiento ni en la mano). Conéctalo al cargador: el GPS gasta batería.
-                </>
-              )}
-            </p>
-            <Pregunta titulo="¿En qué vas?">
-              <Opciones opciones={VEHICULOS} valor={vehiculo} onCambio={setVehiculo} />
-            </Pregunta>
-            <Pregunta titulo="¿Dónde va el celular?">
-              <Opciones opciones={soportes} valor={soporte} onCambio={setSoporte} />
-            </Pregunta>
-          </Paso>
 
-          {puedeCamara && (
-            <Paso n={2} titulo="Revisa la cámara" listo={conCamara && revisadaHoy(camara)}>
-              {voluntario && <p className="text-[14px] text-ios-secundario">Entraste como voluntario. ¡Gracias por apoyar a Reporta Cajeme!</p>}
-              <PasoCamara ajustes={camara} cambiar={cambiarCamara} estado={detector} />
-            </Paso>
+          {modoRapido ? (
+            <>
+              <section className="rounded-3xl bg-white px-5 py-6 text-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/medir-192.png" alt="" className="mx-auto h-16 w-16 rounded-2xl" />
+                <h2 className="mt-3 text-[26px] font-bold tracking-tight">Listo para medir</h2>
+                <p className="mt-1 text-[15px] text-ios-secundario">
+                  {sinEmoji(VEHICULOS.find(([k]) => k === vehiculo)?.[1] ?? "")} · {SOPORTES.find(([k]) => k === soporte)?.[1]} · altura{" "}
+                  {(camara.alturaCm / 100).toFixed(2)} m
+                </p>
+                <p className={`mt-2 flex items-center justify-center gap-1.5 text-[15px] font-medium ${revisada ? "text-[#248a3d]" : "text-[#c93400]"}`}>
+                  {revisada ? (
+                    <>
+                      <Palomita /> Cámara revisada hoy
+                    </>
+                  ) : (
+                    "Revisa la cámara antes de arrancar"
+                  )}
+                </p>
+                {voluntario && <p className="mt-2 text-[14px] text-ios-secundario">Entraste como voluntario. ¡Gracias por apoyar!</p>}
+              </section>
+              {botonEmpezar}
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  onClick={async () => {
+                    await pedirPermisoOrientacion();
+                    setRevisando(true);
+                  }}
+                  className={`boton h-12 text-[16px] ${revisada ? "boton-gris" : "boton-tenue"}`}
+                >
+                  Revisar la cámara
+                </button>
+                <button onClick={() => setVerPasos(true)} className="boton boton-gris h-12 text-[16px]">
+                  Cambiar ajustes
+                </button>
+              </div>
+              {interruptorPrueba}
+              {revisando && <RevisarCamara ajustes={camara} cambiar={cambiarCamara} onCerrar={() => setRevisando(false)} />}
+            </>
+          ) : (
+            <>
+              <Paso n={1} titulo="Coloca el celular">
+                {conCamara && <DibujoParabrisas />}
+                <p className="text-[15px] leading-snug text-ios-secundario">
+                  {conCamara ? (
+                    <>
+                      <strong className="font-semibold text-ios-etiqueta">Acostado</strong>, en un soporte del parabrisas, con la cámara viendo la calle. Conéctalo al cargador.
+                    </>
+                  ) : (
+                    <>
+                      En un <strong className="font-semibold text-ios-etiqueta">soporte firme</strong> (no en el asiento ni en la mano). Conéctalo al cargador: el GPS gasta batería.
+                    </>
+                  )}
+                </p>
+                <Pregunta titulo="¿En qué vas?">
+                  <Opciones opciones={VEHICULOS} valor={vehiculo} onCambio={setVehiculo} />
+                </Pregunta>
+                <Pregunta titulo="¿Dónde va el celular?">
+                  <Opciones opciones={soportes} valor={soporte} onCambio={setSoporte} />
+                </Pregunta>
+              </Paso>
+
+              {puedeCamara && (
+                <Paso n={2} titulo="Revisa la cámara" listo={conCamara && revisada}>
+                  {voluntario && <p className="text-[14px] text-ios-secundario">Entraste como voluntario. ¡Gracias por apoyar a Reporta Cajeme!</p>}
+                  <PasoCamara ajustes={camara} cambiar={cambiarCamara} estado={detector} />
+                </Paso>
+              )}
+
+              <Paso n={puedeCamara ? 3 : 2} titulo="Maneja">
+                <p className="text-[15px] leading-snug text-ios-secundario">
+                  Toca <strong className="font-semibold text-ios-etiqueta">Empezar a medir</strong> y acepta los permisos. Maneja normal: no tienes que tocar nada. Ya estacionado,
+                  toca <strong className="font-semibold text-ios-etiqueta">Terminar</strong>.
+                </p>
+                {interruptorPrueba}
+              </Paso>
+
+              {botonEmpezar}
+            </>
           )}
 
-          <Paso n={puedeCamara ? 3 : 2} titulo="Maneja">
-            <p className="text-[15px] leading-snug text-ios-secundario">
-              Toca <strong className="font-semibold text-ios-etiqueta">Empezar a medir</strong> y acepta los permisos. Maneja normal: no tienes que tocar nada. Ya estacionado, toca{" "}
-              <strong className="font-semibold text-ios-etiqueta">Terminar</strong>.
-            </p>
-            <div className="rounded-2xl bg-ios-fondo">
-              <div className="flex items-center justify-between gap-3 px-4 py-3">
-                <span className="text-[16px] font-medium leading-tight">
-                  Solo es prueba
-                  <span className="block text-[13px] font-normal text-ios-secundario">
-                    {conCamara ? "Los baches se guardan para revisarlos y no se publican" : "Para calibrar: misma calle, mismo carril, velocidad constante"}
-                  </span>
-                </span>
-                <Interruptor etiqueta="Recorrido de prueba" activo={esPrueba} onCambio={setEsPrueba} />
-              </div>
-              {esPrueba && (
-                <div className="border-t border-ios-separador px-4 py-3">
-                  <input
-                    value={nota}
-                    onChange={(e) => setNota(e.target.value)}
-                    maxLength={60}
-                    placeholder="Nota (opcional): Calle 300, carril derecho"
-                    aria-label="Nota del recorrido de prueba"
-                    className="w-full bg-transparent text-[16px] outline-none placeholder:text-ios-terciario"
-                  />
-                </div>
-              )}
-            </div>
-          </Paso>
-
-          <div className="space-y-3">
-            <button onClick={empezar} disabled={preparando} className="boton boton-principal h-14 w-full text-[18px] shadow-[0_8px_20px_rgba(0,122,255,0.25)]">
-              {preparando ? "Preparando el detector…" : "Empezar a medir"}
-            </button>
-            {/* Que quede claro si se va a abrir la cámara o solo se medirán las calles */}
-            <p
-              className={`flex items-center justify-center gap-1.5 px-4 text-center text-[14px] font-medium ${
-                conCamara && !detector.error ? "text-[#248a3d]" : "text-[#c93400]"
-              }`}
-            >
-              {!puedeCamara
-                ? "Sin entrar con tu código solo se mide el estado de las calles (sin cámara)."
-                : !camara.activa
-                  ? "La cámara está apagada: solo se medirá el estado de las calles. Préndela en el paso 2."
-                  : detector.error
-                    ? "El detector de baches no cargó. Recarga la página."
-                    : "📷 Se abrirá la cámara para buscar baches."}
-            </p>
-            {historico > 0 && (
-              <p className="text-center text-[15px] text-ios-secundario">
-                Con este teléfono llevas <strong className="font-semibold text-ios-etiqueta">{historico.toFixed(1)} km</strong> medidos. ¡Gracias!
-              </p>
-            )}
-            <p className="px-4 text-center text-[13px] text-ios-secundario">Deja esta página abierta. Si cambias de app o se apaga la pantalla, se pausa y sigue al volver.</p>
-          </div>
-
+          {puedeCamara && <InstalarApp />}
           {equipo && <HerramientasEquipo ajustes={camara} cambiar={cambiarCamara} estado={detector} />}
         </>
       )}
 
       {fase === "midiendo" && (
         <>
-          {stream && detector.detector && (
-            <>
-              <CamaraBaches
-                ref={control}
-                stream={stream}
-                detector={detector.detector}
-                alturaM={camara.alturaCm / 100}
-                fovLargo={camara.fov}
-                abajoRespaldo={camara.abajo}
-                sesion={sesion.current}
-                plataforma={plataforma()}
-                prueba={esPrueba ? nota.trim() || "Recorrido de prueba" : null}
-                onBaches={setBaches}
-              />
-              <Contadores baches={baches} />
-              <p className="px-1 text-center text-[14px] text-ios-secundario">
-                {baches.length === 0
-                  ? "Los baches que encuentre aparecen aquí."
-                  : `${baches.length} ${baches.length === 1 ? "bache" : "baches"} · ${
-                      esPrueba ? "se guardan para revisar (prueba)" : enElMapa > 0 ? `${enElMapa} ya en el mapa` : "se suben solos"
-                    }`}
-              </p>
-            </>
-          )}
-          {stream ? (
-            <div className="flex items-center justify-between gap-2 rounded-2xl bg-white px-4 py-3 text-[15px]">
-              <span className="flex items-center gap-2 font-medium text-ios-verde">
-                <Pulso />
-                Midiendo
-              </span>
-              <span className="font-semibold tabular-nums">{kmMedidos.toFixed(1)} km</span>
-              <span className="tabular-nums text-ios-secundario">{estado?.vel_kmh != null ? `${estado.vel_kmh} km/h` : "— km/h"}</span>
-              <span className={estado?.gps_ok ? "text-ios-verde" : "text-[#c93400]"}>{estado?.gps_ok ? "GPS bien" : "GPS…"}</span>
-            </div>
+          {stream && detector.detector ? (
+            // Modo app: la cámara llena la pantalla; encima van los contadores y Terminar
+            <CamaraBaches
+              ref={control}
+              completa
+              stream={stream}
+              detector={detector.detector}
+              alturaM={camara.alturaCm / 100}
+              fovLargo={camara.fov}
+              abajoRespaldo={camara.abajo}
+              sesion={sesion.current}
+              plataforma={plataforma()}
+              prueba={esPrueba ? nota.trim() || "Recorrido de prueba" : null}
+              onBaches={setBaches}
+            >
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-10">
+                {pausa && <p className="mx-auto mb-2 max-w-md rounded-2xl bg-[#c93400]/90 px-3 py-2 text-center text-[13px] font-medium text-white">{pausa}</p>}
+                <div className="mx-auto flex max-w-3xl items-end justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {NIVELES_BACHE.map((n) => (
+                      <span
+                        key={n.clave}
+                        aria-label={`${n.nombre}s`}
+                        className="flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-[17px] font-semibold tabular-nums text-white backdrop-blur-sm"
+                      >
+                        <span className="h-3 w-3 rounded-full" style={{ background: n.color }} />
+                        {baches.filter((b) => nivelBache(b.area_m2)?.clave === n.clave).length}
+                      </span>
+                    ))}
+                    <span className="rounded-full bg-black/60 px-3 py-1.5 text-[14px] font-medium tabular-nums text-white/90 backdrop-blur-sm">
+                      {kmMedidos.toFixed(1)} km{esPrueba ? " · prueba" : enElMapa > 0 ? ` · ${enElMapa} en el mapa` : ""}
+                    </span>
+                  </div>
+                  <BotonTerminar onTerminar={terminar} />
+                </div>
+              </div>
+            </CamaraBaches>
           ) : (
             <>
               <div className="rounded-3xl bg-white px-5 py-6 text-center">
@@ -463,20 +587,18 @@ export function Medidor() {
                 <Dato titulo="Enviado" valor={`${kmEnviados.toFixed(1)} km`} />
                 <Dato titulo="GPS" valor={estado?.gps_ok ? "Bien" : "Buscando…"} color={estado?.gps_ok ? "#34c759" : "#ff9500"} />
               </div>
+              {estado && estado.hz > 0 && estado.hz < 30 && (
+                <Aviso>Tu celular lee pocos datos por segundo ({estado.hz}); los resultados serán menos precisos.</Aviso>
+              )}
+              {pausa && <Aviso>{pausa}</Aviso>}
+              <Bloque sinRelleno nota="Los tramos aparecen unos minutos después: por privacidad se esperan unos 250 m antes de guardarlos.">
+                <MiniMapa tramos={tramos} />
+              </Bloque>
+              <button onClick={terminar} className="boton boton-peligro h-14 w-full text-[18px]">
+                Terminar (ya estacionado)
+              </button>
             </>
           )}
-          {estado && estado.hz > 0 && estado.hz < 30 && (
-            <Aviso>Tu celular lee pocos datos por segundo ({estado.hz}); los resultados serán menos precisos.</Aviso>
-          )}
-          {pausa && <Aviso>{pausa}</Aviso>}
-          {!stream && (
-            <Bloque sinRelleno nota="Los tramos aparecen unos minutos después: por privacidad se esperan unos 250 m antes de guardarlos.">
-              <MiniMapa tramos={tramos} />
-            </Bloque>
-          )}
-          <button onClick={terminar} className="boton boton-peligro h-14 w-full text-[18px]">
-            Terminar (ya estacionado)
-          </button>
         </>
       )}
 
@@ -588,6 +710,101 @@ function EntrarEquipo({ error }: { error: string | null }) {
       <Link href="/apoyar" className="mt-3 block text-[14px] text-ios-azul">
         ¿No tienes código? Así puedes apoyar →
       </Link>
+    </section>
+  );
+}
+
+/** Terminar con dos toques, para no cortar el recorrido con un toque sin querer */
+function BotonTerminar({ onTerminar }: { onTerminar: () => void }) {
+  const [seguro, setSeguro] = useState(false);
+  useEffect(() => {
+    if (!seguro) return;
+    const t = setTimeout(() => setSeguro(false), 5000);
+    return () => clearTimeout(t);
+  }, [seguro]);
+  return (
+    <button
+      onClick={() => (seguro ? onTerminar() : setSeguro(true))}
+      className={`shrink-0 rounded-full px-5 py-3 text-[16px] font-semibold text-white shadow-lg transition-colors ${seguro ? "bg-[#b42318]" : "bg-ios-rojo"}`}
+    >
+      {seguro ? "¿Terminar? Toca otra vez" : "Terminar"}
+    </button>
+  );
+}
+
+type EventoInstalar = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
+
+/** Invita a instalar "Medir baches" en la pantalla de inicio (abre directo aquí, como una app) */
+function InstalarApp() {
+  const [tipo, setTipo] = useState<null | "android" | "ios" | "otro">(null);
+  const [evento, setEvento] = useState<EventoInstalar | null>(null);
+  const [pasos, setPasos] = useState(false);
+  useEffect(() => {
+    const instalada =
+      window.matchMedia("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
+    if (instalada || leer("rc_medir_app_cerrado")) return;
+    setTipo(/iphone|ipad|ipod/i.test(navigator.userAgent) ? "ios" : "otro");
+    const alPoder = (e: Event) => {
+      e.preventDefault();
+      setEvento(e as EventoInstalar);
+      setTipo("android");
+    };
+    window.addEventListener("beforeinstallprompt", alPoder);
+    return () => window.removeEventListener("beforeinstallprompt", alPoder);
+  }, []);
+  if (!tipo) return null;
+  const cerrar = () => {
+    guardar("rc_medir_app_cerrado", "1");
+    setTipo(null);
+  };
+  return (
+    <section className="rounded-3xl bg-white p-4">
+      <div className="flex items-center gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/medir-192.png" alt="" className="h-12 w-12 shrink-0 rounded-xl" />
+        <p className="min-w-0 flex-1 text-[15px] leading-snug">
+          <strong className="font-semibold">Instálala como app</strong>
+          <span className="block text-ios-secundario">Un ícono “Medir baches” en tu pantalla de inicio: la abres y mides.</span>
+        </p>
+        <button
+          onClick={async () => {
+            if (tipo === "android" && evento) {
+              await evento.prompt();
+              if ((await evento.userChoice).outcome === "accepted") setTipo(null);
+            } else setPasos((p) => !p);
+          }}
+          className="boton boton-tenue min-h-9 shrink-0 rounded-full px-4 text-[15px]"
+        >
+          {tipo === "android" ? "Instalar" : "Cómo"}
+        </button>
+      </div>
+      {pasos && (
+        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[15px] leading-snug text-ios-secundario">
+          {tipo === "ios" ? (
+            <>
+              <li>
+                Toca <strong className="text-ios-etiqueta">Compartir</strong> (el cuadrito con la flecha hacia arriba).
+              </li>
+              <li>
+                Elige <strong className="text-ios-etiqueta">Agregar a inicio</strong> y luego <strong className="text-ios-etiqueta">Agregar</strong>.
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                Toca el menú <strong className="text-ios-etiqueta">⋮</strong> del navegador.
+              </li>
+              <li>
+                Elige <strong className="text-ios-etiqueta">Instalar app</strong> o <strong className="text-ios-etiqueta">Agregar a la pantalla principal</strong>.
+              </li>
+            </>
+          )}
+          <li>Ábrela desde el ícono. La primera vez entra con tu contraseña o código.</li>
+        </ol>
+      )}
+      <button onClick={cerrar} className="mt-2 text-[13px] text-ios-secundario">
+        Ya la tengo / no gracias
+      </button>
     </section>
   );
 }
