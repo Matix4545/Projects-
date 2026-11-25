@@ -307,7 +307,7 @@ type Punto = { estado: "bien" | "mal" | "info"; texto: string };
 function puntosRevision(r: Revision): Punto[] {
   const giro = Math.abs(r.roll);
   return [
-    r.horizontal ? { estado: "bien", texto: "Acostado (horizontal)" } : { estado: "info", texto: "Vertical: funciona, pero acostado ve más calle" },
+    r.horizontal ? { estado: "bien", texto: "Acostado (horizontal)" } : { estado: "mal", texto: "Gíralo a horizontal (acostado): ve más calle" },
     giro > 45
       ? { estado: "mal", texto: "La pantalla no giró: quita el bloqueo de rotación" }
       : giro > 6
@@ -326,7 +326,7 @@ function puntosRevision(r: Revision): Punto[] {
  * estado claro (bien colocado / qué corregir) y la altura. Incluye el ajuste fino con un
  * rectángulo de medida conocida (hojas carta, cajón de estacionamiento).
  */
-function RevisarCamara({
+export function RevisarCamara({
   ajustes,
   cambiar,
   onCerrar,

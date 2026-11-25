@@ -43,16 +43,16 @@ export default function PaginaApoyar() {
         <ul className="grupo">
           {(
             [
-              ["📱", "Un celular con cámara", "Android o iPhone de los últimos años, con internet."],
-              ["🚗", "Un soporte para el parabrisas", "Que lo sostenga firme, acostado y viendo al frente."],
-              ["🔌", "Cargador para el carro", "La cámara y el GPS gastan batería."],
-              ["☀️", "Manejar de día", "De noche la cámara casi no ve los baches."],
-              ["🔑", "Tu código de voluntario", "Te lo da el equipo de Reporta Cajeme."],
+              ["celular", "Un celular con cámara", "Android o iPhone de los últimos años, con internet."],
+              ["soporte", "Un soporte para el parabrisas", "Que lo sostenga firme, acostado y viendo al frente."],
+              ["cargador", "Cargador para el carro", "La cámara y el GPS gastan batería."],
+              ["sol", "Manejar de día", "De noche la cámara casi no ve los baches."],
+              ["llave", "Tu código de voluntario", "Te lo da el equipo de Reporta Cajeme."],
             ] as const
           ).map(([icono, titulo, texto]) => (
             <li key={titulo} className="flex items-center gap-3 px-4 py-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ios-fondo text-[20px]" aria-hidden>
-                {icono}
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ios-azul/10 text-ios-azul" aria-hidden>
+                <Icono nombre={icono} />
               </span>
               <span className="text-[16px] leading-tight">
                 {titulo}
@@ -165,5 +165,46 @@ function Tarjeta({ titulo, tono, children }: { titulo: string; tono: "naranja" |
       <h2 className={`text-[17px] font-semibold ${tono === "naranja" ? "text-[#c93400]" : ""}`}>{titulo}</h2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-[15px] leading-snug text-ios-etiqueta/80">{children}</ul>
     </section>
+  );
+}
+
+/** Íconos de línea (mismo trazo que el resto de la app) */
+function Icono({ nombre }: { nombre: "celular" | "soporte" | "cargador" | "sol" | "llave" }) {
+  const p = { stroke: "currentColor", strokeWidth: 1.7, fill: "none", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      {nombre === "celular" && (
+        <>
+          <rect x="3" y="7" width="18" height="10" rx="2.2" {...p} />
+          <circle cx="7" cy="12" r="1.6" {...p} />
+          <path d="M18 10.5v3" {...p} />
+        </>
+      )}
+      {nombre === "soporte" && (
+        <>
+          <path d="M3 5h18l-2 9H5z" {...p} />
+          <rect x="8" y="15.5" width="8" height="4.5" rx="1" {...p} />
+          <path d="M12 14v1.5" {...p} />
+        </>
+      )}
+      {nombre === "cargador" && (
+        <>
+          <path d="M9 3v4M15 3v4M7 7h10v4a5 5 0 0 1-10 0z" {...p} />
+          <path d="M12 16v5" {...p} />
+        </>
+      )}
+      {nombre === "sol" && (
+        <>
+          <circle cx="12" cy="12" r="4" {...p} />
+          <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" {...p} />
+        </>
+      )}
+      {nombre === "llave" && (
+        <>
+          <circle cx="8" cy="14" r="4" {...p} />
+          <path d="M11 11l9-9M16.5 5.5l2.5 2.5M14 8l2 2" {...p} />
+        </>
+      )}
+    </svg>
   );
 }
