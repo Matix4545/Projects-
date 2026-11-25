@@ -62,7 +62,8 @@ export function useAjustesCamara(vehiculo: string) {
       }
     })();
     setA({
-      activa: leer("rc_cam_activa") === "1",
+      // Prendida salvo que la hayan apagado en este celular (solo cuenta si entró el equipo o un voluntario)
+      activa: leer("rc_cam_activa") !== "0",
       alturaCm: Number(leer(`rc_cam_altura_${vehiculo}`)) || ALTURA_POR_VEHICULO[vehiculo] || 130,
       fov: cal?.fov ?? FOV_TIPICO,
       calibrada: cal?.fecha ?? null,
