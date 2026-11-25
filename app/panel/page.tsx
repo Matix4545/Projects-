@@ -41,6 +41,7 @@ const ERRORES: Record<string, string> = {
   clave: "Contraseña incorrecta.",
   "demasiados-intentos": "Demasiados intentos. Vuelve a intentarlo mañana.",
   "sin-configurar": "El panel no está activado.",
+  servidor: "No se pudo comprobar en este momento. Intenta de nuevo.",
 };
 
 export default async function Panel({ searchParams }: { searchParams: Promise<{ dias?: string; error?: string }> }) {

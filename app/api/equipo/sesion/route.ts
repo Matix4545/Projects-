@@ -5,6 +5,6 @@ import { sesionVoluntarioValida } from "@/lib/voluntarios";
 // El voluntario solo puede medir baches con la cámara.
 export async function GET() {
   const equipo = await sesionPanelValida();
-  const voluntario = !equipo && (await sesionVoluntarioValida());
+  const voluntario = !equipo && (await sesionVoluntarioValida().catch(() => false));
   return Response.json({ equipo, voluntario }, { headers: { "Cache-Control": "private, no-store" } });
 }

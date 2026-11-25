@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { enviarYa, iniciar as iniciarBuzon, suscribir as suscribirBuzon, type EstadoBuzon, type Resultado } from "@/lib/baches/buzon";
 import { NIVELES_BACHE, nivelBache } from "@/lib/constantes";
 import { COLOR_CLASE, MotorRugosidad, clasificar, resumir, type EstadoMedicion, type Tramo } from "@/lib/rugosidad";
 import {
@@ -67,6 +68,17 @@ async function ponerHorizontal() {
   }
 }
 
+type Candado = { release: () => Promise<void> };
+
+/** Pantalla encendida mientras se mide; null si el celular no lo permite (p. ej. app instalada en un iPhone con iOS viejo) */
+async function pedirPantallaEncendida(): Promise<Candado | null> {
+  try {
+    return (await (navigator as unknown as { wakeLock?: { request: (t: string) => Promise<Candado> } }).wakeLock?.request("screen")) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function quitarHorizontal() {
   try {
     (screen.orientation as unknown as { unlock?: () => void }).unlock?.();
@@ -80,6 +92,7 @@ const ERRORES_ENTRAR: Record<string, string> = {
   clave: "Contraseña incorrecta.",
   "demasiados-intentos": "Demasiados intentos. Vuelve a intentarlo mañana.",
   "sin-configurar": "El acceso del equipo no está activado.",
+  servidor: "No se pudo comprobar en este momento. Intenta de nuevo.",
 };
 
 const leer = (k: string) => {
@@ -128,6 +141,11 @@ export function Medidor() {
   const detector = useDetector(puedeCamara && camara.activa);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [baches, setBaches] = useState<BacheSubido[]>([]);
+  // Buzón de envío de los baches de la cámara (sobrevive a Terminar, a cortes de señal y a recargar)
+  const [buzon, setBuzon] = useState<EstadoBuzon>({ pendientes: 0, problema: null, enviando: false });
+  const [resultados, setResultados] = useState<ReadonlyMap<string, Resultado>>(new Map());
+  const [sinCandado, setSinCandado] = useState(false);
+  const iniciando = useRef(false);
   const control = useRef<ControlCamara>(null);
 
   const motor = useRef<MotorRugosidad | null>(null);
@@ -144,6 +162,7 @@ export function Medidor() {
     if (s && SOPORTES.some(([k]) => k === s)) setSoporte(s);
     setHistorico(Number(leer("rc_km_medidos")) || 0);
     setListo(leer("rc_medir_listo") === "1");
+    iniciarBuzon();
     const e = new URLSearchParams(window.location.search).get("error");
     if (e) {
       setErrorEntrar(ERRORES_ENTRAR[e] ?? "No se pudo entrar.");
@@ -158,6 +177,32 @@ export function Medidor() {
       .catch(() => {});
     return () => limpiar.current();
   }, []);
+
+  useEffect(
+    () =>
+      suscribirBuzon((e, r) => {
+        setBuzon(e);
+        setResultados(new Map(r));
+      }),
+    [],
+  );
+
+  // Mientras mide o quedan baches por enviar: avisar antes de cerrar o recargar, y sin "jalar para recargar"
+  const ocupado = fase === "midiendo" || buzon.pendientes > 0;
+  useEffect(() => {
+    if (!ocupado) return;
+    const alSalir = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", alSalir);
+    const antes = document.documentElement.style.overscrollBehavior;
+    document.documentElement.style.overscrollBehavior = "none";
+    return () => {
+      window.removeEventListener("beforeunload", alSalir);
+      document.documentElement.style.overscrollBehavior = antes;
+    };
+  }, [ocupado]);
 
   // Con la cámara el celular va en el parabrisas (o el tablero): se ajusta solo
   const camaraPrendida = puedeCamara && camara.activa && detector.info !== null;
@@ -224,7 +269,20 @@ export function Medidor() {
   }
 
   async function empezar() {
+    if (iniciando.current) return; // doble toque
+    iniciando.current = true;
+    try {
+      await arrancar();
+    } finally {
+      iniciando.current = false;
+    }
+  }
+
+  async function arrancar() {
     setError(null);
+    // La pantalla encendida se pide primero, dentro del toque (en iPhone después ya no se puede)
+    const promesaCandado = pedirPantallaEncendida();
+    const soltarCandado = () => promesaCandado.then((c) => c?.release().catch(() => {}));
     try {
       // En iPhone el permiso del acelerómetro se pide dentro del toque
       const DME = (window as unknown as { DeviceMotionEvent?: { requestPermission?: () => Promise<string> } }).DeviceMotionEvent;
@@ -234,6 +292,7 @@ export function Medidor() {
       }
       if (!("geolocation" in navigator)) throw new Error("Este navegador no tiene GPS.");
     } catch (e) {
+      soltarCandado();
       setError(e instanceof Error ? e.message : "No se pudo iniciar.");
       return;
     }
@@ -245,19 +304,22 @@ export function Medidor() {
           ? `No se pudo preparar el detector de baches (${detector.error}). Recarga la página. Si sigue igual, apaga “Buscar baches con la cámara” para medir solo las calles.`
           : "El detector de baches todavía se está preparando. Espera unos segundos e intenta de nuevo.",
       );
+      soltarCandado();
       return;
     }
 
     // Cámara para los baches (si está activa y el detector ya está listo)
     let video: MediaStream | null = null;
     if (puedeCamara && camara.activa && detector.detector) {
-      // El celular va acostado: en Android se pone en horizontal y a pantalla completa (dentro del toque)
-      await ponerHorizontal();
+      // El celular va acostado: en Android se pone en horizontal y a pantalla completa (dentro del toque).
+      // Máximo 1 s: la cámara no espera a que termine de girar
+      await Promise.race([ponerHorizontal(), new Promise((r) => setTimeout(r, 1000))]);
       await pedirPermisoOrientacion();
       try {
         video = await abrirCamara();
       } catch {
         quitarHorizontal();
+        soltarCandado();
         setError("Sin permiso de cámara no se pueden detectar baches. Actívalo en los ajustes del navegador o apaga “Buscar baches con la cámara”.");
         return;
       }
@@ -301,19 +363,13 @@ export function Medidor() {
       { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
     );
 
-    // Pantalla encendida mientras mide
-    let candado: { release: () => Promise<void> } | null = null;
+    // Pantalla encendida mientras mide (se vuelve a pedir al regresar a la página)
+    let candado = await promesaCandado;
+    setSinCandado(!candado);
     const pedirCandado = async () => {
-      try {
-        candado =
-          (await (navigator as unknown as { wakeLock?: { request: (t: string) => Promise<{ release: () => Promise<void> }> } }).wakeLock?.request(
-            "screen",
-          )) ?? null;
-      } catch {
-        /* sin bloqueo de pantalla: hay que dejarla encendida */
-      }
+      candado = await pedirPantallaEncendida();
+      setSinCandado(!candado);
     };
-    await pedirCandado();
     const alCambiarVisibilidad = () => {
       if (document.visibilityState === "hidden") {
         ocultoDesde.current = Date.now();
@@ -355,8 +411,36 @@ export function Medidor() {
   }
 
   const resumen = resumir(tramos);
-  const bachesEnviados = baches.filter((b) => b.enviado).length;
-  const enElMapa = baches.filter((b) => b.enviado && b.publicado !== false).length;
+  // Cada bache con lo que contestó el servidor (si ya se envió)
+  const vistos: BacheSubido[] = baches.map((b) => {
+    const r = resultados.get(b.clave);
+    return r ? { ...b, enviado: true, nuevo: r.nuevo, publicado: !r.error && r.pin_id != null, calle: r.calle ?? null, prueba: !!r.prueba } : b;
+  });
+  const enElMapa = vistos.filter((b) => b.enviado && b.publicado).length;
+  const avisoBuzon =
+    buzon.problema === "sesion"
+      ? `Tu sesión se cerró. ${buzon.pendientes} ${buzon.pendientes === 1 ? "bache quedó guardado" : "baches quedaron guardados"} en este celular: entra otra vez y se envían solos.`
+      : buzon.problema === "sin-conexion" && buzon.pendientes > 0
+        ? `Sin señal: ${buzon.pendientes} ${buzon.pendientes === 1 ? "bache guardado" : "baches guardados"} en este celular. Se envían solos cuando haya internet; no cierres la app.`
+        : buzon.problema === "servidor" && buzon.pendientes > 0
+          ? `El servidor no respondió. ${buzon.pendientes} ${buzon.pendientes === 1 ? "bache guardado" : "baches guardados"}: se reintenta solo.`
+          : null;
+  const tarjetaBuzon = (buzon.pendientes > 0 || avisoBuzon) && (
+    <div className={`space-y-2 rounded-2xl px-4 py-3 text-[15px] ${avisoBuzon ? "bg-ios-naranja/12 text-[#c93400]" : "bg-white text-ios-secundario"}`}>
+      <p>{avisoBuzon ?? `Enviando ${buzon.pendientes} ${buzon.pendientes === 1 ? "bache" : "baches"}…`}</p>
+      {buzon.problema === "sesion" ? (
+        <button onClick={() => window.location.assign("/medir")} className="boton boton-principal h-10 w-full text-[15px]">
+          Entrar otra vez
+        </button>
+      ) : (
+        avisoBuzon && (
+          <button onClick={enviarYa} className="boton boton-tenue h-10 w-full text-[15px]">
+            Reintentar ahora
+          </button>
+        )
+      )}
+    </div>
+  );
   const kmMedidos = (estado?.distancia_m ?? 0) / 1000;
   // Con cámara: el equipo entró, la prendió y hay modelo
   const conCamara = puedeCamara && camara.activa && detector.info !== null;
@@ -442,6 +526,7 @@ export function Medidor() {
     >
       {fase === "inicio" && (
         <>
+          {tarjetaBuzon}
           {!puedeCamara && <EntrarEquipo error={errorEntrar} />}
 
           {modoRapido ? (
@@ -547,8 +632,14 @@ export function Medidor() {
               prueba={esPrueba ? nota.trim() || "Recorrido de prueba" : null}
               onBaches={setBaches}
             >
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-10">
-                {pausa && <p className="mx-auto mb-2 max-w-md rounded-2xl bg-[#c93400]/90 px-3 py-2 text-center text-[13px] font-medium text-white">{pausa}</p>}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-10">
+                {[error, avisoBuzon, pausa, sinCandado && "La pantalla se puede apagar y la cámara se detendría: en Ajustes pon el bloqueo automático en “Nunca”."]
+                  .filter((t): t is string => !!t)
+                  .map((t) => (
+                    <p key={t} className="mx-auto mb-2 max-w-md rounded-2xl bg-[#c93400]/90 px-3 py-2 text-center text-[13px] font-medium text-white">
+                      {t}
+                    </p>
+                  ))}
                 <div className="mx-auto flex max-w-3xl items-end justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {NIVELES_BACHE.map((n) => (
@@ -558,7 +649,7 @@ export function Medidor() {
                         className="flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-[17px] font-semibold tabular-nums text-white backdrop-blur-sm"
                       >
                         <span className="h-3 w-3 rounded-full" style={{ background: n.color }} />
-                        {baches.filter((b) => nivelBache(b.area_m2)?.clave === n.clave).length}
+                        {vistos.filter((b) => nivelBache(b.area_m2)?.clave === n.clave).length}
                       </span>
                     ))}
                     <span className="rounded-full bg-black/60 px-3 py-1.5 text-[14px] font-medium tabular-nums text-white/90 backdrop-blur-sm">
@@ -605,7 +696,7 @@ export function Medidor() {
       {fase === "terminado" && (
         <>
           {stream ? (
-            <ResumenBaches baches={baches} km={estado ? estado.distancia_m / 1000 : resumen.km} prueba={esPrueba} />
+            <ResumenBaches baches={vistos} km={estado ? estado.distancia_m / 1000 : resumen.km} prueba={esPrueba} />
           ) : (
             <div className="rounded-3xl bg-white px-5 py-6 text-center">
               <p className="text-[15px] font-medium text-ios-verde">¡Gracias!</p>
@@ -635,9 +726,10 @@ export function Medidor() {
               </>
             )
           )}
+          {avisoBuzon && tarjetaBuzon}
           <p className="px-4 text-center text-[15px] text-ios-secundario">
-            {pendientesEnvio > 0 || baches.length > bachesEnviados
-              ? `Enviando ${[pendientesEnvio > 0 && `${pendientesEnvio} tramos`, baches.length > bachesEnviados && `${baches.length - bachesEnviados} baches`].filter(Boolean).join(" y ")}… deja la página abierta un momento.`
+            {pendientesEnvio > 0 || buzon.pendientes > 0
+              ? `Enviando ${[pendientesEnvio > 0 && `${pendientesEnvio} tramos`, buzon.pendientes > 0 && `${buzon.pendientes} baches`].filter(Boolean).join(" y ")}… deja la app abierta un momento.`
               : "✓ Todo enviado."}
           </p>
           <div className="grid grid-cols-2 gap-2.5">
@@ -685,7 +777,7 @@ function EntrarEquipo({ error }: { error: string | null }) {
         )}
       </div>
       {abierto && (
-        <form action="/api/panel/entrar" method="post" className="mt-3 space-y-2.5">
+        <form action="/medir/entrar" method="post" className="mt-3 space-y-2.5">
           <input type="hidden" name="volver" value="/medir" />
           <label className="sr-only" htmlFor="clave-equipo">
             Código de voluntario o contraseña del equipo

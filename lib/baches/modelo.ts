@@ -31,9 +31,14 @@ export type InfoModelo = {
   sintetico?: boolean;
 };
 
+/**
+ * Datos del modelo instalado; null si no hay modelo (404 o archivo inválido).
+ * Lanza un error si no se pudo preguntar (sin conexión): quien llama vuelve a intentar.
+ */
 export async function leerInfoModelo(): Promise<InfoModelo | null> {
+  const r = await fetch(`${RUTA_MODELOS}baches.json`, { cache: "no-cache" });
+  if (r.status >= 500) throw new Error(`Servidor ${r.status}`);
   try {
-    const r = await fetch(`${RUTA_MODELOS}baches.json`, { cache: "no-cache" });
     if (!r.ok) return null;
     const j = (await r.json()) as InfoModelo;
     if (typeof j.archivo !== "string" || !/^[\w.-]+\.onnx$/.test(j.archivo)) return null;
@@ -149,13 +154,23 @@ export class Detector {
       }
     }
     sesion ??= await ort.InferenceSession.create(modelo, { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
-    const d = new Detector(ort, sesion, info, proveedor);
     // Primera corrida en vacío: compila los sombreadores / prepara la memoria
     const vacio = document.createElement("canvas");
     vacio.width = 64;
     vacio.height = 36;
-    await d.detectar(vacio, 64, 36);
-    return d;
+    const d = new Detector(ort, sesion, info, proveedor);
+    try {
+      await d.detectar(vacio, 64, 36);
+      return d;
+    } catch (e) {
+      if (proveedor !== "webgpu") throw e;
+      // WebGPU se creó pero no corre (p. ej. algunos iPhone): se usa WebAssembly
+      console.warn("WebGPU falló en la primera corrida; se usa WebAssembly", e);
+      const s2 = await ort.InferenceSession.create(modelo, { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
+      const d2 = new Detector(ort, s2, info, "wasm");
+      await d2.detectar(vacio, 64, 36);
+      return d2;
+    }
   }
 
   /** Detecta baches en un cuadro (video o canvas) de ancho × alto píxeles */
