@@ -499,6 +499,8 @@ declare
   v_area   real := (p->>'area_m2')::real;
   v_prueba text := nullif(trim(p->>'prueba'), '');
   v_volunt boolean := coalesce((p->>'voluntario')::boolean, false);
+  v_prov   text := left(p->>'proveedor', 10);
+  v_cps    real := (p->>'cuadros_s')::real;
   v_calle  text;
   v_ajuste real;
   v_pin    bigint;
@@ -512,12 +514,12 @@ begin
   if v_prueba is not null then
     insert into detecciones_bache (sesion, fecha, ubicacion, ubicacion_gps, area_m2, area_sd_m2, largo_m, ancho_m,
                                    confianza, confianza_max, cuadros, medidas, distancia_m, foto_ruta,
-                                   modelo, altura_m, fov, plataforma, calle, rumbo, precision_m, ajuste_m, prueba, voluntario)
+                                   modelo, altura_m, fov, plataforma, calle, rumbo, precision_m, ajuste_m, prueba, voluntario, proveedor, cuadros_s)
     values (v_sesion, (p->>'fecha')::date, v_punto, v_gps, v_area, (p->>'area_sd_m2')::real,
             (p->>'largo_m')::real, (p->>'ancho_m')::real, (p->>'confianza')::real, (p->>'confianza_max')::real,
             (p->>'cuadros')::int, coalesce((p->>'medidas')::int, 0), (p->>'distancia_m')::real, p->>'foto_ruta',
             p->>'modelo', (p->>'altura_m')::real, (p->>'fov')::real, p->>'plataforma',
-            v_calle, (p->>'rumbo')::real, (p->>'precision_m')::real, v_ajuste, left(v_prueba, 60), v_volunt);
+            v_calle, (p->>'rumbo')::real, (p->>'precision_m')::real, v_ajuste, left(v_prueba, 60), v_volunt, v_prov, v_cps);
     return json_build_object('pin_id', null, 'nuevo', false, 'calle', v_calle, 'prueba', true);
   end if;
 
@@ -544,12 +546,12 @@ begin
 
   insert into detecciones_bache (pin_id, sesion, fecha, ubicacion, ubicacion_gps, area_m2, area_sd_m2, largo_m, ancho_m,
                                  confianza, confianza_max, cuadros, medidas, distancia_m, foto_ruta,
-                                 modelo, altura_m, fov, plataforma, calle, rumbo, precision_m, ajuste_m, voluntario)
+                                 modelo, altura_m, fov, plataforma, calle, rumbo, precision_m, ajuste_m, voluntario, proveedor, cuadros_s)
   values (v_pin, v_sesion, (p->>'fecha')::date, v_punto, v_gps, v_area, (p->>'area_sd_m2')::real,
           (p->>'largo_m')::real, (p->>'ancho_m')::real, (p->>'confianza')::real, (p->>'confianza_max')::real,
           (p->>'cuadros')::int, coalesce((p->>'medidas')::int, 0), (p->>'distancia_m')::real, p->>'foto_ruta',
           p->>'modelo', (p->>'altura_m')::real, (p->>'fov')::real, p->>'plataforma',
-          v_calle, (p->>'rumbo')::real, (p->>'precision_m')::real, v_ajuste, v_volunt);
+          v_calle, (p->>'rumbo')::real, (p->>'precision_m')::real, v_ajuste, v_volunt, v_prov, v_cps);
 
   if v_pin is not null and not v_nuevo then
     update reportes_pin r set
@@ -589,7 +591,7 @@ as $$
   from (
     select d.id, d.fecha, d.sesion, d.pin_id, d.area_m2, d.area_sd_m2, d.largo_m, d.ancho_m,
            d.confianza, d.confianza_max, d.cuadros, d.medidas, d.distancia_m, d.modelo,
-           d.altura_m, d.fov, d.plataforma, d.foto_ruta, d.calle, d.rumbo, d.precision_m, d.ajuste_m, d.prueba, d.voluntario,
+           d.altura_m, d.fov, d.plataforma, d.foto_ruta, d.calle, d.rumbo, d.precision_m, d.ajuste_m, d.prueba, d.voluntario, d.proveedor, d.cuadros_s,
            round(st_y(d.ubicacion)::numeric, 6) as lat,
            round(st_x(d.ubicacion)::numeric, 6) as lng
     from detecciones_bache d

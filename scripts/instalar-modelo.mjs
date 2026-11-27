@@ -151,7 +151,7 @@ function principal() {
     clases: nombres,
     umbral: Number(argumento("umbral")) || 0.15,
     umbrales: Object.fromEntries(nombres.map((n) => [n, umbralDe(n)])),
-    confirmar: 0.5,
+    confirmar: 0.4,
     fecha: ahora.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Hermosillo" }),
     ...(precision && Number(precision) > 0 ? { map50: Math.min(1, Number(precision) > 1 ? Number(precision) / 100 : Number(precision)) } : {}),
     ...(argumento("nota") ? { datos: argumento("nota").slice(0, 200) } : {}),

@@ -44,6 +44,9 @@ const Lote = z.object({
   fov: z.number().finite().transform((x) => Math.min(140, Math.max(20, x))),
   /** Recorrido de prueba: la nota; los baches se guardan pero no se publican en el mapa */
   prueba: z.string().trim().max(60).nullable().optional(),
+  /** Diagnóstico: con qué corrió el detector y cuántos cuadros analizaba por segundo */
+  proveedor: z.enum(["webgpu", "wasm"]).optional(),
+  cuadros_s: z.number().finite().min(0).max(120).optional(),
   // Cada bache se revisa aparte: uno con datos raros se rechaza solo, sin tumbar a los demás del lote
   baches: z.array(z.unknown()).min(1).max(MAX_POR_LOTE),
 });
@@ -130,6 +133,8 @@ export async function POST(req: Request) {
         plataforma: lote.plataforma,
         prueba: lote.prueba || null,
         voluntario,
+        proveedor: lote.proveedor ?? null,
+        cuadros_s: lote.cuadros_s ?? null,
       },
     });
     if (err) {

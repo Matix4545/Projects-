@@ -11,6 +11,9 @@ export type MetaRecorrido = {
   altura_m: number;
   fov: number;
   prueba: string | null;
+  /** Diagnóstico: motor del detector y cuadros analizados por segundo */
+  proveedor?: "webgpu" | "wasm";
+  cuadros_s?: number;
 };
 
 export type DatosBache = {
