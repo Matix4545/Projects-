@@ -101,6 +101,7 @@ export function CamaraBaches({
   const [aviso, setAviso] = useState<string | null>(null);
   const [descartados, setDescartados] = useState(0);
   const [detalles, setDetalles] = useState(false);
+  const [diagnostico, setDiagnostico] = useState({ candidatos: 0, pocos: 0, confianza: 0 });
   /** Ancho / alto del video (cambia si se gira el celular) */
   const [aspecto, setAspecto] = useState(16 / 9);
   const [sinGps, setSinGps] = useState(false);
@@ -121,6 +122,12 @@ export function CamaraBaches({
   const vivo = useRef(true);
   /** Hora (ms) de la última lectura del GPS; 0 = ninguna todavía */
   const ultimaGps = useRef(0);
+  /** Para el diagnóstico del recorrido: cuadros analizados y segundos sin GPS / sin inclinación */
+  const conteo = useRef({ inicio: Date.now(), cuadros: 0, sinGpsS: 0, sinInclinacionS: 0 });
+  const cuadrosPorSegundo = () => {
+    const s = (Date.now() - conteo.current.inicio) / 1000;
+    return s > 1 ? Math.round((conteo.current.cuadros / s) * 10) / 10 : 0;
+  };
 
   // Valores que cambian sin reiniciar la cámara
   const params = useRef({ alturaM, fovLargo, abajoRespaldo, sesion, plataforma, prueba, onBaches });
@@ -141,6 +148,8 @@ export function CamaraBaches({
       altura_m: acotar(alturaM, 0.3, 5),
       fov: acotar(fovLargo, 20, 140),
       prueba,
+      proveedor: detector.proveedor === "webgpu" ? "webgpu" : "wasm",
+      cuadros_s: Math.min(120, cuadrosPorSegundo()),
     };
     const p = (async () => {
       const items: { clave: string; bache: DatosBache; foto: Blob | null }[] = [];
@@ -172,6 +181,32 @@ export function CamaraBaches({
       // Que todo quede guardado en el buzón (sigue enviando aunque esta vista se cierre)
       await Promise.allSettled([...guardando.current]);
       enviarYa();
+      const s = seguimiento.current;
+      const { sesion, plataforma, alturaM, fovLargo, prueba } = params.current;
+      fetch("/api/baches-camara/recorrido", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          sesion,
+          fecha: new Date().toLocaleDateString("en-CA", { timeZone: "America/Hermosillo" }),
+          plataforma,
+          proveedor: detector.proveedor === "webgpu" ? "webgpu" : "wasm",
+          modelo: detector.info.archivo,
+          altura_m: acotar(alturaM, 0, 5),
+          fov: acotar(fovLargo, 0, 180),
+          prueba,
+          duracion_s: Math.round((Date.now() - conteo.current.inicio) / 1000),
+          cuadros: conteo.current.cuadros,
+          cuadros_s: Math.min(120, cuadrosPorSegundo()),
+          candidatos: s.candidatos,
+          confirmados: subidos.current.length,
+          descartados_pocos: s.descartadosPocos,
+          descartados_confianza: s.descartadosConfianza,
+          sin_gps_s: Math.round(conteo.current.sinGpsS),
+          sin_inclinacion_s: Math.round(conteo.current.sinInclinacionS),
+        }),
+      }).catch(() => {});
     },
   }));
 
@@ -335,8 +370,10 @@ export function CamaraBaches({
         dibujar(lienzo.current, cuadro, vw, vh, cam, ejes, h, res, medidas, (b) => (esBache(b) ? null : (detector.info.clases?.[b.clase] ?? `clase ${b.clase}`)), verDetalles.current);
 
         cuadros++;
+        conteo.current.cuadros++;
         const ms = performance.now();
         if (ms - ultimoFps > 1000) {
+          const pasaron = (ms - ultimoFps) / 1000;
           setFps(Math.round((cuadros * 10000) / (ms - ultimoFps)) / 10);
           cuadros = 0;
           ultimoFps = ms;
@@ -344,8 +381,11 @@ export function CamaraBaches({
           setDescartados(seguimiento.current.descartados);
           // Avisos que se calculan cada segundo (se quitan solos cuando se arregla)
           setSinInclinacion(!enVivo && !respaldo);
+          if (!enVivo && !respaldo) conteo.current.sinInclinacionS += pasaron;
           const ultima = ultimaGps.current;
           setSinGps(ultima ? Date.now() - ultima > 15_000 : Date.now() - desde > 15_000);
+          if (!ultima || Date.now() - ultima > 3000) conteo.current.sinGpsS += pasaron;
+          setDiagnostico({ candidatos: seguimiento.current.candidatos, pocos: seguimiento.current.descartadosPocos, confianza: seguimiento.current.descartadosConfianza });
         }
         // Deja respirar a la página entre cuadro y cuadro
         await new Promise((r) => requestAnimationFrame(() => r(null)));
@@ -400,12 +440,8 @@ export function CamaraBaches({
       {fps.toFixed(1)} cuadros/s · {detector.proveedor === "webgpu" ? "WebGPU" : "CPU"}
       <br />
       {pose ? `inclinación ↓${pose.pitch.toFixed(1)}° ↻${pose.roll.toFixed(1)}°` : "sin inclinación"} · {gps == null ? "sin GPS" : `GPS ±${gps} m`}
-      {descartados > 0 && (
-        <>
-          <br />
-          {descartados} detecciones sueltas descartadas
-        </>
-      )}
+      <br />
+      {diagnostico.candidatos} vistos · {subidos.current.length} confirmados · descartados: {diagnostico.pocos} por pocos cuadros, {diagnostico.confianza} por poca confianza
     </div>
   );
   const avisos = [

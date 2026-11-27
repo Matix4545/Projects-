@@ -17,7 +17,7 @@
     "registro": 0.35,
     "rejilla": 0.35
   },
-  "confirmar": 0.5,
+  "confirmar": 0.4,
   "fecha": "17 nov 2026",
   "datos": "YOLO26n-seg entrenado en Ultralytics Platform con el dataset \"pothole\" de inGeniia (CC BY 4.0)",
   "descripcion": "Ultralytics YOLO26n-seg model trained on /datasets/potholecajeme-ec249118/data.yaml"

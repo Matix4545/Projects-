@@ -11,6 +11,8 @@ const COLUMNAS = [
   "fecha",
   "prueba",
   "voluntario",
+  "proveedor",
+  "cuadros_s",
   "sesion",
   "pin_id",
   "lat",

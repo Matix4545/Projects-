@@ -87,6 +87,11 @@ export class Seguimiento<F = unknown> {
   private listos: BacheConfirmado<F>[] = [];
   /** Cuántos se descartaron por verse muy poco (posibles falsos positivos) */
   descartados = 0;
+  /** De los descartados: vistos en muy pocos cuadros / con confianza baja */
+  descartadosPocos = 0;
+  descartadosConfianza = 0;
+  /** Apariciones distintas que empezaron a seguirse (candidatos a bache) */
+  candidatos = 0;
   private o: typeof OPCIONES_SEGUIMIENTO;
 
   constructor(opc: Partial<typeof OPCIONES_SEGUIMIENTO> = {}) {
@@ -124,6 +129,7 @@ export class Seguimiento<F = unknown> {
     obs.forEach((o, i) => {
       if (obsUsada.has(i)) return;
       const p: Pista<F> = { obs: [o], pos: o.pos, ultimo: t, puntajeFoto: -Infinity };
+      this.candidatos++;
       guardarFoto(p, o);
       this.pistas.push(p);
     });
@@ -144,6 +150,8 @@ export class Seguimiento<F = unknown> {
     const max = Math.max(...confs);
     if (n < this.o.minCuadros || max < this.o.minConfianza) {
       this.descartados++;
+      if (n < this.o.minCuadros) this.descartadosPocos++;
+      else this.descartadosConfianza++;
       return;
     }
     const buenas = p.obs.filter((o) => o.area_m2 != null);

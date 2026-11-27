@@ -320,6 +320,34 @@ create index if not exists mediciones_referencia_geom_idx on public.mediciones_r
 -- equipo (/panel → Voluntarios). Sus detecciones quedan marcadas para poder revisarlas o quitarlas.
 alter table public.detecciones_bache add column if not exists voluntario boolean not null default false;
 
+-- Diagnóstico: con qué corrió el detector (webgpu / wasm) y cuántos cuadros analizaba por segundo
+alter table public.detecciones_bache add column if not exists proveedor text;
+alter table public.detecciones_bache add column if not exists cuadros_s real;
+
+-- Resumen de cada recorrido con la cámara: cuántos cuadros analizó, cuántas apariciones siguió y por qué
+-- descartó las que no subió. Sirve para saber por qué "no ve" baches (lento, poca confianza, sin GPS…).
+create table if not exists public.recorridos_camara (
+  sesion                uuid primary key,
+  fecha                 date not null,
+  plataforma            text,
+  proveedor             text,
+  modelo                text,
+  altura_m              real,
+  fov                   real,
+  prueba                text,
+  voluntario            boolean not null default false,
+  duracion_s            real,
+  cuadros               int,
+  cuadros_s             real,
+  candidatos            int,
+  confirmados           int,
+  descartados_pocos     int,
+  descartados_confianza int,
+  sin_gps_s             real,
+  sin_inclinacion_s     real,
+  creado_en             timestamptz not null default now()
+);
+
 -- Ajustes privados del equipo (p. ej. el código de voluntarios). Solo los lee el servidor.
 create table if not exists public.ajustes_equipo (
   clave       text primary key,
